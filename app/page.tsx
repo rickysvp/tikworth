@@ -67,7 +67,12 @@ export default function HomePage() {
   async function handleExportPdf() {
     if (!result || !reportRef.current) return
     setShowExportMenu(false)
-    await exportPdfReport(result, isUnlocked, reportRef.current)
+    try {
+      await exportPdfReport(result, isUnlocked, reportRef.current)
+    } catch (err) {
+      console.error('[export-pdf] failed:', err)
+      alert('PDF 导出失败：' + (err instanceof Error ? err.message : String(err)))
+    }
   }
 
   const handleEvaluate = useCallback(async (name?: string) => {
