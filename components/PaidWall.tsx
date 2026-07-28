@@ -22,9 +22,9 @@ export function PaidWall({ onUnlock, result }: PaidWallProps) {
   const username = result?.username || ''
 
   return (
-    <div className="relative rounded-3xl border border-neutral-800 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a]">
+    <div className="rounded-3xl border border-neutral-800 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] overflow-hidden">
       {/* Social proof badge */}
-      <div className="flex justify-center -mt-3 mb-2 relative z-20">
+      <div className="flex justify-center pt-4 pb-2">
         <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2EA]/30 bg-[#0f0f0f] px-4 py-1.5 shadow-lg shadow-[#00F2EA]/10">
           <Star className="h-3.5 w-3.5 text-[#00F2EA]" />
           <span className="text-xs text-neutral-400">
@@ -33,8 +33,10 @@ export function PaidWall({ onUnlock, result }: PaidWallProps) {
         </div>
       </div>
 
-      {/* Blurred preview of locked content */}
-      <div className="px-6 sm:px-8 pt-6 pb-4 filter blur-[6px] select-none pointer-events-none opacity-25">
+      {/* Content area: blur preview + gradient + CTA share the same grid cell */}
+      <div className="grid grid-cols-1">
+        {/* Blurred preview of locked content */}
+        <div className="col-start-1 row-start-1 px-6 sm:px-8 pb-6 filter blur-[6px] select-none pointer-events-none opacity-25">
         {/* Income preview */}
         <div className="mb-6">
           <div className="text-sm font-semibold text-neutral-300 mb-2">收入与增长</div>
@@ -150,11 +152,11 @@ export function PaidWall({ onUnlock, result }: PaidWallProps) {
         </div>
       </div>
 
-      {/* Gradient fade at bottom of blur */}
-      <div className="absolute top-0 left-0 right-0 h-2/3 bg-gradient-to-b from-transparent via-[#0f0f0f]/50 to-[#0f0f0f]" />
+        {/* Gradient fade over blur */}
+        <div className="col-start-1 row-start-1 bg-gradient-to-b from-transparent via-[#0f0f0f]/50 to-[#0f0f0f]" />
 
-      {/* Overlay CTA */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4">
+        {/* Overlay CTA */}
+        <div className="col-start-1 row-start-1 z-10 flex flex-col items-center justify-center px-4 py-8">
         <div className="text-center max-w-lg">
           {/* Lock icon with glow */}
           <div className="relative inline-flex mb-6">
@@ -276,5 +278,6 @@ export function PaidWall({ onUnlock, result }: PaidWallProps) {
         </div>
       </div>
     </div>
+  </div>
   )
 }
