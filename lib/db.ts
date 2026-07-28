@@ -58,6 +58,14 @@ async function initStore(): Promise<Store> {
         growth_plan JSONB,
         income_estimate JSONB,
         business_value JSONB,
+        revenue_roadmap JSONB,
+        content_strategy JSONB,
+        peer_ranking JSONB,
+        brand_matching JSONB,
+        trend_analysis JSONB,
+        commercialization_advice JSONB,
+        formula_version TEXT,
+        calculation_metadata JSONB,
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
       `
@@ -151,8 +159,8 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
       INSERT INTO evaluations
         (username, nickname, score, tier, dimensions, summary, metrics, risk_flags, verdict, advice, price_advice,
          account_health, content_cadence, engagement_quality, peer_benchmark, brand_potential, monetization_path, growth_plan,
-         income_estimate,
-         business_value,
+         income_estimate, business_value, revenue_roadmap, content_strategy, peer_ranking, brand_matching,
+         trend_analysis, commercialization_advice, formula_version, calculation_metadata,
          computed_at, avatar, bio, follower_count, following_count, total_likes, video_count, verified, region, posts, account_profile)
       VALUES
         (${evaluation.username}, ${evaluation.nickname}, ${evaluation.score}, ${evaluation.tier},
@@ -166,6 +174,14 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
          ${JSON.stringify(evaluation.growthPlan)}::jsonb,
          ${JSON.stringify(evaluation.incomeEstimate)}::jsonb,
          ${JSON.stringify(evaluation.businessValue)}::jsonb,
+         ${JSON.stringify(evaluation.revenueRoadmap)}::jsonb,
+         ${JSON.stringify(evaluation.contentStrategy)}::jsonb,
+         ${JSON.stringify(evaluation.peerRanking)}::jsonb,
+         ${JSON.stringify(evaluation.brandMatching)}::jsonb,
+         ${JSON.stringify(evaluation.trendAnalysis)}::jsonb,
+         ${JSON.stringify(evaluation.commercializationAdvice)}::jsonb,
+         ${evaluation.formulaVersion || null},
+         ${JSON.stringify(evaluation.calculationMetadata || null)}::jsonb,
          ${evaluation.computedAt}, ${evaluation.avatar || null}, ${evaluation.bio || null},
          ${evaluation.followerCount}, ${evaluation.followingCount}, ${evaluation.totalLikes}, ${evaluation.videoCount},
          ${evaluation.verified ?? null}, ${evaluation.region || null}, ${JSON.stringify(evaluation.posts || [])}::jsonb,
@@ -190,6 +206,14 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
         growth_plan = EXCLUDED.growth_plan,
         income_estimate = EXCLUDED.income_estimate,
         business_value = EXCLUDED.business_value,
+        revenue_roadmap = EXCLUDED.revenue_roadmap,
+        content_strategy = EXCLUDED.content_strategy,
+        peer_ranking = EXCLUDED.peer_ranking,
+        brand_matching = EXCLUDED.brand_matching,
+        trend_analysis = EXCLUDED.trend_analysis,
+        commercialization_advice = EXCLUDED.commercialization_advice,
+        formula_version = EXCLUDED.formula_version,
+        calculation_metadata = EXCLUDED.calculation_metadata,
         computed_at = EXCLUDED.computed_at,
         avatar = EXCLUDED.avatar,
         bio = EXCLUDED.bio,
@@ -217,7 +241,8 @@ export async function isCacheValid(username: string, ttlHours = 24): Promise<boo
   const found = await findEvaluation(username)
   if (!found) return false
 
-  // Invalidate cached results that predate the structured accountProfile/categories field.
+  if (found.formulaVersion !== 'v2') return false
+
   const categories = found.accountProfile?.categories
   if (!categories || !Array.isArray(categories) || categories.length === 0) {
     return false
@@ -228,6 +253,31 @@ export async function isCacheValid(username: string, ttlHours = 24): Promise<boo
 }
 
 function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
+  const defaultMetrics = {
+    engagementRate: 0,
+    avgPlays: 0,
+    avgLikes: 0,
+    avgComments: 0,
+    avgShares: 0,
+    likesPerVideo: 0,
+    followerFollowingRatio: 0,
+    recentMedianPlays: 0,
+    olderMedianPlays: 0,
+    playGrowth: 0,
+    cvPlays: 0,
+    daysSinceLastPost: 0,
+    topPostPlays: 0,
+    topPostLikes: 0,
+    matureMedianPlays: 0,
+    matureWeightedAvgPlays: 0,
+    historicalImpliedPlays: 0,
+    immatureVideoCount: 0,
+    growingVideoCount: 0,
+    likePlayRatio: 0,
+    effectivePlaysSource: 'fallback' as const,
+    effectiveAvgPlays: 0,
+    effectivePeakPlays: 0,
+  }
   return {
     username: String(evaluation.username),
     nickname: String(evaluation.nickname),
@@ -235,22 +285,7 @@ function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
     tier: String(evaluation.tier) as Evaluation['tier'],
     dimensions: evaluation.dimensions || { reach: 0, engagement: 0, content: 0, authenticity: 0, momentum: 0, stability: 0, commerce: 0, monetization: 0, health: 0, influence: 0 },
     summary: evaluation.summary || { headline: '', strengths: [], weaknesses: [], targetAudience: '', bestAction: '' },
-    metrics: evaluation.metrics || {
-      engagementRate: 0,
-      avgPlays: 0,
-      avgLikes: 0,
-      avgComments: 0,
-      avgShares: 0,
-      likesPerVideo: 0,
-      followerFollowingRatio: 0,
-      recentMedianPlays: 0,
-      olderMedianPlays: 0,
-      playGrowth: 0,
-      cvPlays: 0,
-      daysSinceLastPost: 0,
-      topPostPlays: 0,
-      topPostLikes: 0,
-    },
+    metrics: { ...defaultMetrics, ...(evaluation.metrics || {}) },
     riskFlags: Array.isArray(evaluation.riskFlags) ? evaluation.riskFlags : [],
     verdict: String(evaluation.verdict),
     advice: String(evaluation.advice),
@@ -328,8 +363,15 @@ function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
       total12Month: { low: 0, mid: 0, high: 0 },
       summary: '',
     },
-    contentStrategy: evaluation.contentStrategy || {
-      pillars: [], recommendedHashtags: [], optimalSchedule: [], collaborationIdeas: [], summary: '',
+    contentStrategy: evaluation.contentStrategy ? {
+      pillars: evaluation.contentStrategy.pillars || [],
+      recommendedHashtags: evaluation.contentStrategy.recommendedHashtags || [],
+      optimalSchedule: evaluation.contentStrategy.optimalSchedule || [],
+      videoDuration: evaluation.contentStrategy.videoDuration || { min: 15, max: 60, label: '15-60秒（通用短视频最佳时长）' },
+      collaborationIdeas: evaluation.contentStrategy.collaborationIdeas || [],
+      summary: evaluation.contentStrategy.summary || '',
+    } : {
+      pillars: [], recommendedHashtags: [], optimalSchedule: [], videoDuration: { min: 15, max: 60, label: '15-60秒（通用短视频最佳时长）' }, collaborationIdeas: [], summary: '',
     },
     peerRanking: evaluation.peerRanking || {
       overallPercentile: 0, tierLabel: '', peerGroupDescription: '', rankingBreakdown: [], insight: '',
@@ -352,6 +394,10 @@ function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
     videoCount: Number(evaluation.videoCount),
     verified: evaluation.verified ?? undefined,
     region: evaluation.region || undefined,
+    mock: evaluation.mock,
+    cached: evaluation.cached,
+    formulaVersion: (evaluation.formulaVersion as 'v2' | undefined) || undefined,
+    calculationMetadata: evaluation.calculationMetadata,
   }
 }
 
@@ -369,36 +415,45 @@ function parseJson(value: unknown): any {
 }
 
 function rowToEvaluation(row: Record<string, unknown>): Evaluation {
-  return {
+  const defaultMetrics = {
+    engagementRate: 0,
+    avgPlays: 0,
+    avgLikes: 0,
+    avgComments: 0,
+    avgShares: 0,
+    likesPerVideo: 0,
+    followerFollowingRatio: 0,
+    recentMedianPlays: 0,
+    olderMedianPlays: 0,
+    playGrowth: 0,
+    cvPlays: 0,
+    daysSinceLastPost: 0,
+    topPostPlays: 0,
+    topPostLikes: 0,
+    matureMedianPlays: 0,
+    matureWeightedAvgPlays: 0,
+    historicalImpliedPlays: 0,
+    immatureVideoCount: 0,
+    growingVideoCount: 0,
+    likePlayRatio: 0,
+    effectivePlaysSource: 'fallback' as const,
+    effectiveAvgPlays: 0,
+    effectivePeakPlays: 0,
+  }
+  const parsedMetrics = typeof row.metrics === 'string' ? JSON.parse(row.metrics) : (row.metrics as Evaluation['metrics'])
+  return normalizeEvaluation({
     username: String(row.username),
     nickname: String(row.nickname),
     score: Number(row.score),
     tier: String(row.tier) as Evaluation['tier'],
     dimensions: typeof row.dimensions === 'string' ? JSON.parse(row.dimensions) : row.dimensions as Evaluation['dimensions'],
-    summary: typeof row.summary === 'string' ? JSON.parse(row.summary) : (row.summary as Evaluation['summary']) || { headline: '', strengths: [], weaknesses: [], targetAudience: '', bestAction: '' },
-    metrics: typeof row.metrics === 'string'
-      ? JSON.parse(row.metrics)
-      : (row.metrics as Evaluation['metrics']) || {
-          engagementRate: 0,
-          avgPlays: 0,
-          avgLikes: 0,
-          avgComments: 0,
-          avgShares: 0,
-          likesPerVideo: 0,
-          followerFollowingRatio: 0,
-          recentMedianPlays: 0,
-          olderMedianPlays: 0,
-          playGrowth: 0,
-          cvPlays: 0,
-          daysSinceLastPost: 0,
-          topPostPlays: 0,
-          topPostLikes: 0,
-        },
+    summary: typeof row.summary === 'string' ? JSON.parse(row.summary) : (row.summary as Evaluation['summary']),
+    metrics: { ...defaultMetrics, ...(parsedMetrics || {}) },
     riskFlags: Array.isArray(row.risk_flags)
       ? row.risk_flags as Evaluation['riskFlags']
       : typeof row.risk_flags === 'string'
       ? JSON.parse(row.risk_flags)
-      : (row.riskFlags as Evaluation['riskFlags']) || [],
+      : (row.riskFlags as Evaluation['riskFlags']),
     verdict: String(row.verdict),
     advice: String(row.advice),
     priceAdvice: String(row.price_advice ?? row.priceAdvice ?? ''),
@@ -409,41 +464,15 @@ function rowToEvaluation(row: Record<string, unknown>): Evaluation {
     brandPotential: parseJson(row.brand_potential),
     monetizationPath: parseJson(row.monetization_path),
     growthPlan: parseJson(row.growth_plan),
-    incomeEstimate: parseJson(row.income_estimate) || {
-      monthlyTotal: { low: 0, mid: 0, high: 0 },
-      breakdown: [],
-      categoryCpm: 0, categoryRpm: 0, regionMultiplier: 1,
-      categoryLabel: '', regionLabel: '', summary: '',
-    },
-    businessValue: parseJson(row.business_value) || {
-      totalValue: { low: 0, mid: 0, high: 0 },
-      components: [],
-      summary: '',
-    },
-    accountProfile: parseJson(row.account_profile) || {
-      categories: [], personaType: '', postingRhythm: '', audienceRegion: '', contentStyle: '',
-    },
-    revenueRoadmap: parseJson(row.revenue_roadmap) || {
-      currentMonthly: { low: 0, mid: 0, high: 0 },
-      projections: [],
-      total12Month: { low: 0, mid: 0, high: 0 },
-      summary: '',
-    },
-    contentStrategy: parseJson(row.content_strategy) || {
-      pillars: [], recommendedHashtags: [], optimalSchedule: [], collaborationIdeas: [], summary: '',
-    },
-    peerRanking: parseJson(row.peer_ranking) || {
-      overallPercentile: 0, tierLabel: '', peerGroupDescription: '', rankingBreakdown: [], insight: '',
-    },
-    brandMatching: parseJson(row.brand_matching) || {
-      matches: [], totalBrandValue: { low: 0, mid: 0, high: 0 }, summary: '',
-    },
-    trendAnalysis: parseJson(row.trend_analysis) || {
-      trendingTopics: [], trendingSounds: [], contentPredictions: [], bestPostTimes: [], summary: '',
-    },
-    commercializationAdvice: parseJson(row.commercialization_advice) || {
-      directions: [], primaryRecommendation: '', secondaryRecommendation: '', estimatedTotalMonthly: { low: 0, mid: 0, high: 0 }, summary: '',
-    },
+    incomeEstimate: parseJson(row.income_estimate),
+    businessValue: parseJson(row.business_value),
+    accountProfile: parseJson(row.account_profile),
+    revenueRoadmap: parseJson(row.revenue_roadmap),
+    contentStrategy: parseJson(row.content_strategy),
+    peerRanking: parseJson(row.peer_ranking),
+    brandMatching: parseJson(row.brand_matching),
+    trendAnalysis: parseJson(row.trend_analysis),
+    commercializationAdvice: parseJson(row.commercialization_advice),
     computedAt: String(row.computed_at ?? row.computedAt),
     avatar: row.avatar ? String(row.avatar) : undefined,
     bio: row.bio ? String(row.bio) : undefined,
@@ -454,5 +483,7 @@ function rowToEvaluation(row: Record<string, unknown>): Evaluation {
     verified: row.verified != null ? Boolean(row.verified) : undefined,
     region: row.region ? String(row.region) : undefined,
     posts: Array.isArray(parseJson(row.posts)) ? parseJson(row.posts) : [],
-  }
+    formulaVersion: row.formula_version ? String(row.formula_version) as 'v2' : undefined,
+    calculationMetadata: parseJson(row.calculation_metadata),
+  })
 }

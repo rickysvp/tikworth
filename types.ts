@@ -99,6 +99,8 @@ export interface Evaluation {
   verified?: boolean
   region?: string
   posts?: Post[]
+  formulaVersion?: 'v2'
+  calculationMetadata?: CalculationMetadata
 }
 
 export interface Metrics {
@@ -116,6 +118,33 @@ export interface Metrics {
   daysSinceLastPost: number
   topPostPlays: number
   topPostLikes: number
+  // ---- v2 新增：视频成熟度分层与稳健播放量 ----
+  matureMedianPlays: number
+  matureWeightedAvgPlays: number
+  historicalImpliedPlays: number
+  immatureVideoCount: number
+  growingVideoCount: number
+  likePlayRatio: number
+  effectivePlaysSource: 'mature+historical' | 'mature-only' | 'historical-only' | 'fallback'
+  effectiveAvgPlays: number
+  effectivePeakPlays: number
+}
+
+export interface CalculationMetadata {
+  effectiveAvgPlays: number
+  effectivePeakPlays: number
+  matureVideoCount: number
+  excludedImmatureCount: number
+  excludedGrowingCount: number
+  brandCpm: number
+  engagementMultiplier: number
+  regionMultiplier: number
+  categoryForCpm: string
+  regionLabel: string
+  perVideoBrandDealMid: number
+  monthlyBrandPosts: number
+  likePlayRatio: number
+  playsSource: string
 }
 
 export interface AccountHealth {
@@ -259,6 +288,7 @@ export interface ContentStrategy {
   pillars: ContentPillar[]
   recommendedHashtags: { tag: string; volume: 'high' | 'medium' | 'low'; relevance: number }[]
   optimalSchedule: { day: string; time: string; format: string }[]
+  videoDuration: { min: number; max: number; label: string }
   collaborationIdeas: { type: string; description: string; potential: 'high' | 'medium' }[]
   summary: string
 }
