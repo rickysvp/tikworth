@@ -28,9 +28,17 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# sqlite data
+/data
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ide / logs
+.superpowers/
+.trae/
+start.log

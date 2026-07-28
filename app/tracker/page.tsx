@@ -1,0 +1,389 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import {
+  loadTrackedEvaluations, removeFromTracker, clearTracker,
+  formatTrackUsd, formatTrackNumber,
+  TrackedEvaluation,
+} from '@/lib/tracker'
+import {
+  ArrowLeft, TrendingUp, TrendingDown, Trash2, BarChart3,
+  Users, Eye, DollarSign, Activity, Shield, Calendar,
+  Star, Target, AlertTriangle, CheckCircle2,
+} from 'lucide-react'
+
+export default function TrackerPage() {
+  const [evaluations, setEvaluations] = useState<TrackedEvaluation[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  useEffect(() => {
+    setEvaluations(loadTrackedEvaluations())
+  }, [])
+
+  function refresh() {
+    setEvaluations(loadTrackedEvaluations())
+  }
+
+  function handleRemove(username: string) {
+    removeFromTracker(username)
+    refresh()
+  }
+
+  function handleClearAll() {
+    if (confirm('确定要清除所有追踪记录吗？此操作不可撤销。')) {
+      clearTracker()
+      refresh()
+      setSelectedIds([])
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      if (prev.includes(id)) return prev.filter(i => i !== id)
+      if (prev.length >= 2) return [prev[1], id]
+      return [...prev, id]
+    })
+  }
+
+  const selectedEvaluations = evaluations.filter(e => selectedIds.includes(e.id))
+  const uniqueUsernames = Array.from(new Set(evaluations.map(e => e.username)))
+
+  return (
+    <main className="min-h-screen mx-auto max-w-5xl px-4 py-12">
+      {/* Header */}
+      <div className="mb-8">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#FF0050] transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          返回评估
+        </Link>
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            <h1 className="text-3xl font-bold">账号追踪</h1>
+            <p className="mt-2 text-neutral-500">
+              追踪 {uniqueUsernames.length} 个账号 · {evaluations.length} 条评估记录
+            </p>
+          </div>
+          {evaluations.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-900/40 bg-red-950/20 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              清除全部
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Comparison Section */}
+      {selectedIds.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-[#00F2EA]/20 bg-[#0f0f0f] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-[#00F2EA]" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+                {selectedIds.length === 2 ? '对比分析' : '账号详情'}
+              </h2>
+            </div>
+            <span className="text-xs text-neutral-500">
+              选择 2 个记录进行对比（当前 {selectedIds.length}/2）
+            </span>
+          </div>
+
+          {selectedEvaluations.length === 2 ? (
+            <ComparisonView a={selectedEvaluations[0]} b={selectedEvaluations[1]} />
+          ) : selectedEvaluations.length === 1 ? (
+            <SingleView evaluation={selectedEvaluations[0]} />
+          ) : null}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {evaluations.length === 0 ? (
+        <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-12 text-center">
+          <Target className="mx-auto h-10 w-10 text-neutral-600 mb-4" />
+          <p className="text-neutral-400 mb-2">暂无追踪记录</p>
+          <p className="text-sm text-neutral-600 mb-6">
+            在评估结果页点击「保存到追踪」，即可开始追踪账号的商业价值变化
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#FF0050] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#d60043] transition-colors"
+          >
+            去评估第一个账号
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {evaluations.map(evaluation => (
+            <div
+              key={evaluation.id}
+              className={`rounded-xl border transition-colors cursor-pointer ${
+                selectedIds.includes(evaluation.id)
+                  ? 'border-[#00F2EA]/40 bg-[#00F2EA]/5'
+                  : 'border-neutral-800 bg-[#141414] hover:border-neutral-700'
+              }`}
+              onClick={() => toggleSelect(evaluation.id)}
+            >
+              <div className="flex items-center gap-4 p-4">
+                {/* Avatar */}
+                {evaluation.avatar ? (
+                  <img src={evaluation.avatar} alt={evaluation.nickname} className="h-12 w-12 rounded-full border border-neutral-700 shrink-0" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-neutral-800 flex items-center justify-center font-bold shrink-0">
+                    {evaluation.nickname.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{evaluation.nickname}</span>
+                    <span className="text-sm text-neutral-500">@{evaluation.username}</span>
+                    {evaluation.verified && <CheckCircle2 className="h-4 w-4 text-[#00F2EA]" />}
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(evaluation.timestamp).toLocaleDateString('zh-CN')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {formatTrackNumber(evaluation.followerCount)} 粉丝
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {formatTrackNumber(evaluation.avgPlays)} 平均播放
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score + Value */}
+                <div className="text-right shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${
+                      evaluation.tier === 'S' || evaluation.tier === 'A' ? 'bg-green-500/20 text-green-400' :
+                      evaluation.tier === 'B' ? 'bg-[#00F2EA]/20 text-[#00F2EA]' :
+                      evaluation.tier === 'C' ? 'bg-amber-500/20 text-amber-400' :
+                      'bg-red-500/20 text-red-400'
+                    }`}>
+                      {evaluation.tier}
+                    </span>
+                    <span className="text-2xl font-bold tabular-nums">{evaluation.score}</span>
+                  </div>
+                  <div className="text-xs text-[#00F2EA] font-semibold mt-0.5">
+                    {formatTrackUsd(evaluation.businessValue.mid)}
+                  </div>
+                </div>
+
+                {/* Delete */}
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleRemove(evaluation.username)
+                  }}
+                  className="p-2 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-950/20 transition-colors"
+                  title="移除追踪"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  )
+}
+
+// ========== Comparison View ==========
+
+function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }) {
+  const newer = new Date(a.timestamp) > new Date(b.timestamp) ? a : b
+  const older = new Date(a.timestamp) > new Date(b.timestamp) ? b : a
+
+  const rows: { label: string; icon: React.ReactNode; valueA: string; valueB: string; change: number; isPositiveGood: boolean }[] = [
+    {
+      label: '商业价值', icon: <DollarSign className="h-4 w-4" />,
+      valueA: formatTrackUsd(newer.businessValue.mid),
+      valueB: formatTrackUsd(older.businessValue.mid),
+      change: older.businessValue.mid > 0 ? ((newer.businessValue.mid - older.businessValue.mid) / older.businessValue.mid) * 100 : 0,
+      isPositiveGood: true,
+    },
+    {
+      label: '评分', icon: <Star className="h-4 w-4" />,
+      valueA: String(newer.score),
+      valueB: String(older.score),
+      change: older.score > 0 ? ((newer.score - older.score) / older.score) * 100 : 0,
+      isPositiveGood: true,
+    },
+    {
+      label: '粉丝数', icon: <Users className="h-4 w-4" />,
+      valueA: formatTrackNumber(newer.followerCount),
+      valueB: formatTrackNumber(older.followerCount),
+      change: older.followerCount > 0 ? ((newer.followerCount - older.followerCount) / older.followerCount) * 100 : 0,
+      isPositiveGood: true,
+    },
+    {
+      label: '互动率', icon: <Activity className="h-4 w-4" />,
+      valueA: newer.engagementRate + '%',
+      valueB: older.engagementRate + '%',
+      change: newer.engagementRate - older.engagementRate,
+      isPositiveGood: true,
+    },
+    {
+      label: '平均播放', icon: <Eye className="h-4 w-4" />,
+      valueA: formatTrackNumber(newer.avgPlays),
+      valueB: formatTrackNumber(older.avgPlays),
+      change: older.avgPlays > 0 ? ((newer.avgPlays - older.avgPlays) / older.avgPlays) * 100 : 0,
+      isPositiveGood: true,
+    },
+    {
+      label: '月收入预估', icon: <TrendingUp className="h-4 w-4" />,
+      valueA: formatTrackUsd(newer.incomeEstimate.mid),
+      valueB: formatTrackUsd(older.incomeEstimate.mid),
+      change: older.incomeEstimate.mid > 0 ? ((newer.incomeEstimate.mid - older.incomeEstimate.mid) / older.incomeEstimate.mid) * 100 : 0,
+      isPositiveGood: true,
+    },
+    {
+      label: '风险信号', icon: <Shield className="h-4 w-4" />,
+      valueA: newer.riskCount + '个',
+      valueB: older.riskCount + '个',
+      change: -(newer.riskCount - older.riskCount),
+      isPositiveGood: false,
+    },
+  ]
+
+  return (
+    <div>
+      {/* Header labels */}
+      <div className="grid grid-cols-[1fr_120px_40px_120px] gap-4 mb-3 px-2">
+        <span className="text-xs text-neutral-500 uppercase tracking-wider">指标</span>
+        <span className="text-xs text-neutral-500 uppercase tracking-wider text-right">
+          {new Date(newer.timestamp).toLocaleDateString('zh-CN')}
+        </span>
+        <span />
+        <span className="text-xs text-neutral-500 uppercase tracking-wider text-right">
+          {new Date(older.timestamp).toLocaleDateString('zh-CN')}
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {rows.map((row, i) => {
+          const isPositive = (row.isPositiveGood && row.change > 0) || (!row.isPositiveGood && row.change > 0)
+          const isNegative = (row.isPositiveGood && row.change < 0) || (!row.isPositiveGood && row.change < 0)
+
+          return (
+            <div key={i} className="grid grid-cols-[1fr_120px_40px_120px] gap-4 items-center rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-neutral-500">{row.icon}</span>
+                <span className="text-sm text-neutral-400">{row.label}</span>
+              </div>
+              <span className="text-sm font-semibold tabular-nums text-right">{row.valueA}</span>
+              <div className="flex justify-center">
+                {isPositive ? (
+                  <span className="inline-flex items-center gap-0.5 text-green-400 text-xs font-semibold">
+                    <TrendingUp className="h-3 w-3" />
+                    {row.label === '互动率' || row.label === '风险信号' ? `${row.change > 0 ? '+' : ''}${row.change.toFixed(1)}` : `${row.change > 0 ? '+' : ''}${row.change.toFixed(0)}%`}
+                  </span>
+                ) : isNegative ? (
+                  <span className="inline-flex items-center gap-0.5 text-red-400 text-xs font-semibold">
+                    <TrendingDown className="h-3 w-3" />
+                    {row.label === '互动率' || row.label === '风险信号' ? `${row.change.toFixed(1)}` : `${row.change.toFixed(0)}%`}
+                  </span>
+                ) : (
+                  <span className="text-neutral-600 text-xs">-</span>
+                )}
+              </div>
+              <span className="text-sm text-neutral-500 tabular-nums text-right">{row.valueB}</span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Summary */}
+      <div className="mt-4 pt-4 border-t border-neutral-800">
+        <div className="flex items-start gap-2 rounded-xl border border-neutral-800 bg-neutral-900/50 p-3">
+          <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+          <div className="text-xs text-neutral-400">
+            <span className="text-neutral-300 font-medium">对比摘要：</span>
+            从 {new Date(older.timestamp).toLocaleDateString('zh-CN')} 到 {new Date(newer.timestamp).toLocaleDateString('zh-CN')}，
+            商业价值 {newer.businessValue.mid >= older.businessValue.mid ? '增长' : '下降'} {Math.abs(newer.businessValue.mid - older.businessValue.mid) > 0 ? formatTrackUsd(Math.abs(newer.businessValue.mid - older.businessValue.mid)) : '0'}，
+            评分 {newer.score >= older.score ? '+' : ''}{newer.score - older.score} 分。
+            {newer.riskCount > older.riskCount ? ' 风险信号增加，建议关注账号健康。' : newer.riskCount < older.riskCount ? ' 风险信号减少，账号健康度改善。' : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ========== Single View ==========
+
+function SingleView({ evaluation }: { evaluation: TrackedEvaluation }) {
+  return (
+    <div className="space-y-4">
+      {/* Overview cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+          <div className="text-xs text-neutral-500 mb-1">商业价值</div>
+          <div className="text-xl font-bold text-[#00F2EA] tabular-nums">{formatTrackUsd(evaluation.businessValue.mid)}</div>
+        </div>
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+          <div className="text-xs text-neutral-500 mb-1">评分 · 等级</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold tabular-nums">{evaluation.score}</span>
+            <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${
+              evaluation.tier === 'S' || evaluation.tier === 'A' ? 'bg-green-500/20 text-green-400' :
+              evaluation.tier === 'B' ? 'bg-[#00F2EA]/20 text-[#00F2EA]' : 'bg-amber-500/20 text-amber-400'
+            }`}>{evaluation.tier}</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+          <div className="text-xs text-neutral-500 mb-1">月收入预估</div>
+          <div className="text-xl font-bold text-[#FF0050] tabular-nums">{formatTrackUsd(evaluation.incomeEstimate.mid)}</div>
+        </div>
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+          <div className="text-xs text-neutral-500 mb-1">品牌合作价值</div>
+          <div className="text-xl font-bold text-[#00F2EA] tabular-nums">{formatTrackUsd(evaluation.brandMatchingValue.mid)}</div>
+        </div>
+      </div>
+
+      {/* Detail rows */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-sm text-neutral-500">粉丝数</span>
+          <span className="text-sm font-semibold tabular-nums">{formatTrackNumber(evaluation.followerCount)}</span>
+        </div>
+        <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-sm text-neutral-500">视频数</span>
+          <span className="text-sm font-semibold tabular-nums">{evaluation.videoCount}</span>
+        </div>
+        <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-sm text-neutral-500">互动率</span>
+          <span className="text-sm font-semibold tabular-nums">{evaluation.engagementRate}%</span>
+        </div>
+        <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-sm text-neutral-500">平均播放</span>
+          <span className="text-sm font-semibold tabular-nums">{formatTrackNumber(evaluation.avgPlays)}</span>
+        </div>
+        <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-sm text-neutral-500">风险信号</span>
+          <span className={`text-sm font-semibold tabular-nums ${evaluation.riskCount > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+            {evaluation.riskCount}个
+          </span>
+        </div>
+        <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-sm text-neutral-500">评估时间</span>
+          <span className="text-sm font-semibold tabular-nums">
+            {new Date(evaluation.timestamp).toLocaleDateString('zh-CN')}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
