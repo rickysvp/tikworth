@@ -22,9 +22,9 @@ export function PaidWall({ onUnlock, result }: PaidWallProps) {
   const username = result?.username || ''
 
   return (
-    <div className="relative rounded-3xl border border-neutral-800 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] overflow-hidden">
+    <div className="relative rounded-3xl border border-neutral-800 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a]">
       {/* Social proof badge */}
-      <div className="absolute top-0 left-0 right-0 flex justify-center -translate-y-1/2 z-20">
+      <div className="flex justify-center -mt-3 mb-2 relative z-20">
         <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2EA]/30 bg-[#0f0f0f] px-4 py-1.5 shadow-lg shadow-[#00F2EA]/10">
           <Star className="h-3.5 w-3.5 text-[#00F2EA]" />
           <span className="text-xs text-neutral-400">
@@ -34,7 +34,7 @@ export function PaidWall({ onUnlock, result }: PaidWallProps) {
       </div>
 
       {/* Blurred preview of locked content */}
-      <div className="px-6 sm:px-8 pt-10 pb-4 filter blur-[6px] select-none pointer-events-none opacity-25">
+      <div className="px-6 sm:px-8 pt-6 pb-4 filter blur-[6px] select-none pointer-events-none opacity-25">
         {/* Income preview */}
         <div className="mb-6">
           <div className="text-sm font-semibold text-neutral-300 mb-2">收入与增长</div>
