@@ -8,6 +8,19 @@ export interface Post {
   desc?: string
 }
 
+export interface SearchUserResult {
+  uniqueId: string
+  nickname: string
+  signature: string
+  avatarLarger: string
+  verified: boolean
+  region?: string
+  secUid: string
+  followerCount: number
+  videoCount: number
+  heartCount: number
+}
+
 export interface RawProfile {
   username: string
   nickname: string

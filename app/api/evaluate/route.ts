@@ -67,16 +67,30 @@ async function enrichWithAI(evaluation: Evaluation): Promise<Evaluation> {
   return evaluation
 }
 
+type ApiCode = ApiErrorResponse['code']
+
+function errorResponse(code: ApiCode, message: string, httpStatus: number, detail?: string) {
+  const body: ApiErrorResponse = { error: message, code }
+  if (detail) body.detail = detail
+  return NextResponse.json<ApiErrorResponse>(body, { status: httpStatus })
+}
+
+const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
+  INVALID_USERNAME: { status: 400, message: '请输入有效的 TikTok 账号' },
+  USER_NOT_FOUND: { status: 404, message: '未找到该 TikTok 账号，请检查用户名是否正确' },
+  RATE_LIMIT: { status: 429, message: 'API 速率受限或配额耗尽，请稍后再试或更换 API Key' },
+  MISSING_API_KEY: { status: 503, message: '服务器缺少 RAPIDAPI_KEY 配置，请检查环境变量' },
+  NETWORK_ERROR: { status: 502, message: '无法连接 TikTok 数据服务，请检查网络或稍后再试' },
+  API_ERROR: { status: 500, message: '评估服务暂时不可用，请稍后再试' },
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
     const username = String(body.username || '').trim()
 
     if (!username) {
-      return NextResponse.json<ApiErrorResponse>(
-        { error: '请输入 TikTok 账号', code: 'INVALID_USERNAME' },
-        { status: 400 }
-      )
+      return errorResponse('INVALID_USERNAME', '请输入 TikTok 账号', 400)
     }
 
     const normalized = username.replace(/^@/, '').toLowerCase()
@@ -89,7 +103,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // No fallback — must fetch real data; on failure return proper error
+    // Must fetch real data; on failure throw to error handler
     const profile = await fetchProfile(normalized)
     let evaluation = scoreProfile(profile)
     evaluation = await enrichWithAI(evaluation)
@@ -98,43 +112,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(evaluation)
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const code: ApiCode = (err && typeof err === 'object' && 'code' in err)
+      ? (err as { code: ApiCode }).code
+      : 'API_ERROR'
+    const detail = err instanceof Error ? err.message : String(err)
+    const mapping = CODE_TO_HTTP[code] || CODE_TO_HTTP.API_ERROR
 
-    if (message === 'INVALID_USERNAME') {
-      return NextResponse.json<ApiErrorResponse>(
-        { error: '请输入有效的 TikTok 账号', code: 'INVALID_USERNAME' },
-        { status: 400 }
-      )
-    }
-    if (message === 'USER_NOT_FOUND') {
-      return NextResponse.json<ApiErrorResponse>(
-        { error: '未找到该 TikTok 账号，请检查用户名是否正确', code: 'USER_NOT_FOUND' },
-        { status: 404 }
-      )
-    }
-    if (message === 'RATE_LIMIT') {
-      return NextResponse.json<ApiErrorResponse>(
-        { error: 'API 速率受限，请稍后再试', code: 'RATE_LIMIT' },
-        { status: 429 }
-      )
-    }
-    if (message === 'MISSING_API_KEY' || message.includes('RAPIDAPI_KEY')) {
-      return NextResponse.json<ApiErrorResponse>(
-        { error: '服务器缺少 RAPIDAPI_KEY 配置，请检查环境变量', code: 'MISSING_API_KEY' },
-        { status: 503 }
-      )
-    }
-    if (message.includes('ECONNRESET') || message.includes('ETIMEDOUT') || message.includes('ENOTFOUND')) {
-      return NextResponse.json<ApiErrorResponse>(
-        { error: '无法连接 TikTok 数据服务，请检查网络或稍后再试', code: 'NETWORK_ERROR' },
-        { status: 502 }
-      )
-    }
-
-    console.error('[evaluate] error', err)
-    return NextResponse.json<ApiErrorResponse>(
-      { error: '评估服务暂时不可用，请稍后再试', code: 'API_ERROR', detail: message },
-      { status: 500 }
-    )
+    console.error(`[evaluate] ${code}:`, detail)
+    return errorResponse(code, mapping.message, mapping.status, code === 'API_ERROR' ? detail : undefined)
   }
 }
