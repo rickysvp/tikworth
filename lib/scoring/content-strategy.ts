@@ -200,10 +200,11 @@ export function buildContentStrategy(input: BuildStrategyInput): ContentStrategy
     c => categories.some(cat => cat.toLowerCase() === c.toLowerCase())
   )
 
-  const recommendedHashtags = Array.from(tagSet).slice(0, 10).map(tag => ({
+  const recommendedHashtags = Array.from(tagSet).slice(0, 10).map((tag, idx) => ({
     tag,
     volume: isHighVolumeCat ? 'high' as const : 'medium' as const,
-    relevance: Number((0.70 + Math.random() * 0.28).toFixed(2)),
+    // Deterministic relevance by rank: top tag 0.95, decaying ~0.03 per position
+    relevance: Number(Math.max(0.55, 0.95 - idx * 0.04).toFixed(2)),
   }))
 
   const weekdayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']

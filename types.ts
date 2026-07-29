@@ -386,9 +386,10 @@ export interface CommercializationAdvice {
   summary: string
 }
 
-export type ApiErrorCode = 'USER_NOT_FOUND' | 'RATE_LIMIT' | 'API_ERROR' | 'INVALID_USERNAME'
+export type ApiErrorCode = 'USER_NOT_FOUND' | 'RATE_LIMIT' | 'API_ERROR' | 'INVALID_USERNAME' | 'MISSING_API_KEY' | 'NETWORK_ERROR'
 
 export interface ApiErrorResponse {
   error: string
   code: ApiErrorCode
+  detail?: string
 }

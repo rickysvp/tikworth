@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchProfile } from '@/lib/tiktok'
 import { scoreProfile } from '@/lib/scoring'
 import { findEvaluation, saveEvaluation, isCacheValid } from '@/lib/db'
-import { generateMockEvaluation } from '@/lib/mock'
 import { generateTrendAnalysis, generateCommercializationAdvice, generateContentStrategy } from '@/lib/deepseek'
 import { ApiErrorResponse, Evaluation } from '@/types'
-
-const MOCK_MODE = process.env.MOCK_MODE === 'true' || !process.env.RAPIDAPI_KEY || process.env.RAPIDAPI_KEY === 'your_rapidapi_key_here'
 
 function buildSnapshot(evaluation: Evaluation) {
   return {
@@ -92,38 +89,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (MOCK_MODE) {
-      const evaluation = generateMockEvaluation(normalized)
-      const enriched = await enrichWithAI(evaluation)
-      await saveEvaluation({ ...enriched, username: normalized })
-      return NextResponse.json({ ...enriched, mock: true })
-    }
+    // No fallback — must fetch real data; on failure return proper error
+    const profile = await fetchProfile(normalized)
+    let evaluation = scoreProfile(profile)
+    evaluation = await enrichWithAI(evaluation)
 
-    // Try real API, fallback to mock on failure
-    let evaluation: Evaluation
-    let isMock = false
+    await saveEvaluation(evaluation)
 
-    try {
-      const profile = await fetchProfile(normalized)
-      evaluation = scoreProfile(profile)
-    } catch (err) {
-      // Fallback to mock data when API fails (including USER_NOT_FOUND)
-      const message = err instanceof Error ? err.message : String(err)
-      console.warn(`[evaluate] API failed for @${normalized}: ${message}`)
-      evaluation = generateMockEvaluation(normalized)
-      isMock = true
-    }
-
-    const enriched = await enrichWithAI(evaluation)
-
-    // Only cache real API results for 24h; mock fallback should not be cached long
-    if (!isMock) {
-      await saveEvaluation(enriched)
-    }
-
-    return NextResponse.json({ ...enriched, ...(isMock ? { mock: true } : {}) })
+    return NextResponse.json(evaluation)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
+    const message = err instanceof Error ? err.message : String(err)
 
     if (message === 'INVALID_USERNAME') {
       return NextResponse.json<ApiErrorResponse>(
@@ -143,10 +118,22 @@ export async function POST(req: NextRequest) {
         { status: 429 }
       )
     }
+    if (message === 'MISSING_API_KEY' || message.includes('RAPIDAPI_KEY')) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: '服务器缺少 RAPIDAPI_KEY 配置，请检查环境变量', code: 'MISSING_API_KEY' },
+        { status: 503 }
+      )
+    }
+    if (message.includes('ECONNRESET') || message.includes('ETIMEDOUT') || message.includes('ENOTFOUND')) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: '无法连接 TikTok 数据服务，请检查网络或稍后再试', code: 'NETWORK_ERROR' },
+        { status: 502 }
+      )
+    }
 
     console.error('[evaluate] error', err)
     return NextResponse.json<ApiErrorResponse>(
-      { error: '评估服务暂时不可用，请稍后再试', code: 'API_ERROR' },
+      { error: '评估服务暂时不可用，请稍后再试', code: 'API_ERROR', detail: message },
       { status: 500 }
     )
   }
