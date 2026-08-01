@@ -1,4 +1,4 @@
-export const APP_VERSION = process.env.npm_package_version || '0.1.0'
+export const APP_VERSION = '0.5.0'
 
 export function getVersionInfo() {
   return {

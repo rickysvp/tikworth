@@ -3,6 +3,8 @@ import { fetchProfile } from '@/lib/tiktok'
 import { scoreProfile } from '@/lib/scoring'
 import { findEvaluation, saveEvaluation, isCacheValid } from '@/lib/db'
 import { generateTrendAnalysis, generateCommercializationAdvice, generateContentStrategy } from '@/lib/deepseek'
+import { getBearerToken, verifySessionToken } from '@/lib/auth'
+import { consumeCredit } from '@/lib/credits-server'
 import { ApiErrorResponse, Evaluation } from '@/types'
 
 function buildSnapshot(evaluation: Evaluation) {
@@ -82,6 +84,9 @@ const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
   MISSING_API_KEY: { status: 503, message: '服务器缺少 RAPIDAPI_KEY 配置，请检查环境变量' },
   NETWORK_ERROR: { status: 502, message: '无法连接 TikTok 数据服务，请检查网络或稍后再试' },
   API_ERROR: { status: 500, message: '评估服务暂时不可用，请稍后再试' },
+  UNAUTHORIZED: { status: 401, message: '请先登录' },
+  CONSUME_ERROR: { status: 500, message: '积分消费失败' },
+  BALANCE_ERROR: { status: 500, message: '余额查询失败' },
 }
 
 export async function POST(req: NextRequest) {
@@ -103,7 +108,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Must fetch real data; on failure throw to error handler
+    // 认证校验：评估消耗 1 次额度
+    const token = getBearerToken(req)
+    if (!token) {
+      return NextResponse.json({ error: '请先购买额度', code: 'NO_CREDITS' }, { status: 402 })
+    }
+    const payload = await verifySessionToken(token)
+    if (!payload) {
+      return NextResponse.json({ error: '登录已过期，请重新验证', code: 'NO_CREDITS' }, { status: 402 })
+    }
+
+    // 扣减 1 次额度
+    const consumeResult = await consumeCredit(payload.email)
+    if (!consumeResult.ok) {
+      const msgs: Record<string, { msg: string; status: number }> = {
+        NOT_FOUND:  { msg: '未找到积分记录，请先购买额度', status: 402 },
+        NO_CREDITS: { msg: '额度不足，请先购买额度', status: 402 },
+      }
+      const err = msgs[consumeResult.reason || ''] || { msg: '消费失败', status: 400 }
+      return NextResponse.json({ error: err.msg, code: consumeResult.reason }, { status: err.status })
+    }
+
     const profile = await fetchProfile(normalized)
     let evaluation = scoreProfile(profile)
     evaluation = await enrichWithAI(evaluation)
@@ -119,6 +144,6 @@ export async function POST(req: NextRequest) {
     const mapping = CODE_TO_HTTP[code] || CODE_TO_HTTP.API_ERROR
 
     console.error(`[evaluate] ${code}:`, detail)
-    return errorResponse(code, mapping.message, mapping.status, code === 'API_ERROR' ? detail : undefined)
+    return errorResponse(code, mapping.message, mapping.status)
   }
 }

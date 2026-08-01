@@ -1,8 +1,16 @@
 import Link from 'next/link'
+import Image from 'next/image'
+import type { Metadata } from 'next'
 import { findRecentEvaluations } from '@/lib/db'
+import { tierColor } from '@/lib/tier'
 import { ArrowLeft, Clock } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: '评估历史 - TikWorth',
+  description: '查看最近评估过的 TikTok 账号记录',
+}
 
 export default async function HistoryPage() {
   const evaluations = await findRecentEvaluations(50)
@@ -39,7 +47,7 @@ export default async function HistoryPage() {
             >
               <div className="flex items-center gap-4">
                 {item.avatar ? (
-                  <img src={item.avatar} alt={item.nickname} className="h-12 w-12 rounded-full border border-neutral-700" />
+                  <Image src={item.avatar} alt={item.nickname} width={48} height={48} className="h-12 w-12 rounded-full border border-neutral-700 object-cover" />
                 ) : (
                   <div className="h-12 w-12 rounded-full bg-neutral-800 flex items-center justify-center font-bold">
                     {item.nickname.charAt(0).toUpperCase()}
@@ -68,11 +76,4 @@ export default async function HistoryPage() {
       )}
     </main>
   )
-}
-
-function tierColor(tier: string): string {
-  if (tier === 'S' || tier === 'A') return '#00F2EA'
-  if (tier === 'B') return '#22c55e'
-  if (tier === 'C') return '#f59e0b'
-  return '#ef4444'
 }

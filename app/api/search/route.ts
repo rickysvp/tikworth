@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { searchUsers } from '@/lib/tiktok'
 import { ApiErrorResponse } from '@/types'
 
+export const dynamic = 'force-dynamic'
+
 type ApiCode = ApiErrorResponse['code']
 
 const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
@@ -11,13 +13,16 @@ const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
   MISSING_API_KEY: { status: 503, message: '服务器缺少 RAPIDAPI_KEY 配置' },
   NETWORK_ERROR: { status: 502, message: '无法连接 TikTok 数据服务' },
   API_ERROR: { status: 500, message: '搜索服务暂时不可用' },
+  UNAUTHORIZED: { status: 401, message: '请先登录' },
+  CONSUME_ERROR: { status: 500, message: '积分消费失败' },
+  BALANCE_ERROR: { status: 500, message: '余额查询失败' },
 }
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const keywords = searchParams.get('q') || searchParams.get('keywords') || ''
-    const count = Math.min(parseInt(searchParams.get('count') || '10', 10) || 10, 30)
+    const count = Math.max(1, Math.min(parseInt(searchParams.get('count') || '10', 10) || 10, 30))
 
     if (!keywords.trim()) {
       return NextResponse.json<ApiErrorResponse>(
@@ -37,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     console.error(`[search] ${code}:`, detail)
     return NextResponse.json<ApiErrorResponse>(
-      { error: mapping.message, code, ...(code === 'API_ERROR' ? { detail } : {}) },
+      { error: mapping.message, code },
       { status: mapping.status }
     )
   }

@@ -31,7 +31,7 @@ export function RadarChart({ dimensions }: { dimensions: DimensionScores }) {
   }))
 
   return (
-    <div className="w-full h-[420px] sm:h-[480px]">
+    <div className="w-full h-[420px] sm:h-[480px]" role="img" aria-label="10维度雷达评分图">
       <ResponsiveContainer width="100%" height="100%">
         <ReRadarChart data={data} outerRadius="65%">
           <PolarGrid stroke="#27272a" strokeWidth={0.5} />

@@ -2,6 +2,7 @@
 
 import { BrandMatching } from '@/types'
 import { Building2, TrendingUp, Sparkles, Shirt, Smartphone, Heart, DollarSign } from 'lucide-react'
+import { formatUsd } from '@/lib/format'
 
 interface Props {
   matching: BrandMatching
@@ -12,12 +13,6 @@ const iconMap: Record<string, React.ReactNode> = {
   Shirt: <Shirt className="h-4 w-4" />,
   Smartphone: <Smartphone className="h-4 w-4" />,
   Heart: <Heart className="h-4 w-4" />,
-}
-
-function formatUsd(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
-  return '$' + Math.round(n)
 }
 
 export function BrandMatchingSection({ matching }: Props) {

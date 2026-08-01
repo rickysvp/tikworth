@@ -15,6 +15,8 @@ function getAgeHours(createTime: number, now: number = Date.now() / 1000): numbe
 }
 
 export function classifyPostMaturity(createTime: number, now: number = Date.now() / 1000): { maturity: PostMaturity; ageHours: number; ageDays: number } {
+  // createTime 缺失或异常时直接归为 mature，避免被算成 56 年前导致 archive
+  if (!createTime || createTime <= 0) return { maturity: 'mature', ageHours: 72, ageDays: 3 }
   const ageHours = getAgeHours(createTime, now)
   const ageDays = ageHours / 24
   const { immatureHours, growingHours, matureDays } = MATURITY_WINDOWS
@@ -47,8 +49,9 @@ export function calcLikePlayRatio(maturePosts: ClassifiedPost[]): number {
   if (!maturePosts.length) return 0.05
   let totalLikes = 0, totalPlays = 0
   for (const { post } of maturePosts) {
-    if (post.playCount > 0 && post.likeCount > 0) {
-      totalLikes += post.likeCount
+    // 仅排除无播放的帖子；保留零点赞帖子，避免误判差内容
+    if (post.playCount > 0) {
+      totalLikes += post.likeCount || 0
       totalPlays += post.playCount
     }
   }
@@ -163,7 +166,7 @@ export function calcEffectivePlays(profile: RawProfile, now: number = Date.now()
   }
 
   effectiveAvgPlays = Math.max(effectiveAvgPlays, 100)
-  effectiveAvgPlays = clamp(effectiveAvgPlays, 100, profile.followerCount * 20)
+  effectiveAvgPlays = clamp(effectiveAvgPlays, 100, Math.max(profile.followerCount * 50, 100000))
 
   return {
     effectiveAvgPlays: Math.round(effectiveAvgPlays),

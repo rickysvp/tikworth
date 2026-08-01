@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   loadTrackedEvaluations, removeFromTracker, clearTracker,
   formatTrackUsd, formatTrackNumber,
@@ -16,6 +17,7 @@ import {
 export default function TrackerPage() {
   const [evaluations, setEvaluations] = useState<TrackedEvaluation[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   useEffect(() => {
     setEvaluations(loadTrackedEvaluations())
@@ -31,11 +33,10 @@ export default function TrackerPage() {
   }
 
   function handleClearAll() {
-    if (confirm('确定要清除所有追踪记录吗？此操作不可撤销。')) {
-      clearTracker()
-      refresh()
-      setSelectedIds([])
-    }
+    clearTracker()
+    refresh()
+    setSelectedIds([])
+    setShowClearConfirm(false)
   }
 
   function toggleSelect(id: string) {
@@ -68,13 +69,32 @@ export default function TrackerPage() {
             </p>
           </div>
           {evaluations.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-900/40 bg-red-950/20 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors"
-            >
-              <Trash2 className="h-4 w-4" />
-              清除全部
-            </button>
+            showClearConfirm ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-neutral-400">确认清除？</span>
+                <button
+                  onClick={handleClearAll}
+                  className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  确认
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-red-900/40 bg-red-950/20 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                清除全部
+              </button>
+            )
           )}
         </div>
       </div>
@@ -132,7 +152,7 @@ export default function TrackerPage() {
               <div className="flex items-center gap-4 p-4">
                 {/* Avatar */}
                 {evaluation.avatar ? (
-                  <img src={evaluation.avatar} alt={evaluation.nickname} className="h-12 w-12 rounded-full border border-neutral-700 shrink-0" />
+                  <Image src={evaluation.avatar} alt={evaluation.nickname} width={48} height={48} className="h-12 w-12 rounded-full border border-neutral-700 shrink-0 object-cover" />
                 ) : (
                   <div className="h-12 w-12 rounded-full bg-neutral-800 flex items-center justify-center font-bold shrink-0">
                     {evaluation.nickname.charAt(0).toUpperCase()}
@@ -261,13 +281,13 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
   return (
     <div>
       {/* Header labels */}
-      <div className="grid grid-cols-[1fr_120px_40px_120px] gap-4 mb-3 px-2">
-        <span className="text-xs text-neutral-500 uppercase tracking-wider">指标</span>
+      <div className="grid grid-cols-2 sm:grid-cols-[1fr_120px_40px_120px] gap-2 sm:gap-4 mb-3 px-2">
+        <span className="text-xs text-neutral-500 uppercase tracking-wider">指标 / 变化</span>
         <span className="text-xs text-neutral-500 uppercase tracking-wider text-right">
           {new Date(newer.timestamp).toLocaleDateString('zh-CN')}
         </span>
-        <span />
-        <span className="text-xs text-neutral-500 uppercase tracking-wider text-right">
+        <span className="hidden sm:block" />
+        <span className="hidden sm:block text-xs text-neutral-500 uppercase tracking-wider text-right">
           {new Date(older.timestamp).toLocaleDateString('zh-CN')}
         </span>
       </div>
@@ -276,30 +296,56 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
         {rows.map((row, i) => {
           const isPositive = (row.isPositiveGood && row.change > 0) || (!row.isPositiveGood && row.change > 0)
           const isNegative = (row.isPositiveGood && row.change < 0) || (!row.isPositiveGood && row.change < 0)
+          const changeText = row.label === '互动率' || row.label === '风险信号'
+            ? `${row.change > 0 ? '+' : ''}${row.change.toFixed(1)}`
+            : `${row.change > 0 ? '+' : ''}${row.change.toFixed(0)}%`
 
           return (
-            <div key={i} className="grid grid-cols-[1fr_120px_40px_120px] gap-4 items-center rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+            <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_120px_40px_120px] gap-2 sm:gap-4 items-center rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+              {/* Mobile: 指标+变化 / 新值 ; Desktop: 指标 / 新值 / 变化 / 旧值 */}
               <div className="flex items-center gap-2">
                 <span className="text-neutral-500">{row.icon}</span>
                 <span className="text-sm text-neutral-400">{row.label}</span>
+                {/* Mobile: show change inline */}
+                <span className="sm:hidden ml-auto">
+                  {isPositive ? (
+                    <span className="inline-flex items-center gap-0.5 text-green-400 text-xs font-semibold">
+                      <TrendingUp className="h-3 w-3" />
+                      {changeText}
+                    </span>
+                  ) : isNegative ? (
+                    <span className="inline-flex items-center gap-0.5 text-red-400 text-xs font-semibold">
+                      <TrendingDown className="h-3 w-3" />
+                      {changeText}
+                    </span>
+                  ) : (
+                    <span className="text-neutral-600 text-xs">-</span>
+                  )}
+                </span>
               </div>
               <span className="text-sm font-semibold tabular-nums text-right">{row.valueA}</span>
-              <div className="flex justify-center">
+              {/* Desktop: change column */}
+              <div className="hidden sm:flex justify-center">
                 {isPositive ? (
                   <span className="inline-flex items-center gap-0.5 text-green-400 text-xs font-semibold">
                     <TrendingUp className="h-3 w-3" />
-                    {row.label === '互动率' || row.label === '风险信号' ? `${row.change > 0 ? '+' : ''}${row.change.toFixed(1)}` : `${row.change > 0 ? '+' : ''}${row.change.toFixed(0)}%`}
+                    {changeText}
                   </span>
                 ) : isNegative ? (
                   <span className="inline-flex items-center gap-0.5 text-red-400 text-xs font-semibold">
                     <TrendingDown className="h-3 w-3" />
-                    {row.label === '互动率' || row.label === '风险信号' ? `${row.change.toFixed(1)}` : `${row.change.toFixed(0)}%`}
+                    {changeText}
                   </span>
                 ) : (
                   <span className="text-neutral-600 text-xs">-</span>
                 )}
               </div>
-              <span className="text-sm text-neutral-500 tabular-nums text-right">{row.valueB}</span>
+              {/* Desktop: older value */}
+              <span className="hidden sm:block text-sm text-neutral-500 tabular-nums text-right">{row.valueB}</span>
+              {/* Mobile: older value below */}
+              <span className="sm:hidden col-span-2 text-xs text-neutral-500 tabular-nums text-right -mt-1">
+                前值: {row.valueB}
+              </span>
             </div>
           )
         })}

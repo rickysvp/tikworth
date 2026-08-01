@@ -9,16 +9,10 @@ export interface Post {
 }
 
 export interface SearchUserResult {
-  uniqueId: string
+  username: string
   nickname: string
-  signature: string
-  avatarLarger: string
-  verified: boolean
-  region?: string
-  secUid: string
   followerCount: number
-  videoCount: number
-  heartCount: number
+  avatar: string
 }
 
 export interface RawProfile {
@@ -35,6 +29,7 @@ export interface RawProfile {
   verified?: boolean
   language?: string
   posts: Post[]
+  dataQuality?: 'full' | 'partial' | 'minimal'
 }
 
 export interface DimensionScores {
@@ -184,8 +179,8 @@ export interface ContentCadence {
 export interface EngagementQuality {
   conversationDepth: number
   shareRatio: number
-  saveRatio: number
-  completionRate: number
+  commentLikeRatio: number
+  completionRate: number | null
   viralCoefficient: number
   topEngagers: { name: string; handle: string; avatarUrl: string; interactions: number }[]
   qualityReasoning: string
@@ -399,7 +394,7 @@ export interface CommercializationAdvice {
   summary: string
 }
 
-export type ApiErrorCode = 'USER_NOT_FOUND' | 'RATE_LIMIT' | 'API_ERROR' | 'INVALID_USERNAME' | 'MISSING_API_KEY' | 'NETWORK_ERROR'
+export type ApiErrorCode = 'USER_NOT_FOUND' | 'RATE_LIMIT' | 'API_ERROR' | 'INVALID_USERNAME' | 'MISSING_API_KEY' | 'NETWORK_ERROR' | 'UNAUTHORIZED' | 'CONSUME_ERROR' | 'BALANCE_ERROR'
 
 export interface ApiErrorResponse {
   error: string

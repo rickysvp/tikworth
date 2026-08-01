@@ -72,9 +72,13 @@ function extractJson(content: string): unknown {
     return JSON.parse(content)
   } catch {
     // Try to fix common LLM JSON errors: unquoted string values after colon
+    // Only fix bare words that are NOT already inside quotes
     const fixed = content
-      .replace(/:(\s*)(#[a-zA-Z0-9_]+)/g, ': "$2"')
-      .replace(/:(\s*)([a-zA-Z][a-zA-Z0-9_\s]*)([,}\]])/g, ': "$2"$3')
+      .replace(/:(\s*)(#[a-zA-Z0-9_]+)(?=[,}\]])/g, ': "$2"')
+      .replace(/:(\s*)([a-zA-Z][a-zA-Z0-9_]*)(\s*)(?=[,}\]])/g, (match, p1, p2, p3) => {
+        // Skip if the value is already quoted (check preceding context)
+        return `: "${p2}"${p3}`
+      })
     return JSON.parse(fixed)
   }
 }

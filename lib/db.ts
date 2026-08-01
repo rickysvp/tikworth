@@ -1,7 +1,8 @@
 import type { Evaluation } from '@/types'
 import type { NeonQueryFunction } from '@neondatabase/serverless'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { withFileLock } from '@/lib/file-lock'
 
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), 'data')
 const DATA_PATH = join(DATA_DIR, 'evaluations.json')
@@ -97,35 +98,18 @@ function readFileStore(): Evaluation[] {
   }
 }
 
+function atomicWriteFile(filePath: string, data: unknown) {
+  const tmp = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`
+  writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8')
+  renameSync(tmp, filePath)
+}
+
 function writeFileStore(data: Evaluation[]) {
   try {
-    writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8')
+    atomicWriteFile(DATA_PATH, data)
   } catch (err) {
     console.warn('[db] Failed to write file store, falling back to memory', err)
     storeType = 'memory'
-    memoryFallback = data
-  }
-}
-
-async function readStore(): Promise<Evaluation[]> {
-  const type = await initStore()
-  if (type === 'postgres') {
-    const rows = await getSql()`SELECT * FROM evaluations ORDER BY computed_at DESC`
-    return rows.map(rowToEvaluation)
-  }
-  if (type === 'file') return readFileStore()
-  return memoryFallback
-}
-
-async function writeStore(data: Evaluation[]) {
-  const type = await initStore()
-  if (type === 'postgres') {
-    // Postgres writes are handled per-row in saveEvaluation
-    return
-  }
-  if (type === 'file') {
-    writeFileStore(data)
-  } else {
     memoryFallback = data
   }
 }
@@ -229,11 +213,22 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
     return evaluation
   }
 
-  const store = await readStore()
-  const idx = store.findIndex(e => e.username === evaluation.username)
-  if (idx >= 0) store[idx] = evaluation
-  else store.push(evaluation)
-  await writeStore(store)
+  // File/memory mode: use file lock to prevent concurrent write race conditions
+  if (type === 'file') {
+    return withFileLock(DATA_PATH, async () => {
+      const store = readFileStore()
+      const idx = store.findIndex(e => e.username === evaluation.username)
+      if (idx >= 0) store[idx] = evaluation
+      else store.push(evaluation)
+      writeFileStore(store)
+      return evaluation
+    })
+  }
+
+  // Memory mode
+  const idx = memoryFallback.findIndex(e => e.username === evaluation.username)
+  if (idx >= 0) memoryFallback[idx] = evaluation
+  else memoryFallback.push(evaluation)
   return evaluation
 }
 
@@ -312,8 +307,8 @@ function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
     engagementQuality: evaluation.engagementQuality || {
       conversationDepth: 0,
       shareRatio: 0,
-      saveRatio: 0,
-      completionRate: 0,
+      commentLikeRatio: 0,
+      completionRate: null,
       viralCoefficient: 0,
       topEngagers: [],
       qualityReasoning: '',
@@ -401,17 +396,16 @@ function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseJson(value: unknown): any {
+function parseJson<T>(value: unknown): T | undefined {
   if (!value) return undefined
   if (typeof value === 'string') {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value) as T
     } catch {
       return undefined
     }
   }
-  return value
+  return value as T
 }
 
 function rowToEvaluation(row: Record<string, unknown>): Evaluation {
@@ -440,39 +434,38 @@ function rowToEvaluation(row: Record<string, unknown>): Evaluation {
     effectiveAvgPlays: 0,
     effectivePeakPlays: 0,
   }
-  const parsedMetrics = typeof row.metrics === 'string' ? JSON.parse(row.metrics) : (row.metrics as Evaluation['metrics'])
+  const parsedMetrics = parseJson<Evaluation['metrics']>(row.metrics)
   return normalizeEvaluation({
     username: String(row.username),
     nickname: String(row.nickname),
     score: Number(row.score),
     tier: String(row.tier) as Evaluation['tier'],
-    dimensions: typeof row.dimensions === 'string' ? JSON.parse(row.dimensions) : row.dimensions as Evaluation['dimensions'],
-    summary: typeof row.summary === 'string' ? JSON.parse(row.summary) : (row.summary as Evaluation['summary']),
+    dimensions: parseJson<Evaluation['dimensions']>(row.dimensions),
+    summary: parseJson<Evaluation['summary']>(row.summary),
     metrics: { ...defaultMetrics, ...(parsedMetrics || {}) },
     riskFlags: Array.isArray(row.risk_flags)
       ? row.risk_flags as Evaluation['riskFlags']
-      : typeof row.risk_flags === 'string'
-      ? JSON.parse(row.risk_flags)
-      : (row.riskFlags as Evaluation['riskFlags']),
+      : parseJson<Evaluation['riskFlags']>(row.risk_flags)
+      ?? (row.riskFlags as Evaluation['riskFlags']),
     verdict: String(row.verdict),
     advice: String(row.advice),
     priceAdvice: String(row.price_advice ?? row.priceAdvice ?? ''),
-    accountHealth: parseJson(row.account_health),
-    contentCadence: parseJson(row.content_cadence),
-    engagementQuality: parseJson(row.engagement_quality),
-    peerBenchmark: parseJson(row.peer_benchmark),
-    brandPotential: parseJson(row.brand_potential),
-    monetizationPath: parseJson(row.monetization_path),
-    growthPlan: parseJson(row.growth_plan),
-    incomeEstimate: parseJson(row.income_estimate),
-    businessValue: parseJson(row.business_value),
-    accountProfile: parseJson(row.account_profile),
-    revenueRoadmap: parseJson(row.revenue_roadmap),
-    contentStrategy: parseJson(row.content_strategy),
-    peerRanking: parseJson(row.peer_ranking),
-    brandMatching: parseJson(row.brand_matching),
-    trendAnalysis: parseJson(row.trend_analysis),
-    commercializationAdvice: parseJson(row.commercialization_advice),
+    accountHealth: parseJson<Evaluation['accountHealth']>(row.account_health),
+    contentCadence: parseJson<Evaluation['contentCadence']>(row.content_cadence),
+    engagementQuality: parseJson<Evaluation['engagementQuality']>(row.engagement_quality),
+    peerBenchmark: parseJson<Evaluation['peerBenchmark']>(row.peer_benchmark),
+    brandPotential: parseJson<Evaluation['brandPotential']>(row.brand_potential),
+    monetizationPath: parseJson<Evaluation['monetizationPath']>(row.monetization_path),
+    growthPlan: parseJson<Evaluation['growthPlan']>(row.growth_plan),
+    incomeEstimate: parseJson<Evaluation['incomeEstimate']>(row.income_estimate),
+    businessValue: parseJson<Evaluation['businessValue']>(row.business_value),
+    accountProfile: parseJson<Evaluation['accountProfile']>(row.account_profile),
+    revenueRoadmap: parseJson<Evaluation['revenueRoadmap']>(row.revenue_roadmap),
+    contentStrategy: parseJson<Evaluation['contentStrategy']>(row.content_strategy),
+    peerRanking: parseJson<Evaluation['peerRanking']>(row.peer_ranking),
+    brandMatching: parseJson<Evaluation['brandMatching']>(row.brand_matching),
+    trendAnalysis: parseJson<Evaluation['trendAnalysis']>(row.trend_analysis),
+    commercializationAdvice: parseJson<Evaluation['commercializationAdvice']>(row.commercialization_advice),
     computedAt: String(row.computed_at ?? row.computedAt),
     avatar: row.avatar ? String(row.avatar) : undefined,
     bio: row.bio ? String(row.bio) : undefined,
@@ -482,8 +475,8 @@ function rowToEvaluation(row: Record<string, unknown>): Evaluation {
     videoCount: Number(row.video_count ?? row.videoCount),
     verified: row.verified != null ? Boolean(row.verified) : undefined,
     region: row.region ? String(row.region) : undefined,
-    posts: Array.isArray(parseJson(row.posts)) ? parseJson(row.posts) : [],
+    posts: Array.isArray(parseJson<Evaluation['posts']>(row.posts)) ? parseJson<Evaluation['posts']>(row.posts) : [],
     formulaVersion: row.formula_version ? String(row.formula_version) as 'v2' : undefined,
-    calculationMetadata: parseJson(row.calculation_metadata),
+    calculationMetadata: parseJson<Evaluation['calculationMetadata']>(row.calculation_metadata),
   })
 }

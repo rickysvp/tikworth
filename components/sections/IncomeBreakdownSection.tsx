@@ -2,6 +2,7 @@
 
 import { IncomeEstimate, IncomeSource } from '@/types'
 import { DollarSign, TrendingUp, Briefcase, Play, Users, ShoppingBag, Gift, Info } from 'lucide-react'
+import { formatUsd } from '@/lib/format'
 
 const iconMap: Record<string, React.ReactNode> = {
   Briefcase: <Briefcase className="h-4 w-4" />,
@@ -21,11 +22,6 @@ const confidenceDots: Record<string, string> = {
   high: 'bg-green-400',
   medium: 'bg-amber-400',
   low: 'bg-neutral-600',
-}
-
-function formatUsd(n: number): string {
-  if (n >= 1000) return '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
-  return '$' + n.toLocaleString()
 }
 
 export function IncomeBreakdownSection({ estimate }: { estimate: IncomeEstimate }) {

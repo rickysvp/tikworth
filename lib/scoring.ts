@@ -7,7 +7,7 @@ import {
   CalculationMetadata,
 } from '@/types'
 import {
-  DIMENSION_WEIGHTS, RISK_THRESHOLDS, MONETIZATION_THRESHOLDS,
+  THREE_LAYER_WEIGHTS, RISK_THRESHOLDS, MONETIZATION_THRESHOLDS,
   getPeerBenchmarks, clamp,
 } from './scoring/config'
 import {
@@ -19,7 +19,7 @@ import {
   pickCategoryCpm, pickRegionMultiplier, getEngagementMultiplier, getFollowerTier,
   calcBrandDealValue, buildIncomeEstimate, buildBusinessValue, buildRevenueRoadmap,
 } from './scoring/valuation'
-import { tierFromScore, buildPriceAdvice, buildVerdict, buildSummary } from './scoring/verdict'
+import { tierFromScore, tierFromBusinessValue, buildPriceAdvice, buildVerdict, buildSummary } from './scoring/verdict'
 import { buildContentStrategy } from './scoring/content-strategy'
 
 export { clamp, tierFromScore, inferCategories, peerGroupFromFollowers, aggregateByHour, aggregateByWeekday, average, median, stdDev }
@@ -113,19 +113,18 @@ function detectRisks(profile: RawProfile, metrics: Metrics, classified: ReturnTy
   return risks
 }
 
-function computeMetrics(profile: RawProfile, ep: ReturnType<typeof calcEffectivePlays>, classified: ReturnType<typeof classifyAllPosts>): Metrics {
-  const now = Math.floor(Date.now() / 1000)
+function computeMetrics(profile: RawProfile, ep: ReturnType<typeof calcEffectivePlays>, classified: ReturnType<typeof classifyAllPosts>, now: number = Math.floor(Date.now() / 1000)): Metrics {
   const relevant = [...classified.mature, ...classified.growing]
   const totalPlays = relevant.reduce((s, p) => s + (p.post.playCount || 0), 0) || profile.posts.reduce((s, p) => s + (p.playCount || 0), 0)
   const totalInteractions = relevant.reduce((s, p) => s + (p.post.likeCount || 0) + (p.post.commentCount || 0) + (p.post.shareCount || 0), 0)
-  const engagementRate = totalPlays ? (totalInteractions / totalPlays) * 100 : calcOverallEngagement(profile)
+  const engagementRate = totalPlays ? (totalInteractions / totalPlays) * 100 : calcOverallEngagement(profile, now)
   const allPlays = profile.posts.map(p => p.playCount || 0)
   const avgPlays = allPlays.length ? allPlays.reduce((a, b) => a + b, 0) / allPlays.length : ep.effectiveAvgPlays
   const avgLikes = profile.posts.length ? profile.posts.reduce((s, p) => s + (p.likeCount || 0), 0) / profile.posts.length : 0
   const avgComments = profile.posts.length ? profile.posts.reduce((s, p) => s + (p.commentCount || 0), 0) / profile.posts.length : 0
   const avgShares = profile.posts.length ? profile.posts.reduce((s, p) => s + (p.shareCount || 0), 0) / profile.posts.length : 0
   const cvAll = avgPlays > 0 ? stdDev(allPlays) / avgPlays : 1
-  const growth = calcWindowedPlayGrowth(profile)
+  const growth = calcWindowedPlayGrowth(profile, now)
   const latest = profile.posts.length ? Math.max(...profile.posts.map(p => p.createTime || 0)) : 0
   const daysSinceLastPost = latest ? Math.floor((now - latest) / 86400) : 999
   const sorted = [...profile.posts].sort((a, b) => (b.playCount || 0) - (a.playCount || 0))
@@ -157,13 +156,42 @@ function computeMetrics(profile: RawProfile, ep: ReturnType<typeof calcEffective
   }
 }
 
-function totalScore(dims: DimensionScores): number {
-  return Math.round(clamp(Object.entries(DIMENSION_WEIGHTS).reduce((s, [k, w]) => s + dims[k as keyof DimensionScores] * w, 0), 0, 100))
+/**
+ * 三层评分流程（Spec 定义）
+ * 第一步：核心驱动（60%）→ 确定评级区间
+ * 第二步：质量调节（30%）→ 区间内微调
+ * 第三步：风险调节（10%）→ 只扣分，触发降级
+ */
+function totalScore(dims: DimensionScores, _followerCount: number): { score: number; coreScore: number; qualityScore: number; riskScore: number } {
+  const { core, quality, risk } = THREE_LAYER_WEIGHTS
+
+  const coreScore = Object.entries(core).reduce((s, [k, w]) => {
+    const v = dims[k as keyof DimensionScores]
+    return s + (Number.isFinite(v) ? v * w : 0)
+  }, 0)
+
+  const qualityScore = Object.entries(quality).reduce((s, [k, w]) => {
+    const v = dims[k as keyof DimensionScores]
+    return s + (Number.isFinite(v) ? v * w : 0)
+  }, 0)
+
+  const riskScore = Object.entries(risk).reduce((s, [k, w]) => {
+    const v = dims[k as keyof DimensionScores]
+    return s + (Number.isFinite(v) ? v * w : 0)
+  }, 0)
+
+  const raw = coreScore + qualityScore + riskScore
+  return {
+    score: Math.round(clamp(Number.isFinite(raw) ? raw : 0, 0, 100)),
+    coreScore: Math.round(coreScore * 100) / 100,
+    qualityScore: Math.round(qualityScore * 100) / 100,
+    riskScore: Math.round(riskScore * 100) / 100,
+  }
 }
 
 function buildAccountHealth(metrics: Metrics, risks: RiskFlag[], dims: DimensionScores): AccountHealth {
   const highCount = risks.filter(r => r.level === 'high').length
-  const risk: AccountHealth['shadowbanRisk'] = highCount >= 2 ? 'high' : risks.length >= 1 ? 'medium' : 'low'
+  const risk: AccountHealth['shadowbanRisk'] = highCount >= 1 ? 'high' : risks.length >= 1 ? 'medium' : 'low'
   const authenticity = dims.authenticity
   return {
     overallScore: Math.round(clamp(100 - highCount * 25 - risks.filter(r => r.level === 'medium').length * 10, 0, 100)),
@@ -177,8 +205,7 @@ function buildAccountHealth(metrics: Metrics, risks: RiskFlag[], dims: Dimension
   }
 }
 
-function buildContentCadence(posts: Post[]): ContentCadence {
-  const now = Math.floor(Date.now() / 1000)
+function buildContentCadence(posts: Post[], now: number = Math.floor(Date.now() / 1000)): ContentCadence {
   const recent = posts.filter(p => p.createTime && now - p.createTime <= 30 * 86400)
   const avgPerDay = recent.length ? recent.length / 30 : 0
   const avgPerWeek = avgPerDay * 7
@@ -203,8 +230,8 @@ function buildEngagementQuality(metrics: Metrics, profile: RawProfile, classifie
   return {
     conversationDepth: Number((1 + totalComments / Math.max(profile.followerCount * 0.001, 80)).toFixed(1)),
     shareRatio: Number(((totalShares / totalPlays) * 100).toFixed(2)),
-    saveRatio: Number((metrics.avgLikes ? (metrics.avgComments / metrics.avgLikes) * 100 : 0).toFixed(2)),
-    completionRate: 0,
+    commentLikeRatio: Number((metrics.avgLikes ? (metrics.avgComments / metrics.avgLikes) * 100 : 0).toFixed(2)),
+    completionRate: null,
     viralCoefficient: Number(viralCoeff.toFixed(2)),
     topEngagers: [],
     qualityReasoning: metrics.engagementRate >= 5 ? '互动质量优秀，粉丝活跃度高，适合商业合作。' : metrics.engagementRate >= 2 ? '互动质量合格，可通过优化评论引导和前 3 秒钩子进一步提升。' : '互动质量偏低，需优先排查内容吸引力或粉丝真实性。',
@@ -221,7 +248,8 @@ function buildPeerBenchmark(profile: RawProfile, metrics: Metrics): PeerBenchmar
   ]
   const aboveCount = benchmarks.filter(b => b.userValue >= b.peerTop10).length
   const avgCount = benchmarks.filter(b => b.userValue >= b.peerAvg).length
-  const percentile = clamp(50 + aboveCount * 12 + (avgCount - aboveCount) * 5, 1, 99)
+  const belowCount = benchmarks.filter(b => b.userValue < b.peerAvg).length
+  const percentile = clamp(50 + aboveCount * 12 + (avgCount - aboveCount) * 5 - belowCount * 8, 1, 99)
   return {
     percentile: Math.round(percentile),
     peerGroupSize: peerGroupFromFollowers(profile.followerCount),
@@ -301,13 +329,16 @@ function buildAccountProfile(profile: RawProfile, metrics: Metrics, categories: 
 }
 
 function buildPeerRanking(metrics: Metrics, peerBench: PeerBenchmark, followerCount: number): PeerRanking {
+  const peers = getPeerBenchmarks(followerCount)
+  const playsRatio = followerCount > 0 ? metrics.effectiveAvgPlays / followerCount : 0
+  const playsPercentile = clamp(50 + (playsRatio - peers.avgPlaysRatio) / Math.max(peers.avgPlaysRatio, 0.01) * 50, 1, 99)
   return {
     overallPercentile: peerBench.percentile,
     tierLabel: `Top ${100 - peerBench.percentile}%`,
     peerGroupDescription: peerGroupFromFollowers(followerCount),
     rankingBreakdown: [
       { metric: '互动率', value: `${metrics.engagementRate.toFixed(1)}%`, percentile: clamp(50 + (metrics.engagementRate - 3) * 12, 1, 99), barColor: '#00F2EA' },
-      { metric: '平均播放', value: metrics.effectiveAvgPlays >= 1000 ? (metrics.effectiveAvgPlays / 1000).toFixed(1) + 'K' : String(metrics.effectiveAvgPlays), percentile: clamp(50, 1, 99), barColor: '#FF0050' },
+      { metric: '平均播放', value: metrics.effectiveAvgPlays >= 1000 ? (metrics.effectiveAvgPlays / 1000).toFixed(1) + 'K' : String(metrics.effectiveAvgPlays), percentile: Math.round(playsPercentile), barColor: '#FF0050' },
       { metric: '播放增长', value: `${metrics.playGrowth > 0 ? '+' : ''}${metrics.playGrowth.toFixed(0)}%`, percentile: clamp(50 + metrics.playGrowth * 1.5, 1, 99), barColor: metrics.playGrowth > 0 ? '#22c55e' : '#f59e0b' },
     ],
     insight: '基于同体量创作者的相对表现评估（基于 log 曲线基准函数）',
@@ -327,7 +358,7 @@ function buildTrendAnalysis(metrics: Metrics, cadence: ContentCadence): TrendAna
 function buildCommercializationAdvice(categories: string[], dims: DimensionScores, income: import('@/types').IncomeEstimate, followerCount: number): CommercializationAdvice {
   const tier = getFollowerTier(followerCount)
   const directions: CommercializationDirection[] = []
-  if (dims.commerce >= 40) directions.push({ name: '品牌赞助', icon: '💰', fitScore: dims.commerce, difficulty: tier === 'nano' ? 'low' : 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'brand_deals')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: '通过品牌植入、测评、合作视频获取收入', actionSteps: ['完善媒体包', '主动联系相关品牌', '加入达人平台'], why: '品牌赞助是最稳定的变现金方式', prerequisites: ['10K+ 粉丝（建议）', '稳定的内容质量'] })
+  if (dims.commerce >= 40) directions.push({ name: '品牌赞助', icon: '💰', fitScore: dims.commerce, difficulty: tier === 'nano' ? 'low' : 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'brand_deals')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: '通过品牌植入、测评、合作视频获取收入', actionSteps: ['完善媒体包', '主动联系相关品牌', '加入达人平台'], why: '品牌赞助是最稳定的变现方式', prerequisites: ['10K+ 粉丝（建议）', '稳定的内容质量'] })
   if (categories.some(c => ['美食', 'food', '美妆护肤', 'beauty', '时尚穿搭', 'fashion', '健身运动', 'fitness'].includes(c.toLowerCase()))) {
     directions.push({ name: 'TikTok Shop', icon: '🛒', fitScore: dims.monetization, difficulty: 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'tiktok_shop')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: '通过短视频/直播带货获取佣金', actionSteps: ['开通 Shop 权限', '选品匹配内容', '优化挂车视频'], why: '适合高转化品类', prerequisites: ['1K+ 粉丝', '垂直品类内容'] })
   }
@@ -342,24 +373,36 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
   const now = options?.now ?? Date.now() / 1000
   const classified = classifyAllPosts(profile.posts, now)
   const ep = calcEffectivePlays(profile, now)
-  const metrics = computeMetrics(profile, ep, classified)
+  const metrics = computeMetrics(profile, ep, classified, now)
   const categories = inferCategories(profile)
-  const cadence = buildContentCadence(profile.posts)
+  const cadence = buildContentCadence(profile.posts, now)
   const postsPerMonth = cadence.avgPostsPerWeek * 4.33
   const risks = detectRisks(profile, metrics, classified)
-  const dims = computeDimensions({ profile, metrics, classified: { mature: classified.mature, growing: classified.growing }, postsPerMonth })
-  const score = totalScore(dims)
-  const tier = tierFromScore(score)
+  const dims = computeDimensions({ profile, metrics, classified: { mature: classified.mature, growing: classified.growing }, postsPerMonth, categories })
+  const { score } = totalScore(dims, profile.followerCount)
   const health = buildAccountHealth(metrics, risks, dims)
-  const income = buildIncomeEstimate({ profile, metrics, dims, categories, cadence })
-  const business = buildBusinessValue({ profile, metrics, dims, categories, income })
+  const income = buildIncomeEstimate({ profile, metrics, dims, categories, cadence, risks })
+  const business = buildBusinessValue({ profile, metrics, dims, categories, income, risks })
+  // 评级基于商业价值（后置于 business value 计算）
+  const { tier, reason: tierReason } = tierFromBusinessValue(business.totalValue.mid, profile.followerCount, risks)
   const roadmap = buildRevenueRoadmap({ profile, metrics, dims, risks, income })
   const { cpm: categoryCpm, label: categoryLabel } = pickCategoryCpm(categories)
   const { mult: regionMult, label: regionLabel } = pickRegionMultiplier(profile.region)
   const engagementMult = getEngagementMultiplier(metrics.engagementRate)
-  const brand = calcBrandDealValue(metrics.effectiveAvgPlays, categoryCpm, metrics.engagementRate, regionMult, postsPerMonth)
+  const brand = calcBrandDealValue({
+    effectiveAvgPlays: metrics.effectiveAvgPlays,
+    categoryCpm,
+    er: metrics.engagementRate,
+    regionMult,
+    postsPerMonth,
+    followers: profile.followerCount,
+    playGrowth: metrics.playGrowth,
+    risks,
+    verified: profile.verified,
+    categories,
+  })
   const brandPotential = buildBrandPotential(metrics, categories, health, dims)
-  const { verdict, advice } = buildVerdict({ score, tier, nickname: profile.nickname || profile.username, metrics, health, dims, risks, categories })
+  const { verdict, advice } = buildVerdict({ score, tier, tierReason, nickname: profile.nickname || profile.username, metrics, health, dims, risks, categories, businessValueMid: business.totalValue.mid })
   const priceAdvice = buildPriceAdvice({ perVideoLow: brand.perVideoLow, perVideoMid: brand.perVideoMid, perVideoHigh: brand.perVideoHigh, effectiveAvgPlays: metrics.effectiveAvgPlays, categoryLabel, cpm: categoryCpm, engagementMult, regionLabel, regionMult, risks })
   const peerBench = buildPeerBenchmark(profile, metrics)
   const followerTier = getFollowerTier(profile.followerCount)
@@ -372,7 +415,7 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
   }
   return {
     username: profile.username, nickname: profile.nickname || profile.username, score, tier,
-    summary: buildSummary({ profile: { nickname: profile.nickname, followerCount: profile.followerCount }, dims, metrics, tier, categories, percentile: peerBench.percentile }),
+    summary: buildSummary({ profile: { nickname: profile.nickname, followerCount: profile.followerCount }, dims, metrics, tier, tierReason, categories, percentile: peerBench.percentile, businessValueMid: business.totalValue.mid }),
     dimensions: dims, metrics, riskFlags: risks, verdict, advice, priceAdvice,
     accountHealth: health, contentCadence: cadence, engagementQuality: buildEngagementQuality(metrics, profile, classified),
     peerBenchmark: peerBench, brandPotential, monetizationPath: buildMonetizationPath(profile, metrics, income),

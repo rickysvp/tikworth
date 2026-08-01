@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { PeerBenchmark } from '@/types'
 import { Users } from 'lucide-react'
 
@@ -41,7 +42,7 @@ export function PeerBenchmarkSection({ benchmark }: { benchmark: PeerBenchmark }
             {benchmark.similarCreators.map((c, i) => (
               <div key={i} className="flex items-center justify-between rounded-xl border border-neutral-800 bg-[#141414] px-3 py-2">
                 <div className="flex items-center gap-3">
-                  <img src={c.avatarUrl} alt={c.name} className="h-8 w-8 rounded-full" />
+                  <Image src={c.avatarUrl} alt={c.name} width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
                   <div>
                     <div className="text-sm font-medium">{c.name}</div>
                     <div className="text-xs text-neutral-500">{c.handle}</div>

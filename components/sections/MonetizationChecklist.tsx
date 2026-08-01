@@ -7,6 +7,7 @@ interface MonetizationChecklistProps {
   videoCount: number
   region?: string
   isUnlocked: boolean
+  hasHighRisk?: boolean
 }
 
 interface Requirement {
@@ -16,7 +17,7 @@ interface Requirement {
   met: boolean
 }
 
-export function MonetizationChecklist({ followerCount, videoCount, region, isUnlocked }: MonetizationChecklistProps) {
+export function MonetizationChecklist({ followerCount, videoCount, region, isUnlocked, hasHighRisk }: MonetizationChecklistProps) {
   // TikTok Creator Rewards Program requirements (2026)
   // - 10K+ followers
   // - 100K+ video views in last 30 days
@@ -50,8 +51,8 @@ export function MonetizationChecklist({ followerCount, videoCount, region, isUnl
     {
       label: '遵守社区准则',
       required: '无违规',
-      current: '待验证',
-      met: false,
+      current: hasHighRisk ? '有风险标记' : '正常',
+      met: !hasHighRisk,
     },
   ]
 

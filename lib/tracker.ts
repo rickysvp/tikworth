@@ -1,4 +1,5 @@
 import { Evaluation } from '@/types'
+import { formatNumber, formatUsd } from '@/lib/format'
 
 export interface TrackedEvaluation {
   id: string
@@ -74,7 +75,11 @@ export function saveToTracker(evaluation: Evaluation): TrackedEvaluation {
 
   // Keep max 50 entries
   const trimmed = existing.slice(0, 50)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
+  } catch (err) {
+    console.warn('[tracker] saveToTracker failed:', err)
+  }
   return data
 }
 
@@ -96,11 +101,19 @@ export function getTrackedByUsername(username: string): TrackedEvaluation | unde
 export function removeFromTracker(username: string): void {
   const existing = loadTrackedEvaluations()
   const filtered = existing.filter(e => e.username !== username)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+  } catch (err) {
+    console.warn('[tracker] removeFromTracker failed:', err)
+  }
 }
 
 export function clearTracker(): void {
-  localStorage.removeItem(STORAGE_KEY)
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (err) {
+    console.warn('[tracker] clearTracker failed:', err)
+  }
 }
 
 export function getLatestForUsername(username: string): TrackedEvaluation[] {
@@ -111,13 +124,9 @@ export function getLatestForUsername(username: string): TrackedEvaluation[] {
 }
 
 export function formatTrackUsd(n: number): string {
-  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
-  if (n >= 1_000) return '$' + (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
-  return '$' + Math.round(n)
+  return formatUsd(n)
 }
 
 export function formatTrackNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
-  return String(n)
+  return formatNumber(n)
 }

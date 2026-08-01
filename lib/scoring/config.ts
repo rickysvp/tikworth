@@ -1,19 +1,42 @@
 /** S/A/B/C/D/E/F 等级分数阈值（满分 100）。S=顶级头部，F=无效账号 */
 export const TIER_THRESHOLDS = { S: 85, A: 70, B: 55, C: 40, D: 25, E: 10 } as const
 
-/** 10 维权重，和为 1.0。调整权重即调整评分侧重点 */
-export const DIMENSION_WEIGHTS = {
-  reach: 0.12,        // 流量触达力（基础盘）
-  engagement: 0.15,   // 互动健康度（核心指标）
-  content: 0.13,      // 内容爆款力（成长性）
-  authenticity: 0.12, // 粉丝真实性（可信度）
-  momentum: 0.10,     // 增长势能（趋势）
-  stability: 0.10,    // 流量稳定性（风险）
-  commerce: 0.10,     // 商业适配度（带货能力）
-  monetization: 0.08, // 变现潜力（基础设施）
-  health: 0.05,       // 账号健康度（违规风险）
-  influence: 0.05,    // 行业位势（同侪对比）
-} as const
+/**
+ * 10 维权重，按粉丝层级差异化
+ * nano/micro 强调互动健康+内容爆款+增长势能
+ * mid 均衡权重
+ * macro/mega 强调触达+影响力+商业+变现，弱化互动率/内容垂直度/稳定性
+ */
+export const DIMENSION_WEIGHTS_BY_TIER: Record<string, Record<string, number>> = {
+  nano: {
+    reach: 0.10, engagement: 0.18, content: 0.15, authenticity: 0.12,
+    momentum: 0.12, stability: 0.10, commerce: 0.08, monetization: 0.07,
+    health: 0.05, influence: 0.03,
+  },
+  micro: {
+    reach: 0.11, engagement: 0.16, content: 0.14, authenticity: 0.12,
+    momentum: 0.11, stability: 0.10, commerce: 0.09, monetization: 0.08,
+    health: 0.05, influence: 0.04,
+  },
+  mid: {
+    reach: 0.12, engagement: 0.14, content: 0.13, authenticity: 0.12,
+    momentum: 0.10, stability: 0.10, commerce: 0.10, monetization: 0.08,
+    health: 0.05, influence: 0.06,
+  },
+  macro: {
+    reach: 0.14, engagement: 0.10, content: 0.10, authenticity: 0.10,
+    momentum: 0.08, stability: 0.08, commerce: 0.12, monetization: 0.10,
+    health: 0.07, influence: 0.11,
+  },
+  mega: {
+    reach: 0.16, engagement: 0.06, content: 0.06, authenticity: 0.08,
+    momentum: 0.05, stability: 0.05, commerce: 0.14, monetization: 0.12,
+    health: 0.08, influence: 0.20,
+  },
+}
+
+/** 默认权重（向后兼容），已弃用，改用 DIMENSION_WEIGHTS_BY_TIER */
+export const DIMENSION_WEIGHTS = DIMENSION_WEIGHTS_BY_TIER.mid
 
 /**
  * 品牌合作 CPM（千次播放成本），单位 USD/千次播放
@@ -49,13 +72,35 @@ export const CATEGORY_BRAND_CPM: Record<string, number> = {
  * 美国创作者 $0.03-0.05，西欧 $0.02-0.03，东南亚 $0.005-0.01
  */
 export const CATEGORY_CREATOR_RPM: Record<string, number> = {
-  'US': 0.04, 'UK': 0.03, 'CA': 0.035, 'AU': 0.035,
-  'DE': 0.025, 'FR': 0.025, 'IT': 0.022, 'ES': 0.022, 'NL': 0.025,
-  'JP': 0.02, 'KR': 0.02,
-  'BR': 0.012, 'MX': 0.01,
-  'ID': 0.008, 'TH': 0.008, 'VN': 0.007, 'PH': 0.007, 'MY': 0.009,
+  // 北美
+  'US': 0.04, 'CA': 0.035,
+  // 西欧
+  'UK': 0.03, 'IE': 0.028, 'DE': 0.025, 'FR': 0.025, 'IT': 0.022, 'ES': 0.022,
+  'NL': 0.025, 'BE': 0.025, 'AT': 0.025, 'CH': 0.028,
+  // 北欧
+  'SE': 0.025, 'NO': 0.028, 'DK': 0.028, 'FI': 0.025,
+  // 南欧
+  'PT': 0.018, 'GR': 0.018,
+  // 东欧
+  'PL': 0.015, 'CZ': 0.016, 'HU': 0.013, 'RO': 0.012, 'BG': 0.01,
+  // 东亚
+  'JP': 0.02, 'KR': 0.02, 'TW': 0.015, 'HK': 0.018,
+  // 东南亚
+  'SG': 0.02, 'MY': 0.009, 'TH': 0.008, 'ID': 0.008, 'PH': 0.007, 'VN': 0.007,
+  // 南亚
   'IN': 0.006, 'PK': 0.005, 'BD': 0.005,
-  'RU': 0.015, 'TR': 0.012, 'SA': 0.018, 'AE': 0.02,
+  // 中东
+  'AE': 0.02, 'SA': 0.018, 'IL': 0.018, 'QA': 0.02, 'KW': 0.018, 'BH': 0.016, 'OM': 0.015, 'IQ': 0.012,
+  // 拉美
+  'BR': 0.012, 'MX': 0.01, 'AR': 0.009, 'CO': 0.01, 'CL': 0.01, 'PE': 0.009,
+  // 大洋洲
+  'AU': 0.035, 'NZ': 0.03,
+  // 中亚
+  'KZ': 0.008, 'UZ': 0.006,
+  // 独联体
+  'RU': 0.015, 'UA': 0.012, 'TR': 0.012,
+  // 非洲
+  'ZA': 0.015, 'EG': 0.008, 'NG': 0.006, 'KE': 0.006, 'MA': 0.007, 'TN': 0.007, 'GH': 0.005,
   'default': 0.015,
 }
 
@@ -64,15 +109,35 @@ export const CATEGORY_CREATOR_RPM: Record<string, number> = {
  * 反映该地区广告主购买力、CPM 溢价
  */
 export const REGION_VALUE_MULTIPLIER: Record<string, number> = {
-  'US': 1.0, 'CA': 0.85, 'UK': 0.85, 'AU': 0.85,
-  'DE': 0.75, 'FR': 0.7, 'IT': 0.65, 'ES': 0.65, 'NL': 0.75, 'SE': 0.75, 'CH': 0.9,
-  'JP': 0.7, 'KR': 0.65, 'SG': 0.7, 'HK': 0.7, 'TW': 0.55,
-  'AE': 0.75, 'SA': 0.6, 'IL': 0.65,
-  'BR': 0.35, 'MX': 0.35, 'AR': 0.3,
-  'ID': 0.25, 'TH': 0.28, 'VN': 0.22, 'PH': 0.25, 'MY': 0.32,
+  // 北美
+  'US': 1.0, 'CA': 0.85,
+  // 西欧（高购买力）
+  'UK': 0.85, 'IE': 0.8, 'DE': 0.75, 'FR': 0.7, 'IT': 0.65, 'ES': 0.65,
+  'NL': 0.75, 'BE': 0.75, 'AT': 0.75, 'CH': 0.9,
+  // 北欧
+  'SE': 0.75, 'NO': 0.75, 'DK': 0.75, 'FI': 0.7,
+  // 南欧
+  'PT': 0.55, 'GR': 0.5,
+  // 东欧
+  'PL': 0.4, 'CZ': 0.45, 'HU': 0.4, 'RO': 0.35, 'BG': 0.3,
+  // 东亚
+  'JP': 0.7, 'KR': 0.65, 'TW': 0.55, 'HK': 0.7,
+  // 东南亚
+  'SG': 0.7, 'MY': 0.32, 'TH': 0.28, 'ID': 0.25, 'PH': 0.25, 'VN': 0.22,
+  // 南亚
   'IN': 0.2, 'PK': 0.15, 'BD': 0.12,
-  'RU': 0.35, 'TR': 0.3, 'PL': 0.4, 'CZ': 0.45,
-  'ZA': 0.35, 'EG': 0.2, 'NG': 0.18,
+  // 中东
+  'AE': 0.75, 'SA': 0.6, 'IL': 0.65, 'QA': 0.7, 'KW': 0.65, 'BH': 0.6, 'OM': 0.5, 'IQ': 0.35,
+  // 拉美
+  'BR': 0.35, 'MX': 0.35, 'AR': 0.3, 'CO': 0.3, 'CL': 0.32, 'PE': 0.28,
+  // 大洋洲
+  'AU': 0.85, 'NZ': 0.8,
+  // 中亚
+  'KZ': 0.25, 'UZ': 0.18,
+  // 独联体
+  'RU': 0.35, 'UA': 0.3, 'TR': 0.3,
+  // 非洲
+  'ZA': 0.35, 'EG': 0.2, 'NG': 0.18, 'KE': 0.18, 'MA': 0.22, 'TN': 0.2, 'GH': 0.15,
   'default': 0.5,
 }
 
@@ -90,14 +155,239 @@ export const MATURITY_WINDOWS = {
 /**
  * 互动率分段阈值（%）与对应乘数
  * 用于 engagementMultiplier，影响品牌报价
+ * 顶级互动账号溢价上限提到 3.0x（原 1.6x 严重低估头部）
  */
 export const ENGAGEMENT_TIERS = [
-  { min: 9, multiplier: 1.6, label: '顶级互动' },
-  { min: 6, multiplier: 1.4, label: '高互动' },
-  { min: 3, multiplier: 1.2, label: '良好互动' },
+  { min: 15, multiplier: 3.0, label: '顶级互动' },
+  { min: 9, multiplier: 2.4, label: '极高互动' },
+  { min: 6, multiplier: 1.8, label: '高互动' },
+  { min: 3, multiplier: 1.3, label: '良好互动' },
   { min: 1, multiplier: 1.0, label: '正常互动' },
   { min: 0, multiplier: 0.7, label: '低互动' },
 ] as const
+
+/**
+ * 层级溢价系数（品牌报价倍数）
+ * nano 1.0x → mega 8.0x
+ * mega 基于公开市场报价校准（MrBeast $2.5M/条 vs 公式基础 ~$200K）
+ */
+export const TIER_PREMIUM = {
+  nano: 1.0,
+  micro: 1.2,
+  mid: 1.8,
+  macro: 3.0,
+  mega: 8.0,
+} as const
+
+/**
+ * 品牌合作月均接单上限（按 tier 分层）
+ * mega 单条价值高，月均 2 条；nano 小单多，月均 10 条
+ */
+export const BRAND_DEAL_LIMITS_BY_TIER: Record<string, { maxRatioOfMonthlyPosts: number; maxPerMonth: number }> = {
+  nano: { maxRatioOfMonthlyPosts: 0.5, maxPerMonth: 10 },
+  micro: { maxRatioOfMonthlyPosts: 0.4, maxPerMonth: 8 },
+  mid: { maxRatioOfMonthlyPosts: 0.35, maxPerMonth: 6 },
+  macro: { maxRatioOfMonthlyPosts: 0.3, maxPerMonth: 4 },
+  mega: { maxRatioOfMonthlyPosts: 0.2, maxPerMonth: 2 },
+}
+
+/** 内容资产 videoCount 上限（按 tier） */
+export const VIDEO_COUNT_CAP_BY_TIER: Record<string, number> = {
+  nano: 50,
+  micro: 100,
+  mid: 200,
+  macro: 300,
+  mega: 500,
+}
+
+/** 内容 CPM 占品牌 CPM 的比例（按 tier，头部长尾价值更高） */
+export const CONTENT_CPM_RATIO_BY_TIER: Record<string, number> = {
+  nano: 0.3,
+  micro: 0.3,
+  mid: 0.35,
+  macro: 0.4,
+  mega: 0.5,
+}
+
+/** 内容资产折现率（按 tier，头部内容资产更保值） */
+export const DISCOUNT_FACTOR_BY_TIER: Record<string, number> = {
+  nano: 0.2,
+  micro: 0.25,
+  mid: 0.3,
+  macro: 0.35,
+  mega: 0.4,
+}
+
+/**
+ * 粉丝资产幂律定价基础单价（USD/粉，应用时 value = base * followers^0.85）
+ * 基于真实市场校准：1亿粉娱乐账号粉丝资产 ≈ $200-500M
+ * mega 校准：1 亿粉 × 12.0 × 100M^0.85 ≈ $200-400M
+ */
+export const FOLLOWER_BASE_RATE: Record<string, number> = {
+  nano: 0.005,
+  micro: 0.01,
+  mid: 0.05,
+  macro: 0.5,
+  mega: 12.0,
+}
+
+/** 幂律指数（粉丝边际价值递减） */
+export const FOLLOWER_POWER_LAW_EXPONENT = 0.85
+
+/** 变现能力估值周期（月，按 tier） */
+export const VALUATION_PERIOD_BY_TIER: Record<string, number> = {
+  nano: 4,
+  micro: 6,
+  mid: 12,
+  macro: 18,
+  mega: 24,
+}
+
+/** 变现渠道权重（品牌 > Shop > 订阅 > LIVE > 基金） */
+export const CHANNEL_WEIGHTS: Record<string, number> = {
+  brand_deals: 1.0,
+  tiktok_shop: 0.8,
+  subscriptions: 0.6,
+  live_gifts: 0.5,
+  creator_program: 0.3,
+}
+
+/** IP/品牌资产层级率（仅 macro/mega 计入） */
+export const TIER_IP_RATE: Record<string, number> = {
+  nano: 0,
+  micro: 0,
+  mid: 0,
+  macro: 0.10,
+  mega: 0.40,
+}
+
+/** 品类 IP 系数（金融/科技 IP 价值高，搞笑低） */
+export const CATEGORY_IP_MULTIPLIER: Record<string, number> = {
+  '金融理财': 2.0, 'finance': 2.0,
+  '科技数码': 1.8, 'tech': 1.8,
+  '汽车': 1.6, 'auto': 1.6, 'cars': 1.6,
+  '知识教育': 1.5, 'education': 1.5,
+  '美妆护肤': 1.5, 'beauty': 1.5, 'makeup': 1.5,
+  '时尚穿搭': 1.3, 'fashion': 1.3,
+  '健身运动': 1.2, 'fitness': 1.2,
+  '母婴亲子': 1.3, 'mom': 1.3, 'parenting': 1.3,
+  '美食': 1.0, 'food': 1.0, 'cooking': 1.0,
+  '旅游': 1.0, 'travel': 1.0,
+  '生活方式': 0.9, 'lifestyle': 0.9,
+  '宠物': 0.9, 'pets': 0.9,
+  '游戏': 0.9, 'gaming': 0.9, 'games': 0.9,
+  '才艺': 0.9, 'talent': 0.9, 'music': 0.9, 'dance': 0.9,
+  '美女/颜值': 0.8, '颜值': 0.8,
+  '运动': 0.9, 'sports': 0.9,
+  '剧情': 0.8, 'drama': 0.8, 'storytelling': 0.8,
+  '搞笑': 0.8, 'comedy': 0.8, 'funny': 0.8,
+  '娱乐': 1.0, 'entertainment': 1.0,
+  'default': 1.0,
+}
+
+/**
+ * 市场基准锚点（USD/条，mega/macro 品牌报价夹紧用）
+ * 基于公开报价：MrBeast $2.5M, Charli $100K, Khaby $50K, Zach King $80K, Logan Paul $150K
+ */
+export const MARKET_ANCHORS: Record<string, Record<string, number>> = {
+  mega: {
+    '金融理财': 500000, 'finance': 500000,
+    '科技数码': 400000, 'tech': 400000,
+    '汽车': 450000, 'auto': 450000, 'cars': 450000,
+    '知识教育': 300000, 'education': 300000,
+    '美妆护肤': 200000, 'beauty': 200000, 'makeup': 200000,
+    '时尚穿搭': 180000, 'fashion': 180000,
+    '健身运动': 150000, 'fitness': 150000,
+    '美食': 120000, 'food': 120000, 'cooking': 120000,
+    '旅游': 130000, 'travel': 130000,
+    '游戏': 100000, 'gaming': 100000, 'games': 100000,
+    '才艺': 100000, 'talent': 100000, 'music': 100000, 'dance': 100000,
+    '搞笑': 50000, 'comedy': 50000, 'funny': 50000,
+    '剧情': 80000, 'drama': 80000, 'storytelling': 80000,
+    '娱乐': 2500000, 'entertainment': 2500000,
+    'default': 150000,
+  },
+  macro: {
+    '金融理财': 80000, 'finance': 80000,
+    '科技数码': 60000, 'tech': 60000,
+    '汽车': 70000, 'auto': 70000, 'cars': 70000,
+    '知识教育': 50000, 'education': 50000,
+    '美妆护肤': 40000, 'beauty': 40000, 'makeup': 40000,
+    '时尚穿搭': 35000, 'fashion': 35000,
+    '健身运动': 30000, 'fitness': 30000,
+    '美食': 25000, 'food': 25000, 'cooking': 25000,
+    '旅游': 26000, 'travel': 26000,
+    '游戏': 20000, 'gaming': 20000, 'games': 20000,
+    '才艺': 20000, 'talent': 20000, 'music': 20000, 'dance': 20000,
+    '搞笑': 12000, 'comedy': 12000, 'funny': 12000,
+    '剧情': 15000, 'drama': 15000, 'storytelling': 15000,
+    '娱乐': 30000, 'entertainment': 30000,
+    'default': 25000,
+  },
+}
+
+/** 市场基准夹紧系数（公式输出限制在 anchor × [0.3, 3.0] 区间） */
+export const MARKET_ANCHOR_CLAMP = { low: 0.3, high: 3.0 }
+
+/** 动量乘数参数（playGrowth → momentumMultiplier） */
+export const MOMENTUM_PARAMS = {
+  highGrowthThreshold: 50,    // playGrowth > 50% → 1.3x
+  highGrowthMultiplier: 1.3,
+  lowGrowthThreshold: -30,    // playGrowth < -30% → 0.7x
+  lowGrowthMultiplier: 0.7,
+  neutral: 1.0,
+} as const
+
+/** 增长乘数参数（变现能力估值用，按 tier） */
+export const GROWTH_MULTIPLIER_PARAMS = {
+  highGrowthThreshold: 30,
+  highGrowthMultiplier: 1.2,
+  lowGrowthThreshold: -20,
+  lowGrowthMultiplier: 0.8,
+  neutral: 1.0,
+} as const
+
+/** 风险折损系数（影响全组件估值） */
+export const RISK_DISCOUNT = {
+  high: 0.7,
+  medium: 0.85,
+  none: 1.0,
+} as const
+
+/** 已认证账号品牌报价加成 */
+export const VERIFIED_MULTIPLIER = 1.1
+
+/** 互动因子（粉丝资产用，按 tier 差异化阈值）
+ * mega 1.5%+ 即高互动，micro 需 6%+ 才高互动
+ */
+export const ENGAGEMENT_FACTOR = {
+  tiers: {
+    nano:   { high: 6, good: 3, normal: 1 },
+    micro:  { high: 5, good: 2.5, normal: 1 },
+    mid:    { high: 4, good: 2, normal: 0.8 },
+    macro:  { high: 3, good: 1.5, normal: 0.6 },
+    mega:   { high: 1.5, good: 1.0, normal: 0.5 },
+  },
+  factors: { high: 1.0, good: 0.9, normal: 0.7, low: 0.5 },
+} as const
+
+/** 品牌信号关键词（IP 资产检测用） */
+export const BRANDING_SIGNAL_KEYWORDS = {
+  founder: ['founder', 'ceo', 'owner', 'creator of', 'co-founder', '创始人', '主理人'],
+  brand: ['brand', 'shop', 'store', 'company', 'product', '品牌', '店铺', '旗舰店', '自有'],
+  crossPlatform: ['youtube', 'instagram', 'twitter', 'twitch', 'website', 'link in bio', '主页链接'],
+  product: ['merch', 'course', 'book', 'app', 'subscribe', '周边', '课程', '电子书'],
+}
+
+/** 品牌信号加成系数 */
+export const BRANDING_SIGNAL_BONUS = {
+  founder: 0.20,
+  brand: 0.15,
+  crossPlatform: 0.15,
+  product: 0.10,
+  verified: 0.10,
+  max: 0.50,  // 总加成上限 50%
+} as const
 
 /**
  * 风险信号阈值
@@ -115,7 +405,8 @@ export const RISK_THRESHOLDS = {
 
 /**
  * 粉丝资产价值（每千粉 USD）
- * 基于 HypeAuditor 数据：美国活跃粉 LTV $0.10-0.50
+ * 已弃用，保留向后兼容；新逻辑用 FOLLOWER_BASE_RATE 幂律公式
+ * @deprecated 改用 FOLLOWER_BASE_RATE + FOLLOWER_POWER_LAW_EXPONENT
  */
 export const FOLLOWER_VALUE_PER_1K = {
   nano: 5,       // <10K，粉丝粘性高
@@ -128,16 +419,30 @@ export const FOLLOWER_VALUE_PER_1K = {
 /** 品类粉丝价值系数（垂类粉丝更值钱） */
 export const CATEGORY_FAN_VALUE_MULT: Record<string, number> = {
   '金融理财': 2.0, 'finance': 2.0,
-  '科技数码': 1.5, 'tech': 1.5,
+  '科技数码': 1.8, 'tech': 1.8,
   '汽车': 1.8, 'auto': 1.8, 'cars': 1.8,
-  '知识教育': 1.5, 'education': 1.5,
-  '美妆护肤': 1.3, 'beauty': 1.3,
-  '时尚穿搭': 1.2, 'fashion': 1.2,
-  '健身运动': 1.2, 'fitness': 1.2,
+  '知识教育': 1.6, 'education': 1.6,
+  '美妆护肤': 1.4, 'beauty': 1.4, 'makeup': 1.4,
+  '时尚穿搭': 1.3, 'fashion': 1.3,
+  '健身运动': 1.2, 'fitness': 1.2, '健身': 1.2, '格斗运动': 1.2,
+  '母婴亲子': 1.4, 'mom': 1.4, 'parenting': 1.4,
+  '美食': 1.0, 'food': 1.0, 'cooking': 1.0,
+  '旅游': 1.0, 'travel': 1.0,
+  '生活方式': 0.9, 'lifestyle': 0.9,
+  '宠物': 0.9, 'pets': 0.9,
+  '游戏': 0.9, 'gaming': 0.9, 'games': 0.9,
+  '才艺': 0.9, 'talent': 0.9, 'music': 0.9, 'dance': 0.9,
+  '美女/颜值': 0.8, '颜值': 0.8,
+  '运动': 0.9, 'sports': 0.9,
+  '剧情': 0.8, 'drama': 0.8, 'storytelling': 0.8,
+  '搞笑': 0.8, 'comedy': 0.8, 'funny': 0.8,
+  '娱乐': 0.9, 'entertainment': 0.9,
   'default': 1.0,
 }
 
-/** 内容资产系数（老视频折现后每千次播放价值占品牌 CPM 的比例） */
+/** 内容资产系数（保留向后兼容，新逻辑用 CONTENT_CPM_RATIO_BY_TIER + DISCOUNT_FACTOR_BY_TIER）
+ * @deprecated 改用 tier 分层参数
+ */
 export const CONTENT_VALUE_MULTIPLIER = {
   contentCpmRatio: 0.2,    // 老视频 CPM = 品牌 CPM × 0.2
   discountFactor: 0.3,     // 资产折现率（历史内容只按 30% 计入当前价值）
@@ -335,9 +640,56 @@ export const CATEGORY_HASHTAGS: Record<string, string[]> = {
  * 商业意图关键词（中英双语），用于 commerce 维度检测带货/商业合作线索
  */
 export const COMMERCE_INTENT_KEYWORDS = {
-  en: ['link in bio', 'shop now', 'use code', 'discount', 'promo', 'affiliate', 'sponsored', 'ad', 'partner', 'get yours', 'buy now', 'limited edition', 'available now', 'sale', 'coupon', 'collab', 'gifted', 'branddeal'],
+  en: ['link in bio', 'shop now', 'use code', 'discount', 'promo', 'affiliate', 'sponsored', 'partner', 'get yours', 'buy now', 'limited edition', 'available now', 'sale', 'coupon', 'collab', 'gifted', 'branddeal'],
   zh: ['链接在主页', '购物车', '同款', '购买', '优惠', '折扣', '带货', '种草', '安利', '测评', '合作', '推广', '赞助', '码', '购买链接', '上新', '促销', '包邮', '好物推荐', '旗舰店'],
 }
+
+// ========== 三层评分体系（Spec 定义） ==========
+
+/**
+ * 三层评分权重（全 tier 统一）
+ * 核心驱动 60%：规模价值 + 赛道溢价 + 变现能力 → 决定评级上限
+ * 质量调节 30%：互动质量 + 内容质量 + 粉丝真实度 + 增长势能 → 同级内排名
+ * 风险调节 10%：账号健康 + 流量稳定 + 行业位势 → 只扣分，触发降级
+ */
+export const THREE_LAYER_WEIGHTS = {
+  core: {
+    reach: 0.20,        // 规模价值：真实粉丝数 + 播放触达
+    commerce: 0.20,     // 赛道溢价：品类 CPM × 地区系数
+    monetization: 0.20, // 变现能力：已开通变现渠道 + 收入稳定性
+  },
+  quality: {
+    engagement: 0.10,    // 互动质量：真实互动率 vs 同赛道基准 + 评论深度
+    content: 0.08,       // 内容质量：播放稳定性(CV) + 爆款率 + 垂直度
+    authenticity: 0.07,  // 粉丝真实度：粉关比 + 互动一致性
+    momentum: 0.05,      // 增长势能：30天/60天播放变化率
+  },
+  risk: {
+    health: 0.04,        // 账号健康：限流/违规/断更风险
+    stability: 0.03,     // 流量稳定：成熟视频 CV 值
+    influence: 0.03,     // 行业位势：高于/低于同体量平均（商业信号）
+  },
+} as const
+
+/** 核心层归一化分数 → 评级区间映射 */
+export const CORE_LAYER_RANGES = {
+  high: 80,   // ≥80 → S/A 区间
+  mid: 60,    // ≥60 → B/C 区间
+  // <60 → D/E 区间
+} as const
+
+/**
+ * 商业价值评级阈值（USD，中值）
+ * 评级反映"值多少钱、靠不靠谱"，不是"有多大"
+ * 50 万粉金融号可以拿 S，500 万粉僵尸号只能拿 D
+ */
+export const BUSINESS_VALUE_TIERS = {
+  S: 1_000_000,    // > $1M
+  A: 100_000,      // > $100K
+  B: 10_000,       // > $10K
+  C: 1_000,        // > $1K
+  D: 100,          // > $100
+} as const
 
 /** 工具：clamp */
 export function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)) }
