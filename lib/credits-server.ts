@@ -32,9 +32,11 @@ async function initTable(): Promise<void> {
           credits INTEGER NOT NULL DEFAULT 0,
           total_purchased INTEGER NOT NULL DEFAULT 0,
           purchases JSONB NOT NULL DEFAULT '[]'::jsonb,
-          verified_at BIGINT NOT NULL DEFAULT 0
+          verified_at BIGINT NOT NULL DEFAULT 0,
+          disabled BOOLEAN NOT NULL DEFAULT false
         )
       `
+      await s`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`
     })()
   }
   return initPromise
@@ -214,8 +216,9 @@ export async function consumeCredit(email: string): Promise<{ ok: boolean; balan
   const s = await getSql()
 
   // Check current credits first
-  const current = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+  const current = await s`SELECT credits, disabled FROM credit_balances WHERE email = ${key}`
   if (!current[0]) return { ok: false, reason: 'NOT_FOUND' }
+  if (current[0].disabled) return { ok: false, reason: 'DISABLED' }
   if (Number(current[0].credits) <= 0) return { ok: false, reason: 'NO_CREDITS' }
 
   // Atomic: decrement only if credits > 0

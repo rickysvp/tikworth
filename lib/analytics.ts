@@ -495,6 +495,7 @@ export interface UserListItem {
   totalPurchased: number
   verifiedAt: string
   lastPurchaseAt: string | null
+  disabled: boolean
 }
 
 export async function getUsersList(): Promise<UserListItem[]> {
@@ -503,7 +504,7 @@ export async function getUsersList(): Promise<UserListItem[]> {
   if (useDb && sql) {
     try {
       const rows = await sql`
-        SELECT email, credits, total_purchased, purchases, verified_at
+        SELECT email, credits, total_purchased, purchases, verified_at, disabled
         FROM credit_balances
         ORDER BY total_purchased DESC, credits DESC
       `
@@ -517,6 +518,7 @@ export async function getUsersList(): Promise<UserListItem[]> {
           totalPurchased: Number(r.total_purchased),
           verifiedAt: new Date(Number(r.verified_at)).toISOString(),
           lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
+          disabled: r.disabled === true,
         }
       })
     } catch (err) {
@@ -540,6 +542,7 @@ export async function getUsersList(): Promise<UserListItem[]> {
           totalPurchased: bal.totalPurchased,
           verifiedAt: new Date(bal.verifiedAt).toISOString(),
           lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
+          disabled: false,
         })
       }
       users.sort((a, b) => {

@@ -61,6 +61,7 @@ interface StatsData {
     totalPurchased: number
     verifiedAt: string
     lastPurchaseAt: string | null
+    disabled: boolean
   }>
   sources: Array<{
     source: string
@@ -188,6 +189,16 @@ export default function AdminDashboard() {
   const [logTypeFilter, setLogTypeFilter] = useState('all')
   const [userSearch, setUserSearch] = useState('')
 
+  // 用户管理操作
+  const [userAction, setUserAction] = useState<{
+    type: 'deduct' | 'disable' | 'enable' | 'delete'
+    email: string
+  } | null>(null)
+  const [deductAmount, setDeductAmount] = useState(1)
+  const [actionReason, setActionReason] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionResult, setActionResult] = useState<{ success: boolean; msg: string } | null>(null)
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
 
   const fetchStats = useCallback(async () => {
@@ -270,6 +281,48 @@ export default function AdminDashboard() {
   function logout() {
     localStorage.removeItem('admin_token')
     router.push('/tiktokmaster')
+  }
+
+  async function handleUserAction() {
+    if (!token || !userAction) return
+    if (!actionReason) { setActionResult({ success: false, msg: '请选择操作原因' }); return }
+
+    setActionLoading(true)
+    setActionResult(null)
+    try {
+      const res = await fetch('/api/tiktokmaster/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: userAction.type,
+          email: userAction.email,
+          credits: userAction.type === 'deduct' ? deductAmount : undefined,
+          reason: actionReason,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        const actionLabels: Record<string, string> = {
+          deduct: `已扣减 ${deductAmount} 次评估，剩余 ${data.remainingCredits} 次`,
+          disable: '用户已禁用',
+          enable: '用户已解禁',
+          delete: '用户已删除',
+        }
+        setActionResult({ success: true, msg: actionLabels[userAction.type] })
+        fetchStats()
+        setTimeout(() => {
+          setUserAction(null)
+          setActionResult(null)
+          setActionReason('')
+        }, 1500)
+      } else {
+        setActionResult({ success: false, msg: data.error || '操作失败' })
+      }
+    } catch {
+      setActionResult({ success: false, msg: '网络错误' })
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   if (loading) {
@@ -630,6 +683,11 @@ export default function AdminDashboard() {
                     <span className="px-2 py-0.5 rounded text-xs bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
                       {stats!.users.filter(u => !u.hasPaid).length} 免费用户
                     </span>
+                    {stats!.users.some(u => u.disabled) && (
+                      <span className="px-2 py-0.5 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20">
+                        {stats!.users.filter(u => u.disabled).length} 已禁用
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="relative">
@@ -648,27 +706,34 @@ export default function AdminDashboard() {
                   <thead>
                     <tr className="text-left text-xs text-neutral-500 border-y border-neutral-800 bg-[#0f0f0f]/50">
                       <th className="px-6 py-3 font-medium">邮箱</th>
-                      <th className="px-6 py-3 font-medium">付费状态</th>
+                      <th className="px-6 py-3 font-medium">状态</th>
                       <th className="px-6 py-3 font-medium text-right">剩余评估</th>
                       <th className="px-6 py-3 font-medium text-right">累计购买</th>
                       <th className="px-6 py-3 font-medium">注册时间</th>
                       <th className="px-6 py-3 font-medium">最近购买</th>
+                      <th className="px-6 py-3 font-medium text-right">操作</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.map((u, i) => (
-                      <tr key={i} className="border-b border-neutral-800/50 hover:bg-neutral-800/20 transition-colors">
+                      <tr key={i} className="border-b border-neutral-800/50 hover:bg-neutral-800/20 transition-colors group">
                         <td className="px-6 py-3.5 text-neutral-200">{u.email}</td>
                         <td className="px-6 py-3.5">
-                          {u.hasPaid ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
-                              <CheckCircle2 className="h-3 w-3" /> 已付费
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-neutral-500/10 text-neutral-500 border border-neutral-500/20">
-                              <XCircle className="h-3 w-3" /> 免费用户
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {u.disabled ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20">
+                                <XCircle className="h-3 w-3" /> 已禁用
+                              </span>
+                            ) : u.hasPaid ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
+                                <CheckCircle2 className="h-3 w-3" /> 已付费
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
+                                <Users className="h-3 w-3" /> 免费用户
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-3.5 text-right tabular-nums">
                           <span className={u.remainingCredits > 0 ? 'text-[#00F2EA] font-semibold' : 'text-neutral-600'}>
@@ -678,15 +743,134 @@ export default function AdminDashboard() {
                         <td className="px-6 py-3.5 text-right tabular-nums text-neutral-400">{u.totalPurchased}</td>
                         <td className="px-6 py-3.5 text-neutral-500 text-xs">{fmtDate(u.verifiedAt)}</td>
                         <td className="px-6 py-3.5 text-neutral-500 text-xs">{u.lastPurchaseAt ? fmtDate(u.lastPurchaseAt) : '—'}</td>
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {u.disabled ? (
+                              <button
+                                onClick={() => { setUserAction({ type: 'enable', email: u.email }); setActionReason(''); setActionResult(null) }}
+                                className="px-2.5 py-1 rounded-md text-xs bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+                              >
+                                解禁
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => { setUserAction({ type: 'deduct', email: u.email }); setActionReason(''); setActionResult(null); setDeductAmount(1) }}
+                                  className="px-2.5 py-1 rounded-md text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                                >
+                                  扣减
+                                </button>
+                                <button
+                                  onClick={() => { setUserAction({ type: 'disable', email: u.email }); setActionReason(''); setActionResult(null) }}
+                                  className="px-2.5 py-1 rounded-md text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors"
+                                >
+                                  禁用
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => { setUserAction({ type: 'delete', email: u.email }); setActionReason(''); setActionResult(null) }}
+                              className="px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                     {filteredUsers.length === 0 && (
-                      <tr><td colSpan={6} className="py-12 text-center text-neutral-600">暂无用户数据</td></tr>
+                      <tr><td colSpan={7} className="py-12 text-center text-neutral-600">暂无用户数据</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
+
+            {/* 用户操作弹窗 */}
+            {userAction && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { if (!actionLoading) setUserAction(null) }}>
+                <div className="w-full max-w-md rounded-2xl border border-neutral-700 bg-[#141414] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-sm font-semibold text-neutral-200 mb-1">
+                    {userAction.type === 'deduct' && '扣减评估次数'}
+                    {userAction.type === 'disable' && '禁用用户'}
+                    {userAction.type === 'enable' && '解禁用户'}
+                    {userAction.type === 'delete' && '删除用户'}
+                  </h3>
+                  <p className="text-xs text-neutral-500 mb-5">
+                    目标用户：<span className="text-neutral-300 font-mono">{userAction.email}</span>
+                  </p>
+
+                  {userAction.type === 'deduct' && (
+                    <div className="mb-4">
+                      <label className="block text-xs text-neutral-500 mb-2">扣减次数</label>
+                      <input
+                        type="number"
+                        value={deductAmount}
+                        onChange={e => setDeductAmount(Math.max(1, Number(e.target.value)))}
+                        min={1}
+                        max={999}
+                        className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white focus:border-amber-400 focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mb-4">
+                    <label className="block text-xs text-neutral-500 mb-2">操作原因</label>
+                    <select
+                      value={actionReason}
+                      onChange={e => setActionReason(e.target.value)}
+                      className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white focus:border-[#00F2EA] focus:outline-none"
+                    >
+                      <option value="">请选择原因...</option>
+                      {userAction.type === 'deduct' && ['客户退款', '违规操作', '系统修正', '误发回收', '其他'].map(r => <option key={r} value={r}>{r}</option>)}
+                      {userAction.type === 'disable' && ['违规封禁', '恶意使用', '用户要求', '其他'].map(r => <option key={r} value={r}>{r}</option>)}
+                      {userAction.type === 'enable' && ['申诉成功', '误封解禁', '其他'].map(r => <option key={r} value={r}>{r}</option>)}
+                      {userAction.type === 'delete' && ['用户要求删除', '垃圾账号', '测试数据', '其他'].map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+
+                  {userAction.type === 'delete' && (
+                    <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      此操作不可撤销，将永久删除该用户的所有数据
+                    </div>
+                  )}
+
+                  {actionResult && (
+                    <div className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${actionResult.success ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+                      {actionResult.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0" />}
+                      {actionResult.msg}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => { setUserAction(null); setActionResult(null); setActionReason('') }}
+                      disabled={actionLoading}
+                      className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-sm text-neutral-400 hover:text-neutral-200 disabled:opacity-50 transition-colors"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleUserAction}
+                      disabled={actionLoading || !actionReason}
+                      className={`flex-1 rounded-xl font-semibold py-2.5 text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
+                        userAction.type === 'delete'
+                          ? 'bg-red-500 text-white hover:bg-red-600'
+                          : userAction.type === 'deduct'
+                          ? 'bg-amber-500 text-black hover:bg-amber-400'
+                          : userAction.type === 'disable'
+                          ? 'bg-orange-500 text-black hover:bg-orange-400'
+                          : 'bg-green-500 text-black hover:bg-green-400'
+                      }`}
+                    >
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      确认{userAction.type === 'deduct' ? '扣减' : userAction.type === 'disable' ? '禁用' : userAction.type === 'enable' ? '解禁' : '删除'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -70,3 +70,89 @@ export async function adminGrantCredits(
 
   return { success: true, granted: totalGranted, totalCredits: totalGranted * credits }
 }
+
+// ── 扣减评估次数 ──
+export async function adminDeductCredits(
+  email: string,
+  credits: number,
+  reason: string,
+): Promise<{ success: boolean; remainingCredits: number }> {
+  await initTable()
+  const s = await getSql()
+  const key = email.toLowerCase().trim()
+  if (!key) throw new Error('Invalid email')
+
+  // 原子扣减：只扣到0，不会变负数
+  await s`
+    UPDATE credit_balances
+    SET credits = GREATEST(credits - ${credits}, 0)
+    WHERE email = ${key}
+  `
+
+  await recordAuditLog({
+    action: 'deduct_credits',
+    target_email: key,
+    credits: -credits,
+    reason,
+  })
+
+  const rows = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+  return { success: true, remainingCredits: Number(rows[0]?.credits || 0) }
+}
+
+// ── 禁用用户 ──
+export async function adminDisableUser(email: string, reason: string): Promise<{ success: boolean }> {
+  await initTable()
+  const s = await getSql()
+  const key = email.toLowerCase().trim()
+  if (!key) throw new Error('Invalid email')
+
+  await s`UPDATE credit_balances SET disabled = true WHERE email = ${key}`
+
+  await recordAuditLog({
+    action: 'disable_user',
+    target_email: key,
+    credits: 0,
+    reason,
+  })
+
+  return { success: true }
+}
+
+// ── 解禁用户 ──
+export async function adminEnableUser(email: string, reason: string): Promise<{ success: boolean }> {
+  await initTable()
+  const s = await getSql()
+  const key = email.toLowerCase().trim()
+  if (!key) throw new Error('Invalid email')
+
+  await s`UPDATE credit_balances SET disabled = false WHERE email = ${key}`
+
+  await recordAuditLog({
+    action: 'enable_user',
+    target_email: key,
+    credits: 0,
+    reason,
+  })
+
+  return { success: true }
+}
+
+// ── 删除用户 ──
+export async function adminDeleteUser(email: string, reason: string): Promise<{ success: boolean }> {
+  await initTable()
+  const s = await getSql()
+  const key = email.toLowerCase().trim()
+  if (!key) throw new Error('Invalid email')
+
+  await s`DELETE FROM credit_balances WHERE email = ${key}`
+
+  await recordAuditLog({
+    action: 'delete_user',
+    target_email: key,
+    credits: 0,
+    reason,
+  })
+
+  return { success: true }
+}
