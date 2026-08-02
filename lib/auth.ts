@@ -143,6 +143,7 @@ export async function verifyCode(
     entry.attempts += 1
     if (entry.code !== trimmedCode) {
       writeCodes(all)
+      console.log(`[auth] verifyCode WRONG for ${key}: stored='${entry.code}' input='${trimmedCode}'`)
       return { ok: false, reason: 'wrong' }
     }
     delete all[key]

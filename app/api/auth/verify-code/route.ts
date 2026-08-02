@@ -3,8 +3,24 @@ import { grantCredits } from '@/lib/credits-server'
 import { verifyCode, createSessionToken } from '@/lib/auth'
 import { getServerDict, t as serverT } from '@/lib/i18n/server'
 
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
+const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
+const CREEM_WEBHOOK_SECRET = process.env.CREEM_WEBHOOK_SECRET || ''
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+
+// Creem product ID mapping: packageId → product_id
+const PRODUCT_ID_MAP: Record<string, string> = {
+  pack1: process.env.CREEM_PRODUCT_ID_PACK1 || '',
+  pack6: process.env.CREEM_PRODUCT_ID_PACK6 || '',
+  pack30: process.env.CREEM_PRODUCT_ID_PACK30 || '',
+}
+
+function getCreemApiBase(): string {
+  // Creem key prefix determines environment: creem_test_ → test, creem_ → live
+  if (CREEM_API_KEY.startsWith('creem_test_')) {
+    return 'https://test-api.creem.io'
+  }
+  return 'https://api.creem.io'
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,12 +36,13 @@ export async function POST(req: NextRequest) {
     const result = await verifyCode(email, code)
     if (!result.ok) {
       const messages: Record<string, { msg: string; status: number }> = {
-        expired:    { msg: getServerDict().api.auth.VERIFY_FAILED, status: 410 },
-        wrong:      { msg: getServerDict().api.auth.VERIFY_FAILED, status: 401 },
-        not_found:  { msg: getServerDict().api.auth.VERIFY_FAILED, status: 404 },
-        too_many:   { msg: getServerDict().api.auth.VERIFY_FAILED, status: 429 },
+        expired:    { msg: getServerDict().api.auth.VERIFY_EXPIRED, status: 410 },
+        wrong:      { msg: getServerDict().api.auth.VERIFY_WRONG, status: 401 },
+        not_found:  { msg: getServerDict().api.auth.VERIFY_NOT_FOUND, status: 404 },
+        too_many:   { msg: getServerDict().api.auth.VERIFY_TOO_MANY, status: 429 },
       }
       const err = messages[result.reason] || { msg: getServerDict().api.auth.VERIFY_FAILED, status: 400 }
+      console.log(`[verify-code] ${result.reason} for ${email}: input=${code}`)
       return NextResponse.json({ error: err.msg, code: 'VERIFY_FAILED', reason: result.reason }, { status: err.status })
     }
 
@@ -33,48 +50,58 @@ export async function POST(req: NextRequest) {
     const token = await createSessionToken(email)
 
     // ── Payment flow ──────────────────────────────────────────────────
-    // PRODUCTION (with Stripe configured):
-    //   1. Verify email → create Stripe Checkout Session with customer_email = email
-    //   2. Return { checkoutUrl, token } → redirect browser to Stripe
-    //   3. Stripe webhook (checkout.session.completed) triggers grantCredits
+    // PRODUCTION (with Creem configured):
+    //   1. Verify email → create Creem Checkout Session
+    //   2. Return { checkoutUrl, token } → redirect browser to Creem
+    //   3. Creem webhook (checkout.completed) triggers grantCredits
     //   4. Success page polls /api/credits/balance with token until credits appear
     //
-    // DEV MODE (Stripe 未配置):
+    // DEV MODE (NEXT_PUBLIC_DEV_SKIP_PAYMENT=true 或 Creem API key 未配置):
     //   直接发放额度，跳过支付。用于本地开发和测试。
-    if (STRIPE_SECRET_KEY) {
-      const Stripe = (await import('stripe')).default
-      const stripe = new Stripe(STRIPE_SECRET_KEY)
-      const session = await stripe.checkout.sessions.create({
-        customer_email: email,
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: { name: entry.packageId, description: `TokValue ${entry.credits} evaluation credits` },
-              unit_amount: Math.max(50, Math.round(entry.amount * 100)),
-            },
-            quantity: 1,
-          },
-        ],
-        mode: 'payment',
-        success_url: `${APP_URL}/?paid=success&email=${encodeURIComponent(email)}`,
-        cancel_url: `${APP_URL}/?paid=cancel&email=${encodeURIComponent(email)}`,
-        metadata: {
-          email,
-          packageId: entry.packageId,
-          credits: String(entry.credits),
-          amount: String(entry.amount),
+    const skipPayment = process.env.NEXT_PUBLIC_DEV_SKIP_PAYMENT === 'true'
+    if (CREEM_API_KEY && CREEM_WEBHOOK_SECRET && !skipPayment) {
+      const productId = PRODUCT_ID_MAP[entry.packageId]
+      if (!productId) {
+        console.error(`[verify-code] No Creem product ID mapped for package: ${entry.packageId}`)
+        return NextResponse.json({ error: getServerDict().api.creem.NOT_CONFIGURED, code: 'CREEM_CONFIG_ERROR' }, { status: 503 })
+      }
+
+      const apiBase = getCreemApiBase()
+      const creemRes = await fetch(`${apiBase}/v1/checkouts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': CREEM_API_KEY,
         },
+        body: JSON.stringify({
+          product_id: productId,
+          success_url: `${APP_URL}/?paid=success&email=${encodeURIComponent(email)}`,
+          customer: { email },
+          metadata: {
+            email,
+            packageId: entry.packageId,
+            credits: String(entry.credits),
+            amount: String(entry.amount),
+          },
+        }),
       })
+
+      if (!creemRes.ok) {
+        const errBody = await creemRes.text()
+        console.error('[verify-code] Creem checkout creation failed:', creemRes.status, errBody)
+        return NextResponse.json({ error: getServerDict().api.creem.CHECKOUT_FAILED, code: 'CREEM_CHECKOUT_FAILED' }, { status: 502 })
+      }
+
+      const session = await creemRes.json()
       return NextResponse.json({
         ok: true,
         requiresPayment: true,
-        checkoutUrl: session.url,
+        checkoutUrl: session.checkout_url,
         token,
       })
     }
 
-    // DEV MODE: Stripe 未配置，直接发放额度模拟登录成功
+    // DEV MODE: Creem 未配置，直接发放额度模拟登录成功
     const balance = await grantCredits(email, entry.packageId, entry.credits, entry.amount)
     return NextResponse.json({
       ok: true,

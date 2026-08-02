@@ -128,8 +128,9 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
     await handleSendCode()
   }
 
-  async function handleVerify() {
-    const fullCode = code.join('')
+  async function handleVerify(codeOverride?: string) {
+    const fullCode = codeOverride || code.join('')
+    console.log('[VerifyEmailModal] handleVerify email=', email.trim(), 'code=', fullCode)
     if (fullCode.length !== 6) {
       setError(dict.api.auth.INVALID_CODE)
       return
@@ -183,7 +184,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
     setCode(newCode)
     setError('')
     if (v && idx < 5) codeRefs.current[idx + 1]?.focus()
-    if (newCode.every(c => c !== '')) setTimeout(() => handleVerify(), 100)
+    if (newCode.every(c => c !== '')) setTimeout(() => handleVerify(newCode.join('')), 100)
   }
 
   function handleCodeKeyDown(idx: number, e: React.KeyboardEvent<HTMLInputElement>) {
@@ -197,7 +198,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
     if (pasted.length === 6) {
       e.preventDefault()
       setCode(pasted.split(''))
-      setTimeout(() => handleVerify(), 100)
+      setTimeout(() => handleVerify(pasted), 100)
     }
   }
 

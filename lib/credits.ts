@@ -14,7 +14,7 @@ export interface CreditBalance {
     credits: number
     amount: number       // USD
     purchasedAt: number  // epoch ms
-    paymentId?: string   // Stripe session id in production
+    paymentId?: string   // Creem checkout/order id in production
   }>
   verifiedAt: number
 }

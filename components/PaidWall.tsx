@@ -131,8 +131,9 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
     await handleSendCode()
   }
 
-  async function handleVerify() {
-    const fullCode = code.join('')
+  async function handleVerify(codeOverride?: string) {
+    const fullCode = codeOverride || code.join('')
+    console.log('[PaidWall] handleVerify email=', email.trim(), 'code=', fullCode)
     if (fullCode.length !== 6) {
       setError(dict.paidWall.invalidCode)
       return
@@ -189,7 +190,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
       codeRefs.current[idx + 1]?.focus()
     }
     if (newCode.every(c => c !== '')) {
-      setTimeout(() => handleVerify(), 100)
+      setTimeout(() => handleVerify(newCode.join('')), 100)
     }
   }
 
@@ -205,7 +206,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
       e.preventDefault()
       const chars = pasted.split('')
       setCode(chars)
-      setTimeout(() => handleVerify(), 100)
+      setTimeout(() => handleVerify(pasted), 100)
     }
   }
 

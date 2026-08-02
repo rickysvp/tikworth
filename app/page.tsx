@@ -234,7 +234,7 @@ function HomePageContent() {
     }
   }, [username, dict.errors.networkError, dict.errors.requestTimeout, dict.errors.evaluationFailed])
 
-  // Handle URL params: ?paid=success (Stripe callback) and ?u=username (client navigation)
+  // Handle URL params: ?paid=success (Creem callback) and ?u=username (client navigation)
   useEffect(() => {
     const paid = searchParams.get('paid')
     const paidEmail = searchParams.get('email')
@@ -754,7 +754,10 @@ function HomePageContent() {
                   <p className="text-xs text-neutral-500 leading-relaxed mb-3">
                     {dict.home.footer.tagline}
                   </p>
-                  <span className="text-[10px] text-neutral-600">v{APP_VERSION}</span>
+                  <a href="mailto:connect@tokvalue.com" className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">
+                    <Mail className="h-3 w-3" />
+                    connect@tokvalue.com
+                  </a>
                 </div>
 
                 {/* Product */}
@@ -765,6 +768,7 @@ function HomePageContent() {
                     <li><a href="#pricing" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
                     <li><Link href="/tracker" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
                     <li><Link href="/history" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
+                    <li><Link href="/blog" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.blog}</Link></li>
                   </ul>
                 </div>
 
@@ -1210,7 +1214,7 @@ function HomePageContent() {
       <footer className="border-t border-neutral-800 bg-[#0a0a0a] py-6">
         <div className="mx-auto max-w-5xl px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-600">
-            <span>{t(dict.resultLabels.copyrightLine, { year: new Date().getFullYear(), version: APP_VERSION })}</span>
+            <span>{t(dict.resultLabels.copyrightLine, { year: new Date().getFullYear() })}</span>
             <div className="flex items-center gap-4">
               <span>{dict.common.tiktokTrademark}</span>
               <span>{dict.common.dataDisclaimer}</span>

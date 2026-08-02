@@ -349,6 +349,7 @@ const en = {
       tagline: 'TikTok account value calculator. Check any account\'s worth, brand deal pricing, and revenue potential. Built for creators, brands, and agencies.',
       product: 'Product',
       capabilities: 'Features',
+      blog: 'Blog',
       dataMethodology: 'How It Works',
       legal: 'Legal',
       methodologyItems: [
@@ -819,18 +820,23 @@ const en = {
       RATE_LIMIT: 'You have reached the daily limit for verification codes. Please try again in 24 hours.',
       SEND_FAILED: 'Failed to send verification code. Please try again later.',
       VERIFY_FAILED: 'Verification failed. Please try again.',
+      VERIFY_WRONG: 'Incorrect code. Please check the 6 digits and try again.',
+      VERIFY_EXPIRED: 'This code has expired (valid for 10 minutes). Please request a new one.',
+      VERIFY_NOT_FOUND: 'No verification code found for this email. Please request a new code.',
+      VERIFY_TOO_MANY: 'Too many failed attempts. Please request a new code.',
       VERIFY_ERROR: 'Verification failed. Please try again later.',
       VERIFY_SUCCESS: 'Verification successful! {count} evaluations have been added.',
       INVALID_CODE: 'Please enter the 6-digit verification code.',
       NO_EMAIL: 'Please enter your email address.',
     },
-    // Stripe
-    stripe: {
-      NOT_CONFIGURED: 'Stripe is not configured.',
+    // Creem Payment
+    creem: {
+      NOT_CONFIGURED: 'Payment system is not configured.',
       WEBHOOK_SECRET_MISSING: 'Webhook secret is not configured.',
       INVALID_CREDITS: 'Invalid evaluation amount.',
       FAILED_GRANT: 'Failed to grant evaluations.',
       SIGNATURE_FAILED: 'Webhook signature verification failed.',
+      CHECKOUT_FAILED: 'Failed to create checkout session.',
     },
   },
 
@@ -901,7 +907,7 @@ const en = {
     nearestThreshold: 'Nearest Threshold',
     radarScore: '10-Dimension Radar Score',
     riskSignals: 'Risk Signals',
-    copyrightLine: '© {year} TokValue v{version}. All rights reserved.',
+    copyrightLine: '© {year} TokValue. All rights reserved.',
     copyrightWithDisclaimer: '© {year} TokValue. {disclaimer}',
     evaluationFailed: 'Evaluation failed',
   },
@@ -914,7 +920,7 @@ const en = {
       body: 'You purchased the {label} package ({credits} evaluations, ${price}). Your verification code is:',
       footer: 'This code is valid for 10 minutes. Do not share it with anyone. Once verified, your evaluations will be linked to your email and accessible across all devices.',
     },
-    stripeDescription: 'TokValue {credits} evaluations',
+    creemDescription: 'TokValue {credits} evaluations',
   },
 } as const
 
