@@ -3,8 +3,8 @@
  * Only import this from API routes / server components (never from client components).
  *
  * NOTE: Neon Serverless uses HTTP fetch, each SQL call is a separate request.
- * Do NOT use SELECT ... FOR UPDATE — it requires a transaction context.
- * Use atomic INSERT ON CONFLICT / UPDATE RETURNING instead.
+ * Do NOT use SELECT ... FOR UPDATE or RETURNING — they require transaction context.
+ * Use atomic INSERT ON CONFLICT / UPDATE WHERE, then SELECT separately.
  */
 
 import type { CreditBalance } from './credits'
@@ -82,25 +82,26 @@ export async function grantCredits(
         ? existing[0].purchases as Array<{ paymentId?: string }>
         : []
       if (purchases.some(p => p.paymentId === paymentId)) {
-        // Already granted, return current balance
         return getBalance(key) as Promise<CreditBalance>
       }
     }
   }
 
   const newPurchase = { packageId, credits, amount, purchasedAt: Date.now(), paymentId }
+  const now = Date.now()
 
   // Atomic upsert: INSERT if new, UPDATE if exists
-  const rows = await s`
+  await s`
     INSERT INTO credit_balances (email, credits, total_purchased, purchases, verified_at)
-    VALUES (${key}, ${credits}, ${credits}, ${JSON.stringify([newPurchase])}::jsonb, ${Date.now()})
+    VALUES (${key}, ${credits}, ${credits}, ${JSON.stringify([newPurchase])}::jsonb, ${now})
     ON CONFLICT (email) DO UPDATE SET
       credits = credit_balances.credits + ${credits},
       total_purchased = credit_balances.total_purchased + ${credits},
       purchases = ${JSON.stringify([newPurchase])}::jsonb || credit_balances.purchases
-    RETURNING *
   `
-  return rowToBalance(rows[0] as Record<string, unknown>)
+
+  // Read back the updated row
+  return getBalance(key) as Promise<CreditBalance>
 }
 
 export async function consumeCredit(email: string): Promise<{ ok: boolean; balance?: CreditBalance; reason?: string }> {
@@ -110,19 +111,19 @@ export async function consumeCredit(email: string): Promise<{ ok: boolean; balan
   await initTable()
   const s = await getSql()
 
-  // Atomic: decrement only if credits > 0, return updated row
-  const rows = await s`
+  // Check current credits first
+  const current = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+  if (!current[0]) return { ok: false, reason: 'NOT_FOUND' }
+  if (Number(current[0].credits) <= 0) return { ok: false, reason: 'NO_CREDITS' }
+
+  // Atomic: decrement only if credits > 0
+  await s`
     UPDATE credit_balances
     SET credits = credits - 1
     WHERE email = ${key} AND credits > 0
-    RETURNING *
   `
-  if (!rows[0]) {
-    // Check if user exists at all
-    const exists = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
-    if (!exists[0]) return { ok: false, reason: 'NOT_FOUND' }
-    return { ok: false, reason: 'NO_CREDITS' }
-  }
 
-  return { ok: true, balance: rowToBalance(rows[0] as Record<string, unknown>) }
+  // Read back the updated row
+  const balance = await getBalance(key)
+  return { ok: true, balance: balance! }
 }
