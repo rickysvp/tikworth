@@ -4,6 +4,7 @@
  */
 
 import type { NeonQueryFunction } from '@neondatabase/serverless'
+import type { CreditBalance } from '@/lib/credits'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
@@ -28,7 +29,7 @@ export interface AnalyticsEvent {
 
 // ── DB init ──
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL
+const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
 const EVENTS_FILE = path.join(DATA_DIR, 'analytics_events.json')
 const AUDIT_FILE = path.join(DATA_DIR, 'admin_audit_log.json')
 
@@ -417,6 +418,107 @@ function readFileStore(filePath: string): Array<Record<string, unknown>> {
     }
   } catch {}
   return []
+}
+
+// ── Query: PV/UV ──
+
+export interface PVUVData {
+  totalPV: number
+  totalUV: number
+  pvToday: number
+  uvToday: number
+  pvWeek: number
+  uvWeek: number
+  pvMonth: number
+  uvMonth: number
+}
+
+export async function getPVUV(): Promise<PVUVData> {
+  const useDb = await initDb()
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+  if (useDb && sql) {
+    const [total, today, week, month] = await Promise.all([
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view'`,
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
+    ]) as Array<Array<{ pv: string; uv: string }>>
+
+    const num = (r: { pv: string; uv: string }) => ({ pv: Number(r.pv), uv: Number(r.uv) })
+    const t = num(total[0]), td = num(today[0]), tw = num(week[0]), tm = num(month[0])
+
+    return {
+      totalPV: t.pv, totalUV: t.uv,
+      pvToday: td.pv, uvToday: td.uv,
+      pvWeek: tw.pv, uvWeek: tw.uv,
+      pvMonth: tm.pv, uvMonth: tm.uv,
+    }
+  }
+
+  // File fallback
+  const events = readFileStore(EVENTS_FILE) as unknown as AnalyticsEvent[]
+  const pageViews = events.filter(e => e.event_type === 'page_view')
+  const filter = (since: number) => pageViews.filter(e => new Date(e.created_at).getTime() >= since)
+
+  const pvToday = filter(new Date(todayStart).getTime())
+  const pvWeek = filter(new Date(weekStart).getTime())
+  const pvMonth = filter(new Date(monthStart).getTime())
+
+  const distinctIp = (list: AnalyticsEvent[]) => new Set(list.map(e => e.ip_hash).filter(Boolean)).size
+
+  return {
+    totalPV: pageViews.length, totalUV: distinctIp(pageViews),
+    pvToday: pvToday.length, uvToday: distinctIp(pvToday),
+    pvWeek: pvWeek.length, uvWeek: distinctIp(pvWeek),
+    pvMonth: pvMonth.length, uvMonth: distinctIp(pvMonth),
+  }
+}
+
+// ── Query: Users List ──
+
+export interface UserListItem {
+  email: string
+  hasPaid: boolean
+  remainingCredits: number
+  totalPurchased: number
+  verifiedAt: string
+  lastPurchaseAt: string | null
+}
+
+export async function getUsersList(): Promise<UserListItem[]> {
+  const balancesFile = path.join(DATA_DIR, 'credit_balances.json')
+  let balances: Record<string, CreditBalance> = {}
+
+  try {
+    if (fs.existsSync(balancesFile)) {
+      balances = JSON.parse(fs.readFileSync(balancesFile, 'utf-8'))
+    }
+  } catch {}
+
+  const users: UserListItem[] = []
+  for (const [email, bal] of Object.entries(balances)) {
+    const lastPurchase = bal.purchases.length > 0 ? bal.purchases[0] : null
+    users.push({
+      email,
+      hasPaid: bal.totalPurchased > 0,
+      remainingCredits: bal.credits,
+      totalPurchased: bal.totalPurchased,
+      verifiedAt: new Date(bal.verifiedAt).toISOString(),
+      lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
+    })
+  }
+
+  // Sort: paid users first, then by remaining credits desc
+  users.sort((a, b) => {
+    if (a.hasPaid !== b.hasPaid) return a.hasPaid ? -1 : 1
+    return b.remainingCredits - a.remainingCredits
+  })
+
+  return users
 }
 
 // ── Hash IP ──

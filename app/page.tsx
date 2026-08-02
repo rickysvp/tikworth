@@ -79,6 +79,11 @@ function HomePageContent() {
     }
   }, [])
 
+  // Track page view
+  useEffect(() => {
+    trackEvent('page_view', { path: '/' })
+  }, [])
+
   // Auto-dismiss payment success banner
   useEffect(() => {
     if (paymentSuccess) {

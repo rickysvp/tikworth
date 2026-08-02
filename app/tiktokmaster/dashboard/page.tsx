@@ -35,9 +35,27 @@ interface StatsData {
     byDay: { date: string; amount: number }[]
     byPackage: { id: string; count: number; revenue: number }[]
   }
+  pvuv: {
+    totalPV: number
+    totalUV: number
+    pvToday: number
+    uvToday: number
+    pvWeek: number
+    uvWeek: number
+    pvMonth: number
+    uvMonth: number
+  }
+  users: Array<{
+    email: string
+    hasPaid: boolean
+    remainingCredits: number
+    totalPurchased: number
+    verifiedAt: string
+    lastPurchaseAt: string | null
+  }>
 }
 
-type Tab = 'overview' | 'funnel' | 'revenue' | 'ops'
+type Tab = 'overview' | 'funnel' | 'revenue' | 'users' | 'ops'
 
 // ── Helpers ──
 function fmtUsd(n: number): string {
@@ -59,6 +77,7 @@ const TAB_COLORS: Record<Tab, string> = {
   overview: 'border-[#00F2EA] text-[#00F2EA]',
   funnel: 'border-[#FF0050] text-[#FF0050]',
   revenue: 'border-green-400 text-green-400',
+  users: 'border-purple-400 text-purple-400',
   ops: 'border-amber-400 text-amber-400',
 }
 
@@ -189,7 +208,8 @@ export default function AdminDashboard() {
     { key: 'overview', label: 'Overview', icon: <Activity className="h-4 w-4" /> },
     { key: 'funnel', label: 'Funnel', icon: <BarChart3 className="h-4 w-4" /> },
     { key: 'revenue', label: 'Revenue', icon: <DollarSign className="h-4 w-4" /> },
-    { key: 'ops', label: 'Operations', icon: <Settings className="h-4 w-4" /> },
+    { key: 'users', label: 'Users', icon: <Users className="h-4 w-4" /> },
+    { key: 'ops', label: 'Ops', icon: <Settings className="h-4 w-4" /> },
   ]
 
   return (
@@ -253,6 +273,78 @@ export default function AdminDashboard() {
               <MetricCard label="Evaluations This Week" value={fmtNum(o.evaluationsWeek)} icon={<Activity className="h-4 w-4" />} color="green" />
               <MetricCard label="Evaluations This Month" value={fmtNum(o.evaluationsMonth)} icon={<Activity className="h-4 w-4" />} color="green" />
               <MetricCard label="Remaining Unused" value={fmtNum(o.remainingCredits)} icon={<TrendingUp className="h-4 w-4" />} color="amber" />
+            </div>
+
+            {/* Row 4: PV / UV */}
+            <div className="rounded-2xl border border-purple-500/20 bg-[#141414] p-6">
+              <h3 className="text-sm font-semibold text-neutral-400 mb-4">Traffic (PV / UV)</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-[#0f0f0f] p-4">
+                    <div className="text-xs text-neutral-500 mb-1">Total</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.totalPV)}</span>
+                      <span className="text-sm text-neutral-500">PV</span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.totalUV)}</span>
+                      <span className="text-xs text-neutral-500">UV</span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-[#0f0f0f] p-4">
+                    <div className="text-xs text-neutral-500 mb-1">Today</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.pvToday)}</span>
+                      <span className="text-sm text-neutral-500">PV</span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.uvToday)}</span>
+                      <span className="text-xs text-neutral-500">UV</span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-[#0f0f0f] p-4">
+                    <div className="text-xs text-neutral-500 mb-1">7 Days</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.pvWeek)}</span>
+                      <span className="text-sm text-neutral-500">PV</span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.uvWeek)}</span>
+                      <span className="text-xs text-neutral-500">UV</span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-[#0f0f0f] p-4">
+                    <div className="text-xs text-neutral-500 mb-1">30 Days</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.pvMonth)}</span>
+                      <span className="text-sm text-neutral-500">PV</span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.uvMonth)}</span>
+                      <span className="text-xs text-neutral-500">UV</span>
+                    </div>
+                  </div>
+                </div>
+                {/* PV/UV bar comparison */}
+                <div className="rounded-xl bg-[#0f0f0f] p-4">
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Today', PV: stats!.pvuv.pvToday, UV: stats!.pvuv.uvToday },
+                        { name: '7 Days', PV: stats!.pvuv.pvWeek, UV: stats!.pvuv.uvWeek },
+                        { name: '30 Days', PV: stats!.pvuv.pvMonth, UV: stats!.pvuv.uvMonth },
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#525252' }} />
+                        <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #1f1f1f', borderRadius: 8 }} />
+                        <Bar dataKey="PV" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="UV" fill="#c084fc" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Revenue Trend Chart */}
@@ -377,6 +469,73 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Users ── */}
+        {tab === 'users' && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-neutral-400">
+                  User List
+                  <span className="ml-2 text-xs text-neutral-600">({stats!.users.length} users)</span>
+                </h3>
+                <div className="flex gap-2">
+                  <span className="px-2 py-1 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
+                    {stats!.users.filter(u => u.hasPaid).length} Paid
+                  </span>
+                  <span className="px-2 py-1 rounded text-xs bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
+                    {stats!.users.filter(u => !u.hasPaid).length} Free
+                  </span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-neutral-600 border-b border-neutral-800">
+                      <th className="pb-3 font-medium">Email</th>
+                      <th className="pb-3 font-medium">Payment</th>
+                      <th className="pb-3 font-medium text-right">Remaining</th>
+                      <th className="pb-3 font-medium text-right">Purchased</th>
+                      <th className="pb-3 font-medium">Verified</th>
+                      <th className="pb-3 font-medium">Last Purchase</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats!.users.map((u, i) => (
+                      <tr key={i} className="border-b border-neutral-800/50">
+                        <td className="py-3 text-neutral-300">{u.email}</td>
+                        <td className="py-3">
+                          {u.hasPaid ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
+                              <CheckCircle2 className="h-3 w-3" /> Paid
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-neutral-500/10 text-neutral-500 border border-neutral-500/20">
+                              <XCircle className="h-3 w-3" /> Free
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 text-right tabular-nums">
+                          <span className={u.remainingCredits > 0 ? 'text-[#00F2EA] font-semibold' : 'text-neutral-600'}>
+                            {u.remainingCredits}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right tabular-nums text-neutral-400">{u.totalPurchased}</td>
+                        <td className="py-3 text-neutral-500 text-xs">{new Date(u.verifiedAt).toLocaleDateString('en-US')}</td>
+                        <td className="py-3 text-neutral-500 text-xs">
+                          {u.lastPurchaseAt ? new Date(u.lastPurchaseAt).toLocaleDateString('en-US') : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                    {stats!.users.length === 0 && (
+                      <tr><td colSpan={6} className="py-8 text-center text-neutral-600">No users yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

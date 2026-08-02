@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
+  const dbUrl = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
   let pgOk = false
   let pgError = ''
 
