@@ -246,7 +246,19 @@ function HomePageContent() {
       paidHandled.current = true
       setActiveEmail(paidEmail)
       setPaymentSuccess(true)
-      fetchBalance(paidEmail).then(b => { if (b) setCreditBalance(b) })
+      // Poll balance until webhook grants credits (up to 30s, every 2s)
+      let attempts = 0
+      const maxAttempts = 15
+      const poll = async () => {
+        const b = await fetchBalance(paidEmail)
+        if (b && b.credits > 0) {
+          setCreditBalance(b)
+          return
+        }
+        attempts++
+        if (attempts < maxAttempts) setTimeout(poll, 2000)
+      }
+      poll()
       router.replace('/')
       return
     }
