@@ -150,19 +150,19 @@ export function calcEffectivePlays(profile: RawProfile, now: number = Date.now()
   } else if (matureCount > 0 && historicalImplied > 0) {
     effectiveAvgPlays = matureWeightedAvg * 0.2 + historicalImplied * 0.8
     source = 'mature+historical'
-    excludedReason = `成熟视频仅 ${matureCount} 条，含 ${immatureCount} 条未放量新视频，以历史全量数据为主`
+    excludedReason = `Only ${matureCount} mature videos, ${immatureCount} videos still in cold-start — primarily using historical aggregate data`
   } else if (matureCount > 0) {
     effectiveAvgPlays = matureWeightedAvg
     source = 'mature-only'
-    excludedReason = '历史累计数据不足，仅基于成熟视频计算'
+    excludedReason = 'Insufficient historical data — score based on mature videos only'
   } else if (immatureCount + growingCount > 0 && historicalImplied > 0) {
     effectiveAvgPlays = historicalImplied
     source = 'historical-only'
-    excludedReason = `近期 ${immatureCount + growingCount} 条视频均处于冷启动/放量期，不计入均播；使用历史全量数据估算`
+    excludedReason = `Recent ${immatureCount + growingCount} videos are all in cold-start/growth phase — excluded from avg plays; using historical aggregate data`
   } else {
     effectiveAvgPlays = profile.followerCount * DEFAULT_PLAY_FOLLOWER_RATIO
     source = 'fallback'
-    excludedReason = '视频数据不足，按粉丝量的 20% 估算播放量'
+    excludedReason = 'Insufficient video data — estimating plays at 20% of follower count'
   }
 
   effectiveAvgPlays = Math.max(effectiveAvgPlays, 100)

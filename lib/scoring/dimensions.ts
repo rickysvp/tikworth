@@ -261,7 +261,7 @@ export function scoreStability(
   return Math.round(clamp(score, 0, 100))
 }
 
-const COMMERCIAL_CATEGORIES = new Set(['健身运动', 'fitness', '美妆护肤', 'beauty', '时尚穿搭', 'fashion', '美食', 'food', '科技数码', 'tech', '汽车', 'auto', '母婴亲子', 'mom', '金融理财', 'finance'])
+const COMMERCIAL_CATEGORIES = new Set(['Fitness & Sports', 'fitness', 'Beauty & Skincare', 'beauty', 'Fashion & Style', 'fashion', 'Food & Cooking', 'food', 'Tech & Gadgets', 'tech', 'Finance & Investing', 'finance'])
 
 export function scoreCommerce(posts: Post[], categories: string[], followerCount: number): number {
   const tier = getFollowerTier(followerCount)

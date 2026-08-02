@@ -51,7 +51,7 @@ function aggregateByHour(posts: Post[]): { hour: number; engagementRate: number 
 }
 
 function aggregateByWeekday(posts: Post[]): { weekday: string; engagementRate: number }[] {
-  const labels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const buckets: Record<number, { interactions: number; plays: number }> = {}
   for (const post of posts) {
     const d = new Date((post.createTime || 0) * 1000).getDay()
@@ -65,51 +65,51 @@ function aggregateByWeekday(posts: Post[]): { weekday: string; engagementRate: n
 }
 
 function peerGroupFromFollowers(followers: number): string {
-  if (followers < 1000) return '< 1K 粉丝'
-  if (followers < 10000) return '1K-10K 粉丝'
-  if (followers < 100000) return '10K-100K 粉丝'
-  if (followers < 1000000) return '100K-1M 粉丝'
-  return '1M+ 粉丝'
+  if (followers < 1000) return '< 1K followers'
+  if (followers < 10000) return '1K-10K followers'
+  if (followers < 100000) return '10K-100K followers'
+  if (followers < 1000000) return '100K-1M followers'
+  return '1M+ followers'
 }
 
 function inferCategories(profile: RawProfile): string[] {
   const text = `${profile.posts.map(p => (p.desc || '').toLowerCase()).join(' ')} ${String(profile.bio || '').toLowerCase()} ${String(profile.nickname || '').toLowerCase()}`
   const categories: { keyword: string; label: string; priority?: number }[] = [
-    { keyword: '\\bbeauty\\b|\\bmakeup\\b|\\bskincare\\b|妆容|护肤|cosmetic|lipstick|foundation', label: '美妆护肤', priority: 6 },
-    { keyword: '\\bfashion\\b|ootd|穿搭|衣服|\\boutfit\\b|\\bstyle\\b|lookbook|模特|\\bmodel\\b', label: '时尚穿搭', priority: 6 },
-    { keyword: '\\btech\\b|\\btechnology\\b|\\bgadget\\b|\\bphone\\b|\\bsmartphone\\b|科技|手机|数码|电子产品|unboxing|laptop|camera|耳机|电脑', label: '科技数码' },
-    { keyword: '\\bfood\\b|\\brecipe\\b|\\bcooking\\b|美食|做饭|料理|厨房|restaurant', label: '美食' },
-    { keyword: '\\bfitness\\b|\\bworkout\\b|\\bgym\\b|健身|运动|\\btraining\\b|yoga|pilates|跑步|marathon|swim|swimming|\\bsport\\b|\\bsports\\b', label: '健身运动', priority: 8 },
-    { keyword: 'mma|ufc|\\bboxing\\b|jiujitsu|柔术|格斗|摔跤|grappling|\\bwrestling\\b|\\bmartial\\b|\\bjudo\\b|\\bkarate\\b', label: '格斗运动', priority: 10 },
-    { keyword: '\\btravel\\b|\\bvlog\\b|\\btrip\\b|旅行|旅游|hotel|destination', label: '旅游' },
-    { keyword: '\\bgame\\b|\\bgaming\\b|\\bplay\\b|游戏|\\bgamer\\b|stream', label: '游戏' },
-    { keyword: '\\bfinance\\b|\\bmoney\\b|\\binvest\\b|理财|赚钱|crypto|\\bstock\\b', label: '金融理财' },
-    { keyword: '美女|颜值|女神|\\bsexy\\b|\\bpretty\\b|\\bgorgeous\\b|\\bgirl\\b|\\bhot\\b|\\bcute\\b', label: '美女/颜值', priority: 6 },
-    { keyword: '\\bcomedy\\b|\\bfunny\\b|搞笑|幽默|段子|笑话|\\bmeme\\b', label: '搞笑' },
-    { keyword: '\\bmusic\\b|\\bdance\\b|跳舞|舞蹈|翻唱|\\bcover\\b|\\bsong\\b', label: '才艺' },
-    { keyword: '\\bpet\\b|\\bcat\\b|\\bdog\\b|宠物|猫|狗|\\banimal\\b', label: '宠物' },
+    { keyword: '\\bbeauty\\b|\\bmakeup\\b|\\bskincare\\b|妆容|护肤|cosmetic|lipstick|foundation', label: 'Beauty & Skincare', priority: 6 },
+    { keyword: '\\bfashion\\b|ootd|穿搭|衣服|\\boutfit\\b|\\bstyle\\b|lookbook|模特|\\bmodel\\b', label: 'Fashion & Style', priority: 6 },
+    { keyword: '\\btech\\b|\\btechnology\\b|\\bgadget\\b|\\bphone\\b|\\bsmartphone\\b|科技|手机|数码|电子产品|unboxing|laptop|camera|耳机|电脑', label: 'Tech & Gadgets' },
+    { keyword: '\\bfood\\b|\\brecipe\\b|\\bcooking\\b|美食|做饭|料理|厨房|restaurant', label: 'Food & Cooking' },
+    { keyword: '\\bfitness\\b|\\bworkout\\b|\\bgym\\b|健身|运动|\\btraining\\b|yoga|pilates|跑步|marathon|swim|swimming|\\bsport\\b|\\bsports\\b', label: 'Fitness & Sports', priority: 8 },
+    { keyword: 'mma|ufc|\\bboxing\\b|jiujitsu|柔术|格斗|摔跤|grappling|\\bwrestling\\b|\\bmartial\\b|\\bjudo\\b|\\bkarate\\b', label: 'Combat Sports', priority: 10 },
+    { keyword: '\\btravel\\b|\\bvlog\\b|\\btrip\\b|旅行|旅游|hotel|destination', label: 'Travel' },
+    { keyword: '\\bgame\\b|\\bgaming\\b|\\bplay\\b|游戏|\\bgamer\\b|stream', label: 'Gaming' },
+    { keyword: '\\bfinance\\b|\\bmoney\\b|\\binvest\\b|理财|赚钱|crypto|\\bstock\\b', label: 'Finance & Investing' },
+    { keyword: '美女|颜值|女神|\\bsexy\\b|\\bpretty\\b|\\bgorgeous\\b|\\bgirl\\b|\\bhot\\b|\\bcute\\b', label: 'Beauty & Lifestyle', priority: 6 },
+    { keyword: '\\bcomedy\\b|\\bfunny\\b|搞笑|幽默|段子|笑话|\\bmeme\\b', label: 'Comedy' },
+    { keyword: '\\bmusic\\b|\\bdance\\b|跳舞|舞蹈|翻唱|\\bcover\\b|\\bsong\\b', label: 'Music & Dance' },
+    { keyword: '\\bpet\\b|\\bcat\\b|\\bdog\\b|宠物|猫|狗|\\banimal\\b', label: 'Pets & Animals' },
   ]
   const matched = categories.filter(c => new RegExp(c.keyword, 'i').test(text))
     .sort((a, b) => (b.priority || 0) - (a.priority || 0)).map(c => c.label)
-  return matched.length ? matched.slice(0, 3) : ['生活方式', '泛娱乐']
+  return matched.length ? matched.slice(0, 3) : ['Lifestyle', 'General Entertainment']
 }
 
 function detectRisks(profile: RawProfile, metrics: Metrics, classified: ReturnType<typeof classifyAllPosts>): RiskFlag[] {
   const risks: RiskFlag[] = []
   if (!profile.posts.length) {
-    risks.push({ level: 'medium', label: '样本不足', detail: '未获取到近期视频，评分参考性较低' })
+    risks.push({ level: 'medium', label: 'Insufficient Data', detail: 'No recent videos available — score reliability is limited' })
     return risks
   }
   const { engagementRate, cvPlays, daysSinceLastPost } = metrics
   const frRatio = profile.followerCount / Math.max(profile.followingCount, 1)
-  if (engagementRate < RISK_THRESHOLDS.engagementRateCritical) risks.push({ level: 'high', label: '疑似买粉/僵尸号', detail: '互动率极低，粉丝活跃度可能不真实' })
-  else if (profile.followerCount > 100000 && engagementRate < 1) risks.push({ level: 'high', label: '虚高粉丝', detail: '粉丝量大但互动率异常低，商业价值有限' })
-  if (frRatio < RISK_THRESHOLDS.followerFollowingCritical) risks.push({ level: 'high', label: '疑似互关刷量', detail: '关注数接近或超过粉丝数，疑似互关/刷量账号' })
-  if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysCritical) risks.push({ level: 'high', label: '长期断更', detail: '超过 60 天未发布新视频' })
-  else if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysWarning) risks.push({ level: 'medium', label: '更新频率低', detail: '超过 30 天未发布新视频' })
+  if (engagementRate < RISK_THRESHOLDS.engagementRateCritical) risks.push({ level: 'high', label: 'Suspected Bot Followers', detail: 'Extremely low engagement rate — follower activity may be inauthentic' })
+  else if (profile.followerCount > 100000 && engagementRate < 1) risks.push({ level: 'high', label: 'Inflated Followers', detail: 'Large follower count with abnormally low engagement — limited commercial value' })
+  if (frRatio < RISK_THRESHOLDS.followerFollowingCritical) risks.push({ level: 'high', label: 'Suspected Follow-for-Follow', detail: 'Following count close to or exceeding follower count — possible bot/follow-train activity' })
+  if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysCritical) risks.push({ level: 'high', label: 'Extended Inactivity', detail: 'No new videos in over 60 days' })
+  else if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysWarning) risks.push({ level: 'medium', label: 'Low Posting Frequency', detail: 'No new videos in over 30 days' })
   const matureCV = classified.mature.length >= 3 ? calcMaturePlayCV(classified.mature) : cvPlays
-  if (matureCV > RISK_THRESHOLDS.cvPlaysCritical) risks.push({ level: 'medium', label: '流量波动异常', detail: '成熟视频播放量波动极大，可能被限流或内容不稳定' })
-  if (profile.videoCount < 5) risks.push({ level: 'medium', label: '样本不足', detail: '视频总数过少，评分可能不稳定' })
+  if (matureCV > RISK_THRESHOLDS.cvPlaysCritical) risks.push({ level: 'medium', label: 'Erratic Traffic', detail: 'Extreme play volatility on mature videos — possible shadowban or inconsistent content' })
+  if (profile.videoCount < 5) risks.push({ level: 'medium', label: 'Insufficient Data', detail: 'Very low video count — score may be unstable' })
   return risks
 }
 
@@ -157,10 +157,10 @@ function computeMetrics(profile: RawProfile, ep: ReturnType<typeof calcEffective
 }
 
 /**
- * 三层评分流程（Spec 定义）
- * 第一步：核心驱动（60%）→ 确定评级区间
- * 第二步：质量调节（30%）→ 区间内微调
- * 第三步：风险调节（10%）→ 只扣分，触发降级
+ * Three-Layer Scoring Process (Spec-defined)
+ * Step 1: Core Drivers (60%) → Determines rating range
+ * Step 2: Quality Modifiers (30%) → Fine-tunes within range
+ * Step 3: Risk Adjustments (10%) → Penalty only, triggers downgrade
  */
 function totalScore(dims: DimensionScores, _followerCount: number): { score: number; coreScore: number; qualityScore: number; riskScore: number } {
   const { core, quality, risk } = THREE_LAYER_WEIGHTS
@@ -198,10 +198,10 @@ function buildAccountHealth(metrics: Metrics, risks: RiskFlag[], dims: Dimension
     shadowbanRisk: risk,
     shadowbanSignals: risks.map(r => r.detail),
     growthAnomaly: metrics.playGrowth < -40 ? 'abnormal' : metrics.playGrowth < -20 ? 'suspect' : 'normal',
-    growthAnomalyReason: metrics.playGrowth < -20 ? '近期播放中位数较前期明显下跌' : '增长趋势正常',
+    growthAnomalyReason: metrics.playGrowth < -20 ? 'Recent median plays significantly lower than earlier period' : 'Growth trend normal',
     engagementAuthenticity: Math.round(authenticity),
     fakeFollowerEstimate: Math.round(clamp(100 - authenticity, 0, 100)),
-    healthReasoning: risk === 'high' ? `账号存在 ${highCount} 个高风险信号，建议先排查风险再考虑合作或变现。` : risk === 'medium' ? `账号整体正常，但存在 ${risks.length} 个值得关注的问题。` : '账号健康状态良好，没有明显风险信号。',
+    healthReasoning: risk === 'high' ? `Account has ${highCount} high-risk signal(s) — address risks before pursuing partnerships or monetization.` : risk === 'medium' ? `Account is generally healthy, but ${risks.length} issue(s) worth monitoring.` : 'Account health is good — no significant risk signals detected.',
   }
 }
 
@@ -217,7 +217,7 @@ function buildContentCadence(posts: Post[], now: number = Math.floor(Date.now() 
     bestTimeSlots: aggregateByHour(recent).slice(0, 3),
     bestWeekdays: aggregateByWeekday(recent).slice(0, 3),
     consistencyScore: Math.round(clamp(100 - Math.abs(avgPerDay - 1) * 30, 0, 100)),
-    cadenceAdvice: rhythm === 'irregular' ? '发布节奏不稳定，建议先固定到每周至少 3 条，培养粉丝预期。' : '发布节奏健康，建议继续保持并持续优化内容。',
+    cadenceAdvice: rhythm === 'irregular' ? 'Posting rhythm is irregular — aim for at least 3 videos per week to build audience expectations.' : 'Posting rhythm is healthy — maintain consistency and continue optimizing content.',
   }
 }
 
@@ -234,7 +234,7 @@ function buildEngagementQuality(metrics: Metrics, profile: RawProfile, classifie
     completionRate: null,
     viralCoefficient: Number(viralCoeff.toFixed(2)),
     topEngagers: [],
-    qualityReasoning: metrics.engagementRate >= 5 ? '互动质量优秀，粉丝活跃度高，适合商业合作。' : metrics.engagementRate >= 2 ? '互动质量合格，可通过优化评论引导和前 3 秒钩子进一步提升。' : '互动质量偏低，需优先排查内容吸引力或粉丝真实性。',
+    qualityReasoning: metrics.engagementRate >= 5 ? 'Excellent engagement quality — highly active followers, suitable for commercial partnerships.' : metrics.engagementRate >= 2 ? 'Adequate engagement quality — can improve with better comment prompts and first-3-second hooks.' : 'Low engagement quality — prioritize evaluating content appeal or follower authenticity.',
   }
 }
 
@@ -242,9 +242,9 @@ function buildPeerBenchmark(profile: RawProfile, metrics: Metrics): PeerBenchmar
   const peers = getPeerBenchmarks(profile.followerCount)
   const playsRatio = profile.followerCount > 0 ? metrics.effectiveAvgPlays / profile.followerCount : 0
   const benchmarks = [
-    { metric: '互动率', userValue: metrics.engagementRate, peerAvg: peers.avgER, peerTop10: peers.top10ER },
-    { metric: '平均播放/粉丝比', userValue: playsRatio, peerAvg: peers.avgPlaysRatio, peerTop10: peers.avgPlaysRatio * 1.8 },
-    { metric: '播放增长', userValue: metrics.playGrowth, peerAvg: 3, peerTop10: 15 },
+    { metric: 'Engagement Rate', userValue: metrics.engagementRate, peerAvg: peers.avgER, peerTop10: peers.top10ER },
+    { metric: 'Avg Plays/Follower', userValue: playsRatio, peerAvg: peers.avgPlaysRatio, peerTop10: peers.avgPlaysRatio * 1.8 },
+    { metric: 'Play Growth', userValue: metrics.playGrowth, peerAvg: 3, peerTop10: 15 },
   ]
   const aboveCount = benchmarks.filter(b => b.userValue >= b.peerTop10).length
   const avgCount = benchmarks.filter(b => b.userValue >= b.peerAvg).length
@@ -272,11 +272,11 @@ function buildBrandPotential(metrics: Metrics, categories: string[], health: Acc
     audienceSpendingPower: spendingPower,
     suitableCategories: categories,
     collaborationTypes: [
-      { type: '短视频植入', fit: clamp(Math.round(score), 0, 100), expectedRevenue: '基于均播 × CPM 计算' },
-      { type: '直播带货', fit: clamp(Math.round(score - 10), 0, 100), expectedRevenue: '按 GMV 分成 10-20%' },
-      { type: '联盟分销', fit: clamp(Math.round(score - 5), 0, 100), expectedRevenue: '按成交 CPS' },
+      { type: 'Short-Video Sponsorship', fit: clamp(Math.round(score), 0, 100), expectedRevenue: 'Based on avg plays × CPM' },
+      { type: 'Live Shopping', fit: clamp(Math.round(score - 10), 0, 100), expectedRevenue: 'GMV commission 10-20%' },
+      { type: 'Affiliate Marketing', fit: clamp(Math.round(score - 5), 0, 100), expectedRevenue: 'CPS-based commission' },
     ],
-    brandReasoning: score >= 70 ? `品牌合作潜力较高，${categories.join('、')} 方向匹配度好，可按市场行情报价。` : '品牌合作潜力一般，建议先聚焦内容质量和互动率提升。',
+    brandReasoning: score >= 70 ? `Strong brand partnership potential — ${categories.join(', ')} niche has good fit, can quote at market rates.` : 'Moderate brand potential — focus on improving content quality and engagement rate first.',
   }
 }
 
@@ -287,44 +287,44 @@ function buildBrandMatching(categories: string[], cpm: number, effectiveAvgPlays
       category: cat, icon: '✨',
       fitScore: Math.max(50, Math.min(95, 85 - idx * 7)),
       estimatedDealRange: { low: Math.round(perVideoMid * 0.6), high: Math.round(perVideoMid * 1.5) },
-      exampleBrands: ['相关品类品牌'],
-      collaborationType: '产品植入/测评',
-      reasoning: `${cat} 品类品牌与账号内容匹配度较高`,
+      exampleBrands: ['Relevant brands in this category'],
+      collaborationType: 'Product Placement / Review',
+      reasoning: `Strong content alignment with ${cat} category brands`,
     }
   })
-  if (!matches.length) matches.push({ category: '通用', icon: '✨', fitScore: 60, estimatedDealRange: { low: 100, high: 500 }, exampleBrands: [], collaborationType: '品牌曝光', reasoning: '内容适合大众消费品牌' })
+  if (!matches.length) matches.push({ category: 'General', icon: '✨', fitScore: 60, estimatedDealRange: { low: 100, high: 500 }, exampleBrands: [], collaborationType: 'Brand Exposure', reasoning: 'Content suitable for mass-market consumer brands' })
   const totalLow = matches.reduce((s, m) => s + m.estimatedDealRange.low, 0)
   const totalHigh = matches.reduce((s, m) => s + m.estimatedDealRange.high, 0)
-  return { matches, totalBrandValue: { low: totalLow, mid: Math.round((totalLow + totalHigh) / 2), high: totalHigh }, summary: `基于账号内容风格（${categories.join('、')}）的品牌匹配推荐` }
+  return { matches, totalBrandValue: { low: totalLow, mid: Math.round((totalLow + totalHigh) / 2), high: totalHigh }, summary: `Brand matching based on content style (${categories.join(', ')})` }
 }
 
 function buildMonetizationPath(profile: RawProfile, metrics: Metrics, income: import('@/types').IncomeEstimate): MonetizationPath {
   const eligible: string[] = []
   if (profile.followerCount >= MONETIZATION_THRESHOLDS.creatorFundFollowers && profile.videoCount >= 10) eligible.push('Creator Fund / Creativity Program')
-  if (profile.followerCount >= MONETIZATION_THRESHOLDS.tiktokShopFollowers) eligible.push('TikTok Shop 联盟')
-  if (profile.followerCount >= MONETIZATION_THRESHOLDS.liveGiftFollowers) eligible.push('LIVE 礼物')
-  if (profile.followerCount >= MONETIZATION_THRESHOLDS.subscriptionFollowers) eligible.push('订阅功能')
-  const nearest = eligible.length === 0 ? { program: 'Creator Fund', gap: `还差 ${Math.max(0, MONETIZATION_THRESHOLDS.creatorFundFollowers - profile.followerCount).toLocaleString()} 粉丝` } : null
-  return { eligiblePrograms: eligible, nearestThreshold: nearest, estimatedMonthlyUsd: income.monthlyTotal, pathReasoning: eligible.length ? `已满足 ${eligible.join('、')} 的门槛，可开始尝试变现。` : `暂未满足主要变现门槛，${nearest?.gap}，建议持续输出垂直内容。` }
+  if (profile.followerCount >= MONETIZATION_THRESHOLDS.tiktokShopFollowers) eligible.push('TikTok Shop Affiliate')
+  if (profile.followerCount >= MONETIZATION_THRESHOLDS.liveGiftFollowers) eligible.push('LIVE Gifts')
+  if (profile.followerCount >= MONETIZATION_THRESHOLDS.subscriptionFollowers) eligible.push('Subscription')
+  const nearest = eligible.length === 0 ? { program: 'Creator Fund', gap: `${Math.max(0, MONETIZATION_THRESHOLDS.creatorFundFollowers - profile.followerCount).toLocaleString()} more followers needed` } : null
+  return { eligiblePrograms: eligible, nearestThreshold: nearest, estimatedMonthlyUsd: income.monthlyTotal, pathReasoning: eligible.length ? `Qualifies for ${eligible.join(', ')} — ready to start monetizing.` : `Not yet meeting key monetization thresholds — ${nearest?.gap}, continue publishing niche content.` }
 }
 
 function buildGrowthPlan(risks: RiskFlag[], metrics: Metrics, cadence: ContentCadence, dims: DimensionScores, followerCount: number): GrowthPlan {
   const items: GrowthItem[] = []
-  if (risks.some(r => r.level === 'high')) items.push({ priority: 'high', area: '账号健康', action: '排查近 10 条视频是否违规或被限流，必要时停更 3-5 天恢复权重', expectedImpact: '降低限流风险，恢复推荐流量' })
-  if (metrics.engagementRate < 3) items.push({ priority: 'high', area: '互动率', action: '优化前 3 秒钩子 + 增加评论引导，提升完播和评论率', expectedImpact: '互动率从当前水平提升至 3-5%' })
-  if (cadence.consistencyScore < 60) items.push({ priority: 'medium', area: '发布节奏', action: `每周稳定发布 ${Math.max(3, Math.round(cadence.avgPostsPerWeek))} 条以上`, expectedImpact: '提升账号活跃度和推荐稳定性' })
-  if (followerCount < 10000) items.push({ priority: 'medium', area: '内容定位', action: '聚焦 1-2 个垂直方向，每条视频带 3-5 个精准话题标签', expectedImpact: '加速达到 Creator Fund 门槛' })
-  if (dims.stability < 50) items.push({ priority: 'medium', area: '流量稳定性', action: '分析播放量低谷视频，找出内容或发布时间上的共同点并规避', expectedImpact: '降低播放波动，提升账号可预期性' })
-  return { items: items.slice(0, 5), summary: items.length ? `建议优先处理 ${items.filter(i => i.priority === 'high').length} 项高风险/高回报优化点` : '当前账号综合状态良好，继续保持现有节奏' }
+  if (risks.some(r => r.level === 'high')) items.push({ priority: 'high', area: 'Account Health', action: 'Audit last 10 videos for violations or shadowbans — pause posting 3-5 days if needed to restore reach', expectedImpact: 'Reduce shadowban risk, restore recommendation traffic' })
+  if (metrics.engagementRate < 3) items.push({ priority: 'high', area: 'Engagement Rate', action: 'Optimize first-3-second hook + add comment prompts to boost completion and comment rates', expectedImpact: 'Boost engagement rate from current level to 3-5%' })
+  if (cadence.consistencyScore < 60) items.push({ priority: 'medium', area: 'Posting Cadence', action: `Publish at least ${Math.max(3, Math.round(cadence.avgPostsPerWeek))} videos per week consistently`, expectedImpact: 'Improve account activity and recommendation stability' })
+  if (followerCount < 10000) items.push({ priority: 'medium', area: 'Content Niche', action: 'Focus on 1-2 vertical niches — use 3-5 targeted hashtags per video', expectedImpact: 'Accelerate path to Creator Fund eligibility' })
+  if (dims.stability < 50) items.push({ priority: 'medium', area: 'Traffic Stability', action: 'Analyze low-performing videos — identify common patterns in content or timing to avoid', expectedImpact: 'Reduce play volatility, improve account predictability' })
+  return { items: items.slice(0, 5), summary: items.length ? `Prioritize ${items.filter(i => i.priority === 'high').length} high-impact/high-ROI optimization(s)` : 'Account is in good shape — maintain current cadence and quality' }
 }
 
 function buildAccountProfile(profile: RawProfile, metrics: Metrics, categories: string[], cadence: ContentCadence): AccountProfile {
   return {
     categories: categories.slice(0, 3),
-    personaType: profile.followerCount >= 1000000 ? '头部达人' : profile.followerCount >= 100000 ? '腰部创作者' : profile.followerCount >= 10000 ? '成长型博主' : '素人创作者',
-    postingRhythm: cadence.postingRhythm === 'daily' ? '日更' : cadence.postingRhythm === 'weekly' ? '周更' : '不定期更新',
+    personaType: profile.followerCount >= 1000000 ? 'Mega Creator' : profile.followerCount >= 100000 ? 'Mid-Tier Creator' : profile.followerCount >= 10000 ? 'Growing Creator' : 'Nano Creator',
+    postingRhythm: cadence.postingRhythm === 'daily' ? 'Daily' : cadence.postingRhythm === 'weekly' ? 'Weekly' : 'Irregular',
     audienceRegion: profile.region || 'US',
-    contentStyle: metrics.engagementRate >= 6 ? '高互动型' : metrics.engagementRate >= 3 ? '内容驱动型' : '流量型',
+    contentStyle: metrics.engagementRate >= 6 ? 'High-Engagement' : metrics.engagementRate >= 3 ? 'Content-Driven' : 'Traffic-Driven',
   }
 }
 
@@ -337,20 +337,20 @@ function buildPeerRanking(metrics: Metrics, peerBench: PeerBenchmark, followerCo
     tierLabel: `Top ${100 - peerBench.percentile}%`,
     peerGroupDescription: peerGroupFromFollowers(followerCount),
     rankingBreakdown: [
-      { metric: '互动率', value: `${metrics.engagementRate.toFixed(1)}%`, percentile: clamp(50 + (metrics.engagementRate - 3) * 12, 1, 99), barColor: '#00F2EA' },
-      { metric: '平均播放', value: metrics.effectiveAvgPlays >= 1000 ? (metrics.effectiveAvgPlays / 1000).toFixed(1) + 'K' : String(metrics.effectiveAvgPlays), percentile: Math.round(playsPercentile), barColor: '#FF0050' },
-      { metric: '播放增长', value: `${metrics.playGrowth > 0 ? '+' : ''}${metrics.playGrowth.toFixed(0)}%`, percentile: clamp(50 + metrics.playGrowth * 1.5, 1, 99), barColor: metrics.playGrowth > 0 ? '#22c55e' : '#f59e0b' },
+      { metric: 'Engagement', value: `${metrics.engagementRate.toFixed(1)}%`, percentile: clamp(50 + (metrics.engagementRate - 3) * 12, 1, 99), barColor: '#00F2EA' },
+      { metric: 'Avg Plays', value: metrics.effectiveAvgPlays >= 1000 ? (metrics.effectiveAvgPlays / 1000).toFixed(1) + 'K' : String(metrics.effectiveAvgPlays), percentile: Math.round(playsPercentile), barColor: '#FF0050' },
+      { metric: 'Play Growth', value: `${metrics.playGrowth > 0 ? '+' : ''}${metrics.playGrowth.toFixed(0)}%`, percentile: clamp(50 + metrics.playGrowth * 1.5, 1, 99), barColor: metrics.playGrowth > 0 ? '#22c55e' : '#f59e0b' },
     ],
-    insight: '基于同体量创作者的相对表现评估（基于 log 曲线基准函数）',
+    insight: 'Relative performance benchmark against peer creators of similar follower range (log-curve based)',
   }
 }
 
 function buildTrendAnalysis(metrics: Metrics, cadence: ContentCadence): TrendAnalysis {
-  const dir = metrics.playGrowth > 20 ? '上升趋势明显，继续保持更新节奏' : metrics.playGrowth > 0 ? '稳步增长，可尝试热点内容加速' : metrics.playGrowth > -20 ? '增长放缓，建议优化内容钩子' : '流量下滑明显，建议排查限流或调整方向'
+  const dir = metrics.playGrowth > 20 ? 'Strong upward trend — maintain posting cadence' : metrics.playGrowth > 0 ? 'Steady growth — try trending topics to accelerate' : metrics.playGrowth > -20 ? 'Growth slowing — consider optimizing content hooks' : 'Significant decline — investigate shadowban or adjust content direction'
   return {
     trendingTopics: [], trendingSounds: [],
-    contentPredictions: [{ direction: dir, confidence: clamp(Math.abs(metrics.playGrowth) + 40, 30, 90), expectedEngagement: metrics.engagementRate >= 3 ? '3-6%' : '1-3%', why: `基于 ${metrics.playGrowth.toFixed(0)}% 播放增长和 ${metrics.engagementRate.toFixed(1)}% 互动率预测` }],
-    bestPostTimes: cadence.bestTimeSlots.slice(0, 3).map((t, i) => ({ day: cadence.bestWeekdays[i % Math.max(cadence.bestWeekdays.length, 1)]?.weekday || '周三', hour: t.hour, score: t.engagementRate })),
+    contentPredictions: [{ direction: dir, confidence: clamp(Math.abs(metrics.playGrowth) + 40, 30, 90), expectedEngagement: metrics.engagementRate >= 3 ? '3-6%' : '1-3%', why: `Based on ${metrics.playGrowth.toFixed(0)}% play growth and ${metrics.engagementRate.toFixed(1)}% engagement rate` }],
+    bestPostTimes: cadence.bestTimeSlots.slice(0, 3).map((t, i) => ({ day: cadence.bestWeekdays[i % Math.max(cadence.bestWeekdays.length, 1)]?.weekday || 'Wed', hour: t.hour, score: t.engagementRate })),
     summary: dir,
   }
 }
@@ -358,13 +358,13 @@ function buildTrendAnalysis(metrics: Metrics, cadence: ContentCadence): TrendAna
 function buildCommercializationAdvice(categories: string[], dims: DimensionScores, income: import('@/types').IncomeEstimate, followerCount: number): CommercializationAdvice {
   const tier = getFollowerTier(followerCount)
   const directions: CommercializationDirection[] = []
-  if (dims.commerce >= 40) directions.push({ name: '品牌赞助', icon: '💰', fitScore: dims.commerce, difficulty: tier === 'nano' ? 'low' : 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'brand_deals')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: '通过品牌植入、测评、合作视频获取收入', actionSteps: ['完善媒体包', '主动联系相关品牌', '加入达人平台'], why: '品牌赞助是最稳定的变现方式', prerequisites: ['10K+ 粉丝（建议）', '稳定的内容质量'] })
-  if (categories.some(c => ['美食', 'food', '美妆护肤', 'beauty', '时尚穿搭', 'fashion', '健身运动', 'fitness'].includes(c.toLowerCase()))) {
-    directions.push({ name: 'TikTok Shop', icon: '🛒', fitScore: dims.monetization, difficulty: 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'tiktok_shop')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: '通过短视频/直播带货获取佣金', actionSteps: ['开通 Shop 权限', '选品匹配内容', '优化挂车视频'], why: '适合高转化品类', prerequisites: ['1K+ 粉丝', '垂直品类内容'] })
+  if (dims.commerce >= 40) directions.push({ name: 'Brand Sponsorships', icon: '💰', fitScore: dims.commerce, difficulty: tier === 'nano' ? 'low' : 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'brand_deals')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: 'Earn through brand integrations, product reviews, and sponsored content', actionSteps: ['Create a media kit', 'Reach out to relevant brands', 'Join creator platforms'], why: 'Brand sponsorships are the most stable monetization channel', prerequisites: ['10K+ followers (recommended)', 'Consistent content quality'] })
+  if (categories.some(c => ['food', 'food & cooking', 'beauty', 'beauty & skincare', 'fashion', 'fashion & style', 'fitness', 'fitness & sports'].includes(c.toLowerCase()))) {
+    directions.push({ name: 'TikTok Shop', icon: '🛒', fitScore: dims.monetization, difficulty: 'medium', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'tiktok_shop')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'high', description: 'Earn commissions through short-video & live shopping', actionSteps: ['Activate Shop access', 'Match products to content niche', 'Optimize product-linked videos'], why: 'Ideal for high-conversion product categories', prerequisites: ['1K+ followers', 'Vertical niche content'] })
   }
-  directions.push({ name: '创作者基金', icon: '🎬', fitScore: dims.monetization, difficulty: 'low', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'creator_program')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'low', description: '通过播放量获取平台分成', actionSteps: ['满足 10K 粉门槛', '持续产出原创内容', '申请 Beta 计划'], why: '最基础的变现方式', prerequisites: ['10K+ 粉丝', '10K+ 均播（Beta）'] })
+  directions.push({ name: 'Creator Program', icon: '🎬', fitScore: dims.monetization, difficulty: 'low', estimatedMonthlyRevenue: income.breakdown.find(b => b.source === 'creator_program')?.monthlyAmount || { low: 0, mid: 0, high: 0 }, revenuePotential: 'low', description: 'Earn platform revenue share based on video views', actionSteps: ['Meet 10K follower threshold', 'Consistently produce original content', 'Apply for Beta program'], why: 'The most fundamental monetization method', prerequisites: ['10K+ followers', '10K+ avg plays (Beta)'] })
   const total = income.monthlyTotal
-  return { directions, primaryRecommendation: directions[0]?.name || '品牌赞助', secondaryRecommendation: directions[1]?.name || '创作者基金', estimatedTotalMonthly: total, summary: `根据账号体量（${tier}）和内容品类，建议优先尝试 ${directions[0]?.name || '品牌赞助'}` }
+  return { directions, primaryRecommendation: directions[0]?.name || 'Brand Sponsorships', secondaryRecommendation: directions[1]?.name || 'Creator Program', estimatedTotalMonthly: total, summary: `Based on account tier (${tier}) and content niche, prioritize ${directions[0]?.name || 'Brand Sponsorships'}` }
 }
 
 export interface ScoreOptions { now?: number }
@@ -383,7 +383,7 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
   const health = buildAccountHealth(metrics, risks, dims)
   const income = buildIncomeEstimate({ profile, metrics, dims, categories, cadence, risks })
   const business = buildBusinessValue({ profile, metrics, dims, categories, income, risks })
-  // 评级基于商业价值（后置于 business value 计算）
+  // Rating is based on business value (computed after business value calculation)
   const { tier, reason: tierReason } = tierFromBusinessValue(business.totalValue.mid, profile.followerCount, risks)
   const roadmap = buildRevenueRoadmap({ profile, metrics, dims, risks, income })
   const { cpm: categoryCpm, label: categoryLabel } = pickCategoryCpm(categories)

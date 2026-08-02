@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { grantCredits } from '@/lib/credits-server'
 import { getServerDict } from '@/lib/i18n/server'
+import { recordEvent } from '@/lib/analytics'
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || ''
@@ -41,6 +42,12 @@ export async function POST(req: NextRequest) {
       try {
         await grantCredits(email.toLowerCase(), packageId, creditsNum, parseFloat(amount || '0'), session.id)
         console.log('[stripe-webhook] granted credits to', email, packageId, credits)
+        // Record purchase analytics event
+        recordEvent({
+          event_type: 'purchase',
+          email: email.toLowerCase(),
+          metadata: { package_id: packageId, credits: creditsNum, amount: parseFloat(amount || '0') },
+        }).catch(err => console.warn('[stripe-webhook] analytics record failed:', err))
       } catch (err) {
         console.error('[stripe-webhook] failed to grant credits:', err)
         return NextResponse.json({ error: getServerDict().api.stripe.FAILED_GRANT }, { status: 500 })

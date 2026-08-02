@@ -8,7 +8,7 @@ import { Evaluation } from '@/types'
 import { ScoreGauge } from '@/components/ScoreGauge'
 import { RadarChart } from '@/components/RadarChart'
 import { RiskList } from '@/components/RiskList'
-import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet } from 'lucide-react'
+import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet, Share2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { GrowthPlanSection } from '@/components/sections/GrowthPlanSection'
 import { IncomeBreakdownSection } from '@/components/sections/IncomeBreakdownSection'
@@ -23,7 +23,7 @@ import { PaidWall } from '@/components/PaidWall'
 import { DeepAnalysisSection } from '@/components/DeepAnalysisSection'
 import { SectionHeader } from '@/components/SectionHeader'
 import { saveToTracker, getTrackedByUsername } from '@/lib/tracker'
-import { exportPdfReport } from '@/lib/export-pdf'
+import { downloadPdf } from '@/lib/export-pdf'
 import { APP_VERSION } from '@/lib/version'
 import { formatNumber } from '@/lib/format'
 import { useToast, ToastContainer } from '@/components/Toast'
@@ -34,6 +34,15 @@ import { CREDIT_PACKAGES } from '@/lib/credits'
 import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken } from '@/lib/credits-client'
 import { ParticleBackground } from '@/components/ParticleBackground'
 import { VerifyEmailModal } from '@/components/VerifyEmailModal'
+
+// Client-side analytics tracking helper
+function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type, metadata }),
+  }).catch(() => {})
+}
 
 const examples = ['charlidamelio', 'mrbeast', 'khaby.lame', 'zachking']
 
@@ -98,9 +107,20 @@ function HomePageContent() {
     }
   }, [showExportMenu])
 
+  // Track paywall_view when needPurchase becomes true
+  useEffect(() => {
+    if (needPurchase) {
+      trackEvent('paywall_view', { username: pendingUsername.current || username })
+    }
+  }, [needPurchase, username])
+
   // Handle unlock: 购买成功后自动重新评估
   async function handleUnlock() {
     setIsUnlocking(true)
+
+    // Track paywall_click
+    trackEvent('paywall_click', { username: pendingUsername.current || username })
+
     try {
       // 刷新余额
       const email = getActiveEmail()
@@ -137,10 +157,29 @@ function HomePageContent() {
     if (!result || !reportRef.current) return
     setShowExportMenu(false)
     try {
-      await exportPdfReport(result, true, reportRef.current)
+      await downloadPdf(result, reportRef.current)
     } catch (err) {
       console.error('[export-pdf] failed:', err)
       toast(dict.toast.pdfExportFailed + (err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  async function handleShareLink() {
+    if (!result) return
+    setShowExportMenu(false)
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: result.username }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create share link')
+      await navigator.clipboard.writeText(data.shareUrl)
+      toast(dict.evaluation.shareLinkCopied)
+    } catch (err) {
+      console.error('[share-link] failed:', err)
+      toast(dict.evaluation.shareLinkError)
     }
   }
 
@@ -152,6 +191,9 @@ function HomePageContent() {
     setError('')
     setResult(null)
     setNeedPurchase(false)
+
+    // Track search event
+    trackEvent('search', { username: target })
 
     try {
       const controller = new AbortController()
@@ -510,23 +552,34 @@ function HomePageContent() {
                     <p className="text-sm text-neutral-400 leading-relaxed mb-5">
                       {dict.home.capabilities.authority.desc}
                     </p>
-                    <div className="mb-4">
-                      <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2">{dict.home.capabilities.authority.tierDistribution}</div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {[
-                          { tier: 'S', color: 'bg-green-500/20 text-green-400', pct: dict.tiers.tierDistribution.S },
-                          { tier: 'A', color: 'bg-green-400/20 text-green-400', pct: dict.tiers.tierDistribution.A },
-                          { tier: 'B', color: 'bg-amber-400/20 text-amber-400', pct: dict.tiers.tierDistribution.B },
-                          { tier: 'C', color: 'bg-neutral-500/20 text-neutral-400', pct: dict.tiers.tierDistribution.C },
-                          { tier: 'D', color: 'bg-red-500/20 text-red-400', pct: dict.tiers.tierDistribution.D },
-                          { tier: 'E', color: 'bg-red-600/20 text-red-500', pct: dict.tiers.tierDistribution.E },
-                          { tier: 'F', color: 'bg-red-800/20 text-red-600', pct: dict.tiers.tierDistribution.F },
-                        ].map(t => (
-                          <span key={t.tier} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold">
-                            <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full ${t.color} text-[11px]`}>{t.tier}</span>
-                            <span className="text-neutral-500 text-[10px]">{t.pct}</span>
-                          </span>
-                        ))}
+                    <div className="mb-4 space-y-2">
+                      <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2">{dict.home.capabilities.authority.valueLevels.title}</div>
+                      <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/15">
+                        <div className="shrink-0 w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center mt-0.5">
+                          <Trophy className="h-4 w-4 text-amber-400" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-amber-300">{dict.home.capabilities.authority.valueLevels.premium.label}</div>
+                          <div className="text-[11px] text-neutral-400 leading-relaxed">{dict.home.capabilities.authority.valueLevels.premium.desc}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-gradient-to-r from-[#00F2EA]/10 to-[#00F2EA]/5 border border-[#00F2EA]/15">
+                        <div className="shrink-0 w-8 h-8 rounded-lg bg-[#00F2EA]/20 flex items-center justify-center mt-0.5">
+                          <TrendingUp className="h-4 w-4 text-[#00F2EA]" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-[#00F2EA]">{dict.home.capabilities.authority.valueLevels.growth.label}</div>
+                          <div className="text-[11px] text-neutral-400 leading-relaxed">{dict.home.capabilities.authority.valueLevels.growth.desc}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/15">
+                        <div className="shrink-0 w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center mt-0.5">
+                          <Sparkles className="h-4 w-4 text-purple-400" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-purple-300">{dict.home.capabilities.authority.valueLevels.developing.label}</div>
+                          <div className="text-[11px] text-neutral-400 leading-relaxed">{dict.home.capabilities.authority.valueLevels.developing.desc}</div>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 p-3 rounded-xl bg-[#00F2EA]/5 border border-[#00F2EA]/10">
@@ -817,7 +870,7 @@ function HomePageContent() {
                 )}
               </div>
               {/* Right: Score Gauge */}
-              <ScoreGauge score={result.score} tier={result.tier} size={100} showLabel />
+              <div data-pdf="score-gauge"><ScoreGauge score={result.score} tier={result.tier} size={100} showLabel /></div>
             </div>
 
             {/* ===== Layer 1: Business Value Banner (商业价值首屏) ===== */}
@@ -1033,7 +1086,7 @@ function HomePageContent() {
               <SectionHeader step="04" title={dict.evaluation.sections.radarAndRisk} icon={<Shield className="h-4 w-4" />} />
               <div className="mb-10">
                 <div className="grid gap-8 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
+                  <div data-pdf="radar-chart" className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">{dict.resultLabels.radarScore}</h3>
                     <RadarChart dimensions={result.dimensions} />
                   </div>
@@ -1116,6 +1169,14 @@ function HomePageContent() {
                   >
                     <FileText className="h-4 w-4 text-[#00F2EA]" />
                     {dict.evaluation.exportPdf}
+                  </button>
+                  <button
+                    onClick={handleShareLink}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-300 hover:bg-neutral-800 transition-colors border-t border-neutral-800"
+                  >
+                    <Share2 className="h-4 w-4 text-purple-400" />
+                    {dict.evaluation.shareLink}
                   </button>
                 </div>
               )}

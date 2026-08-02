@@ -32,25 +32,21 @@ export function getFollowerTier(followers: number): FollowerTier {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  '金融理财': '金融理财', 'finance': '金融理财',
-  '科技数码': '科技数码', 'tech': '科技数码',
-  '汽车': '汽车', 'auto': '汽车', 'cars': '汽车',
-  '知识教育': '知识教育', 'education': '知识教育',
-  '美妆护肤': '美妆护肤', 'beauty': '美妆护肤', 'makeup': '美妆护肤',
-  '时尚穿搭': '时尚穿搭', 'fashion': '时尚穿搭',
-  '健身运动': '健身运动', 'fitness': '健身运动', '健身': '健身运动', '格斗运动': '健身运动',
-  '运动': '运动', 'sports': '运动',
-  '美食': '美食', 'food': '美食', 'cooking': '美食',
-  '旅游': '旅游', 'travel': '旅游',
-  '母婴亲子': '母婴亲子', 'mom': '母婴亲子', 'parenting': '母婴亲子',
-  '生活方式': '生活方式', 'lifestyle': '生活方式',
-  '宠物': '宠物', 'pets': '宠物',
-  '游戏': '游戏', 'gaming': '游戏', 'games': '游戏',
-  '才艺': '才艺', 'talent': '才艺', 'music': '才艺', 'dance': '才艺',
-  '剧情': '剧情', 'drama': '剧情', 'storytelling': '剧情',
-  '搞笑': '搞笑', 'comedy': '搞笑', 'funny': '搞笑',
-  '娱乐': '娱乐', 'entertainment': '娱乐',
-  'default': '通用',
+  'Finance & Investing': 'Finance & Investing', 'finance': 'Finance & Investing',
+  'Tech & Gadgets': 'Tech & Gadgets', 'tech': 'Tech & Gadgets',
+  'Fitness & Sports': 'Fitness & Sports', 'fitness': 'Fitness & Sports', 'Combat Sports': 'Fitness & Sports',
+  'Food & Cooking': 'Food & Cooking', 'food': 'Food & Cooking', 'cooking': 'Food & Cooking',
+  'Travel': 'Travel', 'travel': 'Travel',
+  'Gaming': 'Gaming', 'gaming': 'Gaming', 'games': 'Gaming',
+  'Beauty & Skincare': 'Beauty & Skincare', 'beauty': 'Beauty & Skincare', 'makeup': 'Beauty & Skincare',
+  'Fashion & Style': 'Fashion & Style', 'fashion': 'Fashion & Style',
+  'Music & Dance': 'Music & Dance', 'music': 'Music & Dance', 'dance': 'Music & Dance',
+  'Pets & Animals': 'Pets & Animals', 'pets': 'Pets & Animals',
+  'Comedy': 'Comedy', 'comedy': 'Comedy', 'funny': 'Comedy',
+  'Lifestyle': 'Lifestyle', 'lifestyle': 'Lifestyle',
+  'Beauty & Lifestyle': 'Beauty & Lifestyle',
+  'General Entertainment': 'General Entertainment', 'entertainment': 'General Entertainment',
+  'default': 'General',
 }
 
 export function pickCategoryCpm(categories: string[]): { cpm: number; label: string } {
@@ -63,21 +59,21 @@ export function pickCategoryCpm(categories: string[]): { cpm: number; label: str
       return { cpm: CATEGORY_BRAND_CPM[cat], label: CATEGORY_LABELS[cat] || cat }
     }
   }
-  return { cpm: CATEGORY_BRAND_CPM.default, label: '通用' }
+  return { cpm: CATEGORY_BRAND_CPM.default, label: 'General' }
 }
 
 const REGION_LABELS: Record<string, string> = {
-  'US': '美国', 'CA': '加拿大', 'UK': '英国', 'AU': '澳大利亚',
-  'DE': '德国', 'FR': '法国', 'IT': '意大利', 'ES': '西班牙', 'NL': '荷兰',
-  'SE': '瑞典', 'CH': '瑞士', 'JP': '日本', 'KR': '韩国',
-  'SG': '新加坡', 'HK': '中国香港', 'TW': '中国台湾',
-  'AE': '阿联酋', 'SA': '沙特', 'IL': '以色列',
-  'BR': '巴西', 'MX': '墨西哥', 'AR': '阿根廷',
-  'ID': '印尼', 'TH': '泰国', 'VN': '越南', 'PH': '菲律宾', 'MY': '马来西亚',
-  'IN': '印度', 'PK': '巴基斯坦', 'BD': '孟加拉',
-  'RU': '俄罗斯', 'TR': '土耳其', 'PL': '波兰', 'CZ': '捷克',
-  'ZA': '南非', 'EG': '埃及', 'NG': '尼日利亚',
-  'default': '全球',
+  'US': 'US', 'CA': 'Canada', 'UK': 'UK', 'AU': 'Australia',
+  'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain', 'NL': 'Netherlands',
+  'SE': 'Sweden', 'CH': 'Switzerland', 'JP': 'Japan', 'KR': 'South Korea',
+  'SG': 'Singapore', 'HK': 'Hong Kong', 'TW': 'Taiwan',
+  'AE': 'UAE', 'SA': 'Saudi Arabia', 'IL': 'Israel',
+  'BR': 'Brazil', 'MX': 'Mexico', 'AR': 'Argentina',
+  'ID': 'Indonesia', 'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines', 'MY': 'Malaysia',
+  'IN': 'India', 'PK': 'Pakistan', 'BD': 'Bangladesh',
+  'RU': 'Russia', 'TR': 'Turkey', 'PL': 'Poland', 'CZ': 'Czech Republic',
+  'ZA': 'South Africa', 'EG': 'Egypt', 'NG': 'Nigeria',
+  'default': 'Global',
 }
 
 export function pickRegionMultiplier(region?: string): { mult: number; label: string } {
@@ -219,11 +215,11 @@ export function calcIpBrandValue(
   verified?: boolean
 ): { value: number; detail: string } {
   if (tier !== 'macro' && tier !== 'mega') {
-    return { value: 0, detail: '仅 macro/mega 层级账号计入 IP 资产价值' }
+    return { value: 0, detail: 'IP asset value only applies to macro/mega tier accounts' }
   }
 
   const tierIpRate = TIER_IP_RATE[tier] ?? 0
-  if (tierIpRate <= 0) return { value: 0, detail: '当前层级无 IP 资产' }
+  if (tierIpRate <= 0) return { value: 0, detail: 'No IP asset at current tier' }
 
   let categoryIpMult = 1.0
   for (const cat of categories) {
@@ -239,7 +235,7 @@ export function calcIpBrandValue(
   const ipBase = followers * erDecimal * categoryIpMult * tierIpRate * brandingBonus
   const value = Math.round(ipBase * 1000) // 转为美元
 
-  const detail = `${followers.toLocaleString()} 粉 × ${(erDecimal * 100).toFixed(1)}% 互动 × IP系数 ${categoryIpMult} × ${tier} IP率 ${tierIpRate} × 品牌信号 ${brandingBonus.toFixed(2)}x`
+  const detail = `${followers.toLocaleString()} followers × ${(erDecimal * 100).toFixed(1)}% engagement × IP coefficient ${categoryIpMult} × ${tier} IP rate ${tierIpRate} × Branding signals ${brandingBonus.toFixed(2)}x`
 
   return { value, detail }
 }
@@ -368,7 +364,7 @@ export function calcCreatorFundIncome(
     low: Math.round(mid * low),
     mid: Math.round(mid),
     high: Math.round(mid * high),
-    detail: `月成熟播放 ${Math.round(monthlyMatureViews).toLocaleString()} × RPM $${rpm.toFixed(3)}`,
+    detail: `Monthly mature views ${Math.round(monthlyMatureViews).toLocaleString()} × RPM $${rpm.toFixed(3)}`,
   }
 }
 
@@ -378,7 +374,7 @@ export function calcSubscriptionIncome(
 ): SubscriptionResult {
   const eligible = followers >= MONETIZATION_THRESHOLDS.subscriptionFollowers && postsPerMonth >= 1
   if (!eligible) {
-    return { low: 0, mid: 0, high: 0, eligible: false, detail: '暂未满足订阅功能门槛（需 1K+ 粉丝）' }
+    return { low: 0, mid: 0, high: 0, eligible: false, detail: 'Not yet meeting Subscription threshold (1K+ followers)' }
   }
   const tier = getFollowerTier(followers)
   const convRate = SUBSCRIPTION_CONVERSION_RATES[tier]
@@ -390,7 +386,7 @@ export function calcSubscriptionIncome(
     mid: Math.round(mid),
     high: Math.round(mid * high),
     eligible: true,
-    detail: `预估 ${Math.round(activeSubs)} 订阅者 × $${SUBSCRIPTION_AVG_PRICE}/月（创作者分成 50%）`,
+    detail: `Est. ${Math.round(activeSubs)} subscribers × $${SUBSCRIPTION_AVG_PRICE}/month (creator cut 50%)`,
   }
 }
 
@@ -408,7 +404,7 @@ export function calcTikTokShopIncome(
 
   const eligible = followers >= MONETIZATION_THRESHOLDS.tiktokShopFollowers && shopConfig !== null
   if (!eligible || !shopConfig) {
-    return { low: 0, mid: 0, high: 0, eligible: false, detail: shopConfig ? '粉丝量未达 Shop 门槛（1K+）' : '该品类暂不适合 TikTok Shop 带货' }
+    return { low: 0, mid: 0, high: 0, eligible: false, detail: shopConfig ? 'Follower count below Shop threshold (1K+)' : 'This niche is not suitable for TikTok Shop' }
   }
 
   const monthlyActiveFollowers = followers * 0.1
@@ -421,7 +417,7 @@ export function calcTikTokShopIncome(
     mid: Math.round(mid),
     high: Math.round(mid * high),
     eligible: true,
-    detail: `预估 ${Math.round(orders)} 单/月 × $${shopConfig.aov} 客单价 × ${(shopConfig.commission * 100).toFixed(0)}% 佣金`,
+    detail: `Est. ${Math.round(orders)} orders/month × $${shopConfig.aov} AOV × ${(shopConfig.commission * 100).toFixed(0)}% commission`,
   }
 }
 
@@ -431,7 +427,7 @@ export function calcLiveGiftIncome(
 ): SimpleIncomeResult {
   const liveFrequency = postsPerWeek * 0.3
   if (followers < MONETIZATION_THRESHOLDS.liveGiftFollowers || liveFrequency < 0.25) {
-    return { low: 0, mid: 0, high: 0, detail: '暂不满足 LIVE 礼物稳定收入条件' }
+    return { low: 0, mid: 0, high: 0, detail: 'Not yet meeting LIVE gift stable income conditions' }
   }
   const tier = getFollowerTier(followers)
   const rate = LIVE_GIFT_MULTIPLIERS[tier] ?? LIVE_GIFT_MULTIPLIERS.default
@@ -441,7 +437,7 @@ export function calcLiveGiftIncome(
     low: Math.round(mid * low),
     mid: Math.round(mid),
     high: Math.round(mid * high),
-    detail: `基于 ${tier} 层级 LIVE 礼物系数估算，月均 ${liveFrequency.toFixed(1)} 场直播`,
+    detail: `Based on ${tier} tier LIVE gift coefficient, avg ${liveFrequency.toFixed(1)} live sessions/month`,
   }
 }
 
@@ -479,7 +475,7 @@ export function calcContentAssetValue(input: ContentAssetInput): ContentAssetRes
   const value = grossWithBonus * discountFactor * riskDiscount
   return {
     value: Math.round(value),
-    detail: `${effectiveVideoCount} 条视频 × 均播 ${Math.round(effectiveAvgPlays).toLocaleString()} × 内容 CPM $${contentCpm.toFixed(1)} × 折现率 ${(discountFactor * 100).toFixed(0)}%${viralBonus > 0 ? ` × 爆款加成 +${(viralBonus * 100).toFixed(0)}%` : ''} × 风险折损 ${(riskDiscount * 100).toFixed(0)}%`,
+    detail: `${effectiveVideoCount} videos × Avg Plays ${Math.round(effectiveAvgPlays).toLocaleString()} × Content CPM $${contentCpm.toFixed(1)} × Discount Rate ${(discountFactor * 100).toFixed(0)}%${viralBonus > 0 ? ` × Viral Bonus +${(viralBonus * 100).toFixed(0)}%` : ''} × Risk Discount ${(riskDiscount * 100).toFixed(0)}%`,
   }
 }
 
@@ -521,7 +517,7 @@ export function calcFollowerAssetValue(input: FollowerAssetInput): FollowerAsset
 
   return {
     value: Math.round(value),
-    detail: `${Math.round(realFollowers).toLocaleString()} 真实粉丝 × $${baseRate.toFixed(3)}/粉 × ^${FOLLOWER_POWER_LAW_EXPONENT} 幂律 × 品类系数 ${categoryMult.toFixed(1)}x × 互动因子 ${engagementFactor.toFixed(2)} × 风险折损 ${riskDiscount.toFixed(2)}`,
+    detail: `${Math.round(realFollowers).toLocaleString()} real followers × $${baseRate.toFixed(3)}/fan × ^${FOLLOWER_POWER_LAW_EXPONENT} power law × Category Multiplier ${categoryMult.toFixed(1)}x × Engagement Factor ${engagementFactor.toFixed(2)} × Risk Discount ${riskDiscount.toFixed(2)}`,
   }
 }
 
@@ -561,7 +557,7 @@ export function calcMonetizationCapability(input: MonetizationCapInput): Monetiz
 
   return {
     value: Math.round(value),
-    detail: `${channelFactor.toFixed(1)} 加权渠道 × 月收入 $${Math.round(monthlyIncomeMid).toLocaleString()} × ${valuationPeriod} 月估值周期 × 增长乘数 ${growthMultiplier.toFixed(2)} × 风险折损 ${riskDiscount.toFixed(2)}`,
+    detail: `${channelFactor.toFixed(1)} weighted channels × Monthly Income $${Math.round(monthlyIncomeMid).toLocaleString()} × ${valuationPeriod} month valuation period × Growth Multiplier ${growthMultiplier.toFixed(2)} × Risk Discount ${riskDiscount.toFixed(2)}`,
   }
 }
 
@@ -601,21 +597,21 @@ export function buildIncomeEstimate(input: BuildIncomeInput): IncomeEstimate {
 
   const breakdown: IncomeSource[] = [
     {
-      source: 'brand_deals', label: '品牌赞助', icon: '💰',
+      source: 'brand_deals', label: 'Brand Sponsorships', icon: '💰',
       monthlyAmount: { low: brand.monthlyLow, mid: brand.monthlyMid, high: brand.monthlyHigh },
       percentage: 0,
       confidence: metrics.engagementRate >= 3 ? 'high' : 'medium',
-      detail: `${categoryLabel} CPM $${categoryCpm} × 均播 ${Math.round(metrics.effectiveAvgPlays).toLocaleString()} × 互动系数 ${brand.detail.engagementMult.toFixed(1)} × ${regionLabel}系数 ${regionMult.toFixed(2)} × 层级溢价 ${brand.detail.tierPremium.toFixed(1)}x，月均 ${brand.monthlyBrandPosts} 条${brand.detail.marketAnchored ? '（已市场锚定）' : ''}`,
+      detail: `${categoryLabel} CPM $${categoryCpm} × Avg Plays ${Math.round(metrics.effectiveAvgPlays).toLocaleString()} × Engagement Factor ${brand.detail.engagementMult.toFixed(1)} × ${regionLabel} Multiplier ${regionMult.toFixed(2)} × Tier Premium ${brand.detail.tierPremium.toFixed(1)}x, ~${brand.monthlyBrandPosts} posts/month${brand.detail.marketAnchored ? ' (Market-Anchored)' : ''}`,
     },
     {
-      source: 'creator_program', label: '创作者基金', icon: '🎬',
+      source: 'creator_program', label: 'Creator Program', icon: '🎬',
       monthlyAmount: { low: fund.low, mid: fund.mid, high: fund.high },
       percentage: 0,
       confidence: fundEligible ? 'medium' : 'low',
-      detail: fundEligible ? fund.detail : '暂未满足 Creator Fund 门槛（10K 粉 + 10 条视频）',
+      detail: fundEligible ? fund.detail : 'Not yet meeting Creator Fund threshold (10K followers + 10 videos)',
     },
     {
-      source: 'subscriptions', label: '订阅收入', icon: '⭐',
+      source: 'subscriptions', label: 'Subscriptions', icon: '⭐',
       monthlyAmount: { low: subs.low, mid: subs.mid, high: subs.high },
       percentage: 0,
       confidence: subs.eligible ? 'low' : 'low',
@@ -629,7 +625,7 @@ export function buildIncomeEstimate(input: BuildIncomeInput): IncomeEstimate {
       detail: shop.detail,
     },
     {
-      source: 'live_gifts', label: 'LIVE 礼物', icon: '🎁',
+      source: 'live_gifts', label: 'LIVE Gifts', icon: '🎁',
       monthlyAmount: { low: live.low, mid: live.mid, high: live.high },
       percentage: 0,
       confidence: 'low',
@@ -652,8 +648,8 @@ export function buildIncomeEstimate(input: BuildIncomeInput): IncomeEstimate {
 
   const rpm = CATEGORY_CREATOR_RPM[(profile.region || 'default').toUpperCase()] ?? CATEGORY_CREATOR_RPM.default
   const summary = brand.monthlyMid > 0
-    ? `品牌赞助是主要收入来源（${categoryLabel} 品类），预估月收入 $${monthlyTotal.low.toLocaleString()} - $${monthlyTotal.high.toLocaleString()}，中值 $${monthlyTotal.mid.toLocaleString()}`
-    : '当前账号暂不具备稳定变现条件，建议先提升互动率和粉丝量'
+    ? `Brand sponsorships are the primary revenue source (${categoryLabel} niche), estimated monthly income $${monthlyTotal.low.toLocaleString()} - $${monthlyTotal.high.toLocaleString()}, median $${monthlyTotal.mid.toLocaleString()}`
+    : 'Account does not yet meet stable monetization criteria — prioritize improving engagement rate and follower count'
 
   return {
     monthlyTotal,
@@ -722,35 +718,35 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
 
   const components: BusinessValueComponent[] = [
     {
-      label: '品牌合作年价值', icon: '💰',
+      label: 'Brand Deal Annual Value', icon: '💰',
       amount: {
         low: Math.round(brandDealValue * INCOME_LOW_HIGH_FACTORS.low),
         mid: Math.round(brandDealValue),
         high: Math.round(brandDealValue * INCOME_LOW_HIGH_FACTORS.high),
       },
       percentage: 0,
-      detail: `月均品牌收入 $${Math.round(brandDealsMid).toLocaleString()} × 12 个月`,
+      detail: `Monthly brand income $${Math.round(brandDealsMid).toLocaleString()} × 12 months`,
     },
     {
-      label: '内容资产价值', icon: '🎬',
+      label: 'Content Asset Value', icon: '🎬',
       amount: { low: Math.round(contentAsset.value * 0.6), mid: contentAsset.value, high: Math.round(contentAsset.value * 1.5) },
       percentage: 0,
       detail: contentAsset.detail,
     },
     {
-      label: '粉丝资产价值', icon: '👥',
+      label: 'Follower Asset Value', icon: '👥',
       amount: { low: Math.round(followerAsset.value * 0.6), mid: followerAsset.value, high: Math.round(followerAsset.value * 1.5) },
       percentage: 0,
       detail: followerAsset.detail,
     },
     {
-      label: '变现能力价值', icon: '⚡',
+      label: 'Monetization Capability Value', icon: '⚡',
       amount: { low: Math.round(monCap.value * 0.6), mid: monCap.value, high: Math.round(monCap.value * 1.5) },
       percentage: 0,
       detail: monCap.detail,
     },
     {
-      label: 'IP/品牌资产价值', icon: '🏆',
+      label: 'IP/Brand Asset Value', icon: '🏆',
       amount: { low: Math.round(ipBrand.value * 0.6), mid: ipBrand.value, high: Math.round(ipBrand.value * 1.5) },
       percentage: 0,
       detail: ipBrand.detail,
@@ -766,12 +762,12 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
   const totalHigh = components.reduce((s, c) => s + c.amount.high, 0)
 
   const summary = totalMid >= 500000
-    ? `该账号商业价值极高（中值 $${Math.round(totalMid).toLocaleString()}），属于头部 IP 资产，品牌合作 + IP 溢价是核心价值来源`
+    ? `Extremely high commercial value (median $${Math.round(totalMid).toLocaleString()}) — top-tier IP asset, brand partnerships + IP premium are the core value drivers`
     : totalMid >= 100000
-    ? `该账号商业价值较高（中值 $${Math.round(totalMid).toLocaleString()}），品牌合作是核心价值来源，适合中大型品牌付费合作`
+    ? `High commercial value (median $${Math.round(totalMid).toLocaleString()}) — brand partnerships are the core value source, suitable for mid-to-large brand paid collaborations`
     : totalMid >= 10000
-    ? `该账号具备一定商业价值（中值 $${Math.round(totalMid).toLocaleString()}），可通过品牌合作和多渠道变现获取收益`
-    : `该账号当前商业价值有限（中值 $${Math.round(totalMid).toLocaleString()}），建议优先提升内容质量和粉丝互动`
+    ? `Moderate commercial value (median $${Math.round(totalMid).toLocaleString()}) — can generate revenue through brand partnerships and multi-channel monetization`
+    : `Limited commercial value (median $${Math.round(totalMid).toLocaleString()}) — prioritize improving content quality and follower engagement`
 
   return {
     totalValue: { low: totalLow, mid: totalMid, high: totalHigh },
@@ -829,31 +825,31 @@ export function buildRevenueRoadmap(input: BuildRoadmapInput): RevenueRoadmap {
   const unlocksFor = (month: number): string[] => {
     const u: string[] = []
     if (month === 3) {
-      u.push(dims.monetization < 40 ? '达到 Creator Fund 门槛（10K 粉丝）' : '优化品牌合作报价体系')
-      if (metrics.engagementRate < 3) u.push('优化前 3 秒钩子，提升互动率至 3%+')
-      u.push('建立固定发布节奏')
+      u.push(dims.monetization < 40 ? 'Reach Creator Fund threshold (10K followers)' : 'Optimize brand partnership pricing')
+      if (metrics.engagementRate < 3) u.push('Optimize first-3-second hook, boost engagement to 3%+')
+      u.push('Establish consistent posting schedule')
     } else if (month === 6) {
-      u.push(...(monthlyGrowth > 0.02 ? ['获得首个品牌长期合作', '开启 LIVE/Shop 尝试'] : ['稳定品牌合作收入', '建立粉丝社群']))
+      u.push(...(monthlyGrowth > 0.02 ? ['Secure first long-term brand deal', 'Explore LIVE/Shop'] : ['Stabilize brand partnership income', 'Build fan community']))
     } else if (month === 12) {
-      if (monthlyGrowth > 0.03) u.push('多平台矩阵分发', '自有品牌/产品线')
-      else if (monthlyGrowth > 0) u.push('全渠道变现成熟', '建立被动收入来源')
-      else u.push('重新定位账号方向', '尝试新内容方向突破')
+      if (monthlyGrowth > 0.03) u.push('Multi-platform content distribution', 'Own brand/product line')
+      else if (monthlyGrowth > 0) u.push('Full-channel monetization maturity', 'Build passive income streams')
+      else u.push('Reposition account direction', 'Experiment with new content niches')
     }
     return u
   }
 
   const milestoneLabel = (month: number): string => {
-    if (monthlyGrowth > 0.05) return month === 3 ? '快速起步阶段' : month === 6 ? '收入翻倍增长' : '全渠道变现成熟'
-    if (monthlyGrowth > 0.02) return month === 3 ? '稳定增长起步' : month === 6 ? '多元化变现' : '稳定增长阶段'
-    if (monthlyGrowth > 0) return month === 3 ? '夯实基础阶段' : month === 6 ? '优化调整' : '稳定输出阶段'
-    return month === 3 ? '问题修复期' : month === 6 ? '转型调整' : '转型或退出'
+    if (monthlyGrowth > 0.05) return month === 3 ? 'Rapid Growth Phase' : month === 6 ? 'Revenue Doubling' : 'Full-Channel Maturity'
+    if (monthlyGrowth > 0.02) return month === 3 ? 'Steady Growth Start' : month === 6 ? 'Diversification' : 'Stable Growth Phase'
+    if (monthlyGrowth > 0) return month === 3 ? 'Foundation Building' : month === 6 ? 'Optimization' : 'Stable Output Phase'
+    return month === 3 ? 'Issue Remediation' : month === 6 ? 'Pivot & Adjust' : 'Pivot or Exit'
   }
 
   const current = income.monthlyTotal
   const projections: RevenueMilestone[] = [
-    { month: 3, label: '3 个月', revenue: m3, milestone: milestoneLabel(3), unlocks: unlocksFor(3) },
-    { month: 6, label: '6 个月', revenue: m6, milestone: milestoneLabel(6), unlocks: unlocksFor(6) },
-    { month: 12, label: '12 个月', revenue: m12, milestone: milestoneLabel(12), unlocks: unlocksFor(12) },
+    { month: 3, label: '3 Months', revenue: m3, milestone: milestoneLabel(3), unlocks: unlocksFor(3) },
+    { month: 6, label: '6 Months', revenue: m6, milestone: milestoneLabel(6), unlocks: unlocksFor(6) },
+    { month: 12, label: '12 Months', revenue: m12, milestone: milestoneLabel(12), unlocks: unlocksFor(12) },
   ]
 
   const total12Month = {
@@ -864,15 +860,15 @@ export function buildRevenueRoadmap(input: BuildRoadmapInput): RevenueRoadmap {
 
   let summary = ''
   if (hasHighRisk) {
-    summary = `账号存在高风险信号，当前预测基于问题解决后的恢复路径。若不解决风险，实际收入可能低于预期 30-50%。`
+    summary = `Account has high-risk signals — current projections assume risk resolution. Without resolution, actual revenue may be 30-50% below forecast.`
   } else if (monthlyGrowth > 0.05) {
-    summary = `账号处于强势上升期（月均增速 ${(monthlyGrowth * 100).toFixed(0)}%），12 个月累计收入预估 $${total12Month.mid.toLocaleString()}。建议抓住窗口期加速变现。`
+    summary = `Account is in a strong growth phase (monthly growth ~${(monthlyGrowth * 100).toFixed(0)}%), 12-month cumulative revenue estimated at $${total12Month.mid.toLocaleString()}. Seize the window to accelerate monetization.`
   } else if (monthlyGrowth > 0.02) {
-    summary = `账号健康增长中（月均增速 ${(monthlyGrowth * 100).toFixed(0)}%），12 个月累计收入预估 $${total12Month.mid.toLocaleString()}。按当前节奏持续优化即可。`
+    summary = `Account is growing healthily (monthly growth ~${(monthlyGrowth * 100).toFixed(0)}%), 12-month cumulative revenue estimated at $${total12Month.mid.toLocaleString()}. Continue optimizing at current pace.`
   } else if (monthlyGrowth > 0) {
-    summary = `账号增长缓慢（月均增速约 ${(monthlyGrowth * 100).toFixed(0)}%），需主动拓展变现渠道。12 个月累计收入预估 $${total12Month.mid.toLocaleString()}。`
+    summary = `Account growth is slow (monthly growth ~${(monthlyGrowth * 100).toFixed(0)}%), need to actively expand monetization channels. 12-month cumulative revenue estimated at $${total12Month.mid.toLocaleString()}.`
   } else {
-    summary = `账号当前存在下滑压力（月均 ${(monthlyGrowth * 100).toFixed(0)}%），预测基于采取优化措施后的恢复路径。`
+    summary = `Account is experiencing downward pressure (~${(monthlyGrowth * 100).toFixed(0)}% monthly), projections based on recovery path after optimization measures.`
   }
 
   return {

@@ -6,7 +6,7 @@ const en = {
   // ── SEO / Metadata ──
   seo: {
     title: 'TokValue: TikTok Account Value Calculator — Check Your Worth',
-    description: 'TikTok account value calculator. Instantly check any account\'s worth, brand deal pricing, and revenue estimates. 10-dimension analysis with S/A/B/C/D/E/F tier rating.',
+    description: 'TikTok account value calculator. Instantly check any account\'s worth, brand deal pricing, and revenue estimates. Multi-dimensional value scoring across 10 assessment dimensions.',
     shortDescription: 'TikTok account value calculator. Instantly check any account\'s worth, brand deal pricing, and revenue estimates.',
   },
 
@@ -182,10 +182,15 @@ const en = {
         },
       },
       authority: {
-        badge: 'TikTok Account Quality',
-        title: 'Account Authority & Risk Audit',
-        desc: 'Our proprietary S/A/B/C/D/E/F tier system evaluates your TikTok account quality across 10 weighted dimensions. We detect fake followers, bot engagement, reach suppression signals, and content authenticity issues — exposing the risks brands screen for before signing deals.',
-        tierDistribution: 'Tier Distribution (Global)',
+        badge: 'Account Value Assessment',
+        title: 'Comprehensive Value Assessment',
+        desc: 'Our proprietary multi-dimensional assessment framework evaluates your TikTok account across 10 weighted dimensions — follower authenticity, engagement quality, content consistency, influence reach, and brand safety. Every account receives a value rating calibrated against global market benchmarks, so you know exactly where you stand before entering any brand negotiation.',
+        valueLevels: {
+          title: 'Value Assessment Levels',
+          premium: { label: 'Premium Value', desc: 'Exceptional commercial potential — top-tier brand partnership ready' },
+          growth: { label: 'Growth Value', desc: 'Strong monetization trajectory — competitive market position' },
+          developing: { label: 'Developing Value', desc: 'Solid foundation with upside — growth opportunity ahead' },
+        },
         brandCheck: '{pct}% of brands check account quality before partnership',
         features: {
           radarScoring: {
@@ -316,7 +321,7 @@ const en = {
         },
         q4: {
           q: 'How accurate is the TikTok account valuation?',
-          a: 'Our model is calibrated against publicly reported brand deal values and the latest industry benchmarks from Influencer Marketing Hub. While no third-party estimate can be 100% precise — actual deal values depend on negotiation, brand budget, and campaign scope — our framework is designed to give you a defensible starting point for negotiations. The tier system (S/A/B/C/D/E/F) uses global percentile ranking, and the dollar range accounts for market variance.',
+          a: 'Our model is calibrated against publicly reported brand deal values and the latest industry benchmarks from Influencer Marketing Hub. While no third-party estimate can be 100% precise — actual deal values depend on negotiation, brand budget, and campaign scope — our framework is designed to give you a defensible starting point for negotiations. Our value assessment framework uses global percentile ranking, and the dollar range accounts for market variance.',
         },
         q5: {
           q: 'Is my TikTok data secure?',
@@ -331,8 +336,8 @@ const en = {
           a: 'We support TikTok accounts from 50+ countries with region-specific CPM rates and market multipliers. Coverage includes: North America (US, Canada, Mexico), Western Europe (UK, Germany, France, Italy, Spain, Netherlands, etc.), Nordics (Sweden, Norway, Denmark, Finland), Asia-Pacific (Japan, Korea, Australia, Indonesia, Philippines, Vietnam, Thailand, etc.), Middle East (UAE, Saudi Arabia, Turkey, Israel), Latin America (Brazil, Argentina, Colombia, Chile, etc.), and more. If an account\'s region cannot be detected from TikTok\'s API, we use language analysis across 15 languages to infer the most likely market.',
         },
         q8: {
-          q: 'What does the S/A/B/C/D/E/F tier rating mean?',
-          a: 'The tier rating (S/A/B/C/D/E/F) is a relative quality assessment — it tells you how your account ranks globally across 10 dimensions of account health, authenticity, and performance. S-tier accounts are in the top 1% globally. The dollar valuation is an absolute commercial estimate — it tells you what your account is worth in real money across five revenue channels. A B-tier account in a high-CPM region (like the US) can be worth more than an A-tier account in a lower-CPM market. Both metrics together give you the complete picture for pricing and positioning.',
+          q: 'How does TokValue assess account quality?',
+          a: 'Our assessment framework evaluates 10 weighted dimensions — follower authenticity, engagement quality, content consistency, influence reach, monetization capability, brand safety, and risk signals. Each dimension is scored 0-100 against calibrated benchmarks, then combined into a composite value rating. Accounts are assigned a rating from Premium Value (exceptional commercial potential) to Developing Value (growth opportunity ahead). The dollar valuation is a separate absolute commercial estimate — it tells you what your account is worth across five revenue channels. A Growth Value account in a high-CPM region (like the US) can be worth more than a Premium Value account in a lower-CPM market. Both metrics together give you the complete picture for pricing and positioning.',
         },
         q9: {
           q: 'Do I get a downloadable report?',
@@ -351,7 +356,7 @@ const en = {
         'Influencer Marketing Hub CPM benchmarks',
         '50+ country region multipliers',
         'Real-time TikTok API data',
-        'S/A/B/C/D/E/F tier system',
+        'Comprehensive value assessment framework',
       ],
       legalItems: [
         'TikTok® is a registered trademark of ByteDance Ltd.',
@@ -540,10 +545,13 @@ const en = {
       usesCredit: 'This evaluation uses 1 evaluation credit',
       purchaseToView: 'Purchase evaluations to view the full report',
     },
-    // Export
+    // Export & Share
     exportReport: 'Export Report',
     exportPng: 'Export PNG',
     exportPdf: 'Export PDF',
+    shareLink: 'Share Link',
+    shareLinkCopied: 'Share link copied to clipboard',
+    shareLinkError: 'Failed to create share link',
     saveToTracker: 'Save to Tracker',
     savedToTracker: 'Saved to Tracker',
     // Income Breakdown
@@ -728,23 +736,14 @@ const en = {
 
   // ── Tier Labels ──
   tiers: {
-    S: 'Top Tier · Premium Collaboration',
-    A: 'High Quality · Recommended',
-    B: 'Qualified · Negotiable',
-    C: 'Average · Growth Potential',
-    D: 'Problematic · Not Recommended',
-    E: 'High Risk · Questionable Authenticity',
-    F: 'Avoid · Severe Quality Issues',
-    tierDistribution: {
-      S: 'Top 1%',
-      A: 'Top 5%',
-      B: 'Top 20%',
-      C: 'Top 50%',
-      D: 'Bottom 30%',
-      E: 'Bottom 10%',
-      F: 'Bottom 3%',
+    S: 'Premium Value · Exceptional Commercial Potential',
+    A: 'High Value · Strong Brand Partnership Ready',
+    B: 'Established Value · Competitive Market Position',
+    C: 'Developing Value · Growth Opportunity',
+    D: 'Emerging Value · Foundation Building',
+    E: 'Limited Value · Strategic Rebuild Needed',
+    F: 'Inactive Value · Account Restructuring Advised',
     },
-  },
 
   // ── Credit Packages ──
   creditPackages: {

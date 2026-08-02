@@ -6,6 +6,7 @@ import { generateTrendAnalysis, generateCommercializationAdvice, generateContent
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
 import { consumeCredit } from '@/lib/credits-server'
 import { getServerDict } from '@/lib/i18n/server'
+import { recordEvent } from '@/lib/analytics'
 import { ApiErrorResponse, Evaluation } from '@/types'
 
 function buildSnapshot(evaluation: Evaluation) {
@@ -131,10 +132,25 @@ export async function POST(req: NextRequest) {
     }
 
     const profile = await fetchProfile(normalized)
+
+    // Record evaluate_start event
+    recordEvent({
+      event_type: 'evaluate_start',
+      username: normalized,
+      path: '/api/evaluate',
+    }).catch(() => {})
+
     let evaluation = scoreProfile(profile)
     evaluation = await enrichWithAI(evaluation)
 
     await saveEvaluation(evaluation)
+
+    // Record evaluate_done event
+    recordEvent({
+      event_type: 'evaluate_done',
+      username: normalized,
+      metadata: { score: evaluation.score, tier: evaluation.tier, cached: false },
+    }).catch(() => {})
 
     return NextResponse.json(evaluation)
   } catch (err) {
@@ -145,6 +161,12 @@ export async function POST(req: NextRequest) {
     const mapping = CODE_TO_HTTP[code] || CODE_TO_HTTP.API_ERROR
 
     console.error(`[evaluate] ${code}:`, detail)
+    // Record api_error event
+    recordEvent({
+      event_type: 'api_error',
+      path: '/api/evaluate',
+      metadata: { error_code: code },
+    }).catch(() => {})
     return errorResponse(code, mapping.message, mapping.status)
   }
 }
