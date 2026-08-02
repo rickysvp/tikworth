@@ -2,31 +2,33 @@
 
 import { ContentCadence } from '@/types'
 import { Clock, Calendar } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 
 export function ContentCadenceSection({ cadence }: { cadence: ContentCadence }) {
-  const rhythmLabel = cadence.postingRhythm === 'daily' ? '日更' : cadence.postingRhythm === 'weekly' ? '周更' : '不规律'
+  const { dict } = useI18n()
+  const rhythmLabel = cadence.postingRhythm === 'daily' ? dict.evaluation.contentCadence.daily : cadence.postingRhythm === 'weekly' ? dict.evaluation.contentCadence.weekly : dict.evaluation.contentCadence.irregular
 
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-6">内容节奏分析</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-6">{dict.evaluation.contentCadence.title}</h3>
       <div className="grid gap-6 lg:grid-cols-3 mb-6">
         <div className="text-center rounded-2xl border border-neutral-800 bg-[#141414] p-4">
           <div className="text-2xl font-bold">{rhythmLabel}</div>
-          <div className="text-xs text-neutral-500 mt-1">发布节奏</div>
+          <div className="text-xs text-neutral-500 mt-1">{dict.evaluation.contentCadence.postingRhythm}</div>
         </div>
         <div className="text-center rounded-2xl border border-neutral-800 bg-[#141414] p-4">
           <div className="text-2xl font-bold">{cadence.avgPostsPerWeek}</div>
-          <div className="text-xs text-neutral-500 mt-1">周均发布</div>
+          <div className="text-xs text-neutral-500 mt-1">{dict.evaluation.contentCadence.avgPerWeek}</div>
         </div>
         <div className="text-center rounded-2xl border border-neutral-800 bg-[#141414] p-4">
           <div className="text-2xl font-bold">{cadence.consistencyScore}</div>
-          <div className="text-xs text-neutral-500 mt-1">一致性评分</div>
+          <div className="text-xs text-neutral-500 mt-1">{dict.evaluation.contentCadence.consistency}</div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-4">
         <div>
-          <div className="text-sm font-medium text-neutral-300 mb-2 flex items-center gap-2"><Clock className="h-4 w-4" /> 最佳时段</div>
+          <div className="text-sm font-medium text-neutral-300 mb-2 flex items-center gap-2"><Clock className="h-4 w-4" /> {dict.evaluation.contentCadence.bestHours}</div>
           <div className="space-y-2">
             {cadence.bestTimeSlots.map((slot, i) => (
               <div key={i} className="flex justify-between text-sm rounded-xl border border-neutral-800 bg-[#141414] px-3 py-2">
@@ -37,7 +39,7 @@ export function ContentCadenceSection({ cadence }: { cadence: ContentCadence }) 
           </div>
         </div>
         <div>
-          <div className="text-sm font-medium text-neutral-300 mb-2 flex items-center gap-2"><Calendar className="h-4 w-4" /> 最佳星期</div>
+          <div className="text-sm font-medium text-neutral-300 mb-2 flex items-center gap-2"><Calendar className="h-4 w-4" /> {dict.evaluation.contentCadence.bestDays}</div>
           <div className="space-y-2">
             {cadence.bestWeekdays.map((day, i) => (
               <div key={i} className="flex justify-between text-sm rounded-xl border border-neutral-800 bg-[#141414] px-3 py-2">

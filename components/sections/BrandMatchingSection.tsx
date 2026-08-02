@@ -3,6 +3,7 @@
 import { BrandMatching } from '@/types'
 import { Building2, TrendingUp, Sparkles, Shirt, Smartphone, Heart, DollarSign } from 'lucide-react'
 import { formatUsd } from '@/lib/format'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Props {
   matching: BrandMatching
@@ -16,25 +17,26 @@ const iconMap: Record<string, React.ReactNode> = {
 }
 
 export function BrandMatchingSection({ matching }: Props) {
+  const { dict } = useI18n()
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <div className="flex items-center gap-2 mb-6">
         <Building2 className="h-5 w-5 text-[#FF0050]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">品牌合作匹配</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.brandMatching.title}</h3>
       </div>
 
       {/* Total Brand Value */}
       <div className="rounded-xl border border-neutral-800 bg-gradient-to-br from-[#FF0050]/5 to-[#0f0f0f] p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-neutral-500 mb-1">品牌合作总价值预估</div>
+            <div className="text-xs text-neutral-500 mb-1">{dict.evaluation.brandMatching.estTotalBrandValue}</div>
             <div className="text-xl font-bold text-[#FF0050] tabular-nums">
               {formatUsd(matching.totalBrandValue.low)} - {formatUsd(matching.totalBrandValue.high)}
             </div>
           </div>
           <div className="text-right text-xs text-neutral-500">
-            基于 {matching.matches.length} 个品类
-            <br />单次合作收入
+            Based on {matching.matches.length} {matching.matches.length === 1 ? dict.evaluation.brandMatching.category : dict.evaluation.brandMatching.categories}
+            <br />{dict.evaluation.brandMatching.perCollaboration}
           </div>
         </div>
       </div>
@@ -55,13 +57,13 @@ export function BrandMatchingSection({ matching }: Props) {
                 <div className="text-sm font-bold text-[#00F2EA] tabular-nums">
                   {formatUsd(match.estimatedDealRange.low)} - {formatUsd(match.estimatedDealRange.high)}
                 </div>
-                <div className="text-[10px] text-neutral-500">单次合作</div>
+                <div className="text-[10px] text-neutral-500">{dict.evaluation.brandMatching.perDeal}</div>
               </div>
             </div>
 
             {/* Fit score bar */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] text-neutral-500 w-10">匹配度</span>
+              <span className="text-[10px] text-neutral-500 w-10">{dict.evaluation.brandMatching.fit}</span>
               <div className="flex-1 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-[#FF0050] to-[#00F2EA]"
@@ -73,7 +75,7 @@ export function BrandMatchingSection({ matching }: Props) {
 
             {/* Example brands */}
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-[10px] text-neutral-500">示例品牌</span>
+              <span className="text-[10px] text-neutral-500">{dict.evaluation.brandMatching.examples}</span>
               <div className="flex flex-wrap gap-1">
                 {match.exampleBrands.map((brand, bi) => (
                   <span key={bi} className="text-[10px] text-neutral-400 bg-neutral-800 rounded px-1.5 py-0.5">

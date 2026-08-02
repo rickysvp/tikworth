@@ -3,30 +3,32 @@
 import { RevenueRoadmap } from '@/types'
 import { TrendingUp, ArrowRight, Milestone } from 'lucide-react'
 import { formatUsd } from '@/lib/format'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Props {
   roadmap: RevenueRoadmap
 }
 
 export function RevenueRoadmapSection({ roadmap }: Props) {
+  const { dict } = useI18n()
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <div className="flex items-center gap-2 mb-6">
         <TrendingUp className="h-5 w-5 text-[#00F2EA]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">收益路线图</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.revenueRoadmap.title}</h3>
       </div>
 
       {/* Current Monthly */}
       <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-neutral-500 mb-1">当前月收入预估</div>
+            <div className="text-xs text-neutral-500 mb-1">{dict.evaluation.revenueRoadmap.estCurrentMonthly}</div>
             <div className="text-2xl font-bold text-[#00F2EA] tabular-nums">
               {formatUsd(roadmap.currentMonthly.low)} - {formatUsd(roadmap.currentMonthly.high)}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-neutral-500 mb-1">12 个月累计</div>
+            <div className="text-xs text-neutral-500 mb-1">{dict.evaluation.revenueRoadmap.twelveMonthTotal}</div>
             <div className="text-lg font-semibold tabular-nums">
               {formatUsd(roadmap.total12Month.low)} - {formatUsd(roadmap.total12Month.high)}
             </div>
@@ -57,7 +59,7 @@ export function RevenueRoadmapSection({ roadmap }: Props) {
                   </div>
                   <div className="text-lg font-semibold tabular-nums text-[#00F2EA] mb-2">
                     {formatUsd(proj.revenue.low)} - {formatUsd(proj.revenue.high)}
-                    <span className="text-xs text-neutral-500 font-normal"> / 月</span>
+                    <span className="text-xs text-neutral-500 font-normal"> / mo</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {proj.unlocks.map((u, ui) => (

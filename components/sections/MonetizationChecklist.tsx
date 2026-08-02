@@ -1,6 +1,7 @@
 'use client'
 
 import { CheckCircle2, XCircle, Lock, TrendingUp } from 'lucide-react'
+import { useI18n, t } from '@/lib/i18n'
 
 interface MonetizationChecklistProps {
   followerCount: number
@@ -18,6 +19,7 @@ interface Requirement {
 }
 
 export function MonetizationChecklist({ followerCount, videoCount, region, isUnlocked, hasHighRisk }: MonetizationChecklistProps) {
+  const { dict } = useI18n()
   // TikTok Creator Rewards Program requirements (2026)
   // - 10K+ followers
   // - 100K+ video views in last 30 days
@@ -31,27 +33,27 @@ export function MonetizationChecklist({ followerCount, videoCount, region, isUnl
 
   const requirements: Requirement[] = [
     {
-      label: '粉丝数 ≥ 10,000',
+      label: dict.evaluation.monetization.followersRequirement,
       required: '10,000',
       current: followerCount >= 1000 ? (followerCount >= 1000000 ? (followerCount / 1000000).toFixed(1) + 'M' : (followerCount / 1000).toFixed(1) + 'K') : String(followerCount),
       met: followerCount >= 10000,
     },
     {
-      label: '发布视频 ≥ 5 个',
+      label: dict.evaluation.monetization.videosRequirement,
       required: '5',
       current: String(videoCount),
       met: videoCount >= 5,
     },
     {
-      label: '地区符合变现资格',
-      required: '支持地区',
-      current: regionEligible ? (region || '符合') : (region || '未知'),
+      label: dict.evaluation.monetization.regionRequirement,
+      required: 'Supported',
+      current: regionEligible ? (region || dict.evaluation.monetization.statusEligible) : (region || dict.evaluation.monetization.statusUnknown),
       met: regionEligible,
     },
     {
-      label: '遵守社区准则',
-      required: '无违规',
-      current: hasHighRisk ? '有风险标记' : '正常',
+      label: dict.evaluation.monetization.guidelinesRequirement,
+      required: dict.common.noViolations,
+      current: hasHighRisk ? dict.evaluation.monetization.statusFlagged : dict.evaluation.monetization.statusClean,
       met: !hasHighRisk,
     },
   ]
@@ -63,9 +65,9 @@ export function MonetizationChecklist({ followerCount, videoCount, region, isUnl
     <div className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#0f0f0f] to-[#141414] p-5">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="h-4 w-4 text-[#00F2EA]" />
-        <h4 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">变现资格检查</h4>
+        <h4 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.monetization.title}</h4>
         <span className="ml-auto text-xs text-neutral-600">
-          {metCount}/{requirements.length} 项达标
+          {t(dict.evaluation.monetization.metCount, { met: metCount, total: requirements.length })}
         </span>
       </div>
 
@@ -102,8 +104,8 @@ export function MonetizationChecklist({ followerCount, videoCount, region, isUnl
           <div className="flex-1">
             <p className="text-xs text-neutral-400">
               {allMet
-                ? '全部达标！解锁查看：达标后预估月收入 + 快速变现方案'
-                : '解锁查看：快速达标方案 + 达标后预估月收入'}
+                ? dict.evaluation.monetization.allMetUnlock
+                : dict.evaluation.monetization.notMetUnlock}
             </p>
           </div>
         </div>

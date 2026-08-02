@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchUsers } from '@/lib/tiktok'
+import { getServerDict } from '@/lib/i18n/server'
 import { ApiErrorResponse } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -7,15 +8,15 @@ export const dynamic = 'force-dynamic'
 type ApiCode = ApiErrorResponse['code']
 
 const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
-  INVALID_USERNAME: { status: 400, message: '请输入搜索关键词' },
-  USER_NOT_FOUND: { status: 404, message: '未找到相关账号' },
-  RATE_LIMIT: { status: 429, message: 'API 速率受限，请稍后再试' },
-  MISSING_API_KEY: { status: 503, message: '服务器缺少 RAPIDAPI_KEY 配置' },
-  NETWORK_ERROR: { status: 502, message: '无法连接 TikTok 数据服务' },
-  API_ERROR: { status: 500, message: '搜索服务暂时不可用' },
-  UNAUTHORIZED: { status: 401, message: '请先登录' },
-  CONSUME_ERROR: { status: 500, message: '积分消费失败' },
-  BALANCE_ERROR: { status: 500, message: '余额查询失败' },
+  INVALID_USERNAME: { status: 400, message: getServerDict().api.search.INVALID_USERNAME },
+  USER_NOT_FOUND: { status: 404, message: getServerDict().api.search.USER_NOT_FOUND },
+  RATE_LIMIT: { status: 429, message: getServerDict().api.search.RATE_LIMIT },
+  MISSING_API_KEY: { status: 503, message: getServerDict().api.search.MISSING_API_KEY },
+  NETWORK_ERROR: { status: 502, message: getServerDict().api.search.NETWORK_ERROR },
+  API_ERROR: { status: 500, message: getServerDict().api.search.API_ERROR },
+  UNAUTHORIZED: { status: 401, message: getServerDict().api.search.UNAUTHORIZED },
+  CONSUME_ERROR: { status: 500, message: getServerDict().api.errors.CONSUME_ERROR },
+  BALANCE_ERROR: { status: 500, message: getServerDict().api.errors.BALANCE_ERROR },
 }
 
 export async function GET(req: NextRequest) {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     if (!keywords.trim()) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: '请输入搜索关键词', code: 'INVALID_USERNAME' },
+        { error: getServerDict().api.search.INVALID_USERNAME, code: 'INVALID_USERNAME' },
         { status: 400 }
       )
     }

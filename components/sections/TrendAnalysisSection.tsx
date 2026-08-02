@@ -2,24 +2,26 @@
 
 import { TrendAnalysis } from '@/types'
 import { TrendingUp, Music, Zap, Clock, ArrowRight, Hash, Flame } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Props {
   trendAnalysis: TrendAnalysis
 }
 
 export function TrendAnalysisSection({ trendAnalysis }: Props) {
+  const { dict } = useI18n()
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <div className="flex items-center gap-2 mb-6">
         <TrendingUp className="h-5 w-5 text-[#FF0050]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">趋势分析</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.trendAnalysis.title}</h3>
       </div>
 
       {/* Trending Topics */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Flame className="h-4 w-4 text-[#FF0050]" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">热门话题匹配</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.trendAnalysis.trendingTopics}</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {trendAnalysis.trendingTopics.map((topic, idx) => (
@@ -44,7 +46,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
                     style={{ width: `${topic.relevance}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-neutral-500 tabular-nums">{topic.relevance}% 匹配</span>
+                <span className="text-[10px] text-neutral-500 tabular-nums">{topic.relevance}% {dict.evaluation.trendAnalysis.match}</span>
               </div>
             </div>
           ))}
@@ -55,7 +57,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Music className="h-4 w-4 text-[#00F2EA]" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">趋势音乐推荐</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.trendAnalysis.trendingSounds}</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {trendAnalysis.trendingSounds.map((sound, idx) => (
@@ -67,7 +69,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
                 </span>
               </div>
               <div className="text-xs text-neutral-500">{sound.artist}</div>
-              <div className="text-[11px] text-neutral-600 mt-1">{sound.usageCount} 次使用</div>
+              <div className="text-[11px] text-neutral-600 mt-1">{sound.usageCount} {dict.evaluation.trendAnalysis.uses}</div>
             </div>
           ))}
         </div>
@@ -77,7 +79,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Zap className="h-4 w-4 text-amber-400" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">内容趋势预测</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.trendAnalysis.contentPredictions}</span>
         </div>
         <div className="space-y-3">
           {trendAnalysis.contentPredictions.map((pred, idx) => (
@@ -89,7 +91,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
                 </div>
                 <div className="ml-4 shrink-0 text-right">
                   <div className="text-lg font-bold text-[#00F2EA] tabular-nums">{pred.confidence}%</div>
-                  <div className="text-[10px] text-neutral-500">置信度</div>
+                  <div className="text-[10px] text-neutral-500">{dict.evaluation.trendAnalysis.confidence}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -110,7 +112,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-3">
           <Clock className="h-4 w-4 text-neutral-500" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">最佳发布时间</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.trendAnalysis.bestPostTimes}</span>
         </div>
         <div className="grid grid-cols-7 gap-1.5">
           {trendAnalysis.bestPostTimes.map((slot, idx) => {
@@ -129,7 +131,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
                 <div className="text-sm font-bold text-[#00F2EA] tabular-nums">
                   {String(slot.hour).padStart(2, '0')}:00
                 </div>
-                <div className="text-[10px] text-neutral-600">{slot.score}分</div>
+                <div className="text-[10px] text-neutral-600">{slot.score}{dict.evaluation.trendAnalysis.points}</div>
               </div>
             )
           })}

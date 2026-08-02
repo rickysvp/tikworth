@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { TIER_COLORS, TIER_LABELS } from '@/lib/tier'
+import { TIER_COLORS, tierLabel } from '@/lib/tier'
 
 interface ScoreGaugeProps {
   score: number
@@ -27,7 +27,7 @@ export function ScoreGauge({ score, tier, size = 160, stroke = 12, showLabel = f
   return (
     <div className="inline-flex flex-col items-center">
       <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90" role="img" aria-label={`${tier}级账号，评分${score}分`}>
+        <svg width={size} height={size} className="-rotate-90" role="img" aria-label={`Tier ${tier} account, score ${score}`}>
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -58,7 +58,7 @@ export function ScoreGauge({ score, tier, size = 160, stroke = 12, showLabel = f
       </div>
       {showLabel && (
         <p className="text-xs text-neutral-500 text-center mt-1 truncate max-w-full">
-          {TIER_LABELS[tier] || ''}
+          {tierLabel(tier)}
         </p>
       )}
     </div>

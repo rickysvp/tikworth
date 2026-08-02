@@ -2,17 +2,19 @@
 
 import { PeerRanking } from '@/types'
 import { BarChart3, Trophy, TrendingUp } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Props {
   ranking: PeerRanking
 }
 
 export function PeerRankingSection({ ranking }: Props) {
+  const { dict } = useI18n()
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <div className="flex items-center gap-2 mb-6">
         <BarChart3 className="h-5 w-5 text-[#00F2EA]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">同行对比排名</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.peerRanking.title}</h3>
       </div>
 
       {/* Overall Rank Hero */}
@@ -26,14 +28,14 @@ export function PeerRankingSection({ ranking }: Props) {
           <div>
             <div className="text-xs text-neutral-500 mb-1">{ranking.peerGroupDescription}</div>
             <div className="text-3xl font-black text-[#00F2EA]">{ranking.tierLabel}</div>
-            <div className="text-xs text-neutral-500 mt-1">综合排名百分位</div>
+            <div className="text-xs text-neutral-500 mt-1">{dict.evaluation.peerRanking.overallPercentile}</div>
           </div>
         </div>
       </div>
 
       {/* Ranking Breakdown */}
       <div className="mb-4">
-        <div className="text-xs text-neutral-500 mb-4 uppercase tracking-wider">细分维度排名</div>
+        <div className="text-xs text-neutral-500 mb-4 uppercase tracking-wider">{dict.evaluation.peerRanking.dimensionBreakdown}</div>
         <div className="space-y-3">
           {ranking.rankingBreakdown.map((item, idx) => (
             <div key={idx}>

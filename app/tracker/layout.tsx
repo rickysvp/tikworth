@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '账号追踪 - TikWorth',
-  description: '追踪 TikTok 账号的商业价值变化，对比多次评估结果',
+  title: 'TikTok Account Tracker — TokValue',
+  description: 'Track TikTok account value changes over time. Monitor growth trends and compare historical evaluation data from TokValue.',
 }
 
 export default function TrackerLayout({ children }: { children: React.ReactNode }) {

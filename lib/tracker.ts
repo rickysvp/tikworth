@@ -23,7 +23,7 @@ export interface TrackedEvaluation {
   timestamp: string
 }
 
-const STORAGE_KEY = 'tikworth_tracked_evaluations'
+const STORAGE_KEY = 'tokvalue_tracked_evaluations'
 
 export function extractTrackData(evaluation: Evaluation): TrackedEvaluation {
   return {

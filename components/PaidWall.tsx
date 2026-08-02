@@ -14,6 +14,7 @@ import {
   getActiveEmail, setActiveEmail, setPendingEmail, clearPendingEmail, fetchBalance,
   setSessionToken,
 } from '@/lib/credits-client'
+import { useI18n, t } from '@/lib/i18n'
 
 interface PaidWallProps {
   onUnlock: () => void
@@ -29,19 +30,20 @@ interface PaidWallProps {
 type Step = 'choose' | 'email' | 'code' | 'success'
 
 const UNLOCK_MODULES = [
-  { icon: DollarSign,   color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10', title: '5 渠道收入估算', desc: '品牌合作/直播/创作者基金/联盟/商品分成' },
-  { icon: TrendingUp,   color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10', title: '12 个月收入路线图', desc: '按季度预测粉丝/播放/收入增长曲线' },
-  { icon: Target,       color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10', title: '增长行动计划',     desc: '粉丝/播放/互动三维可执行建议' },
-  { icon: Shield,       color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10', title: '10 维雷达风险检测', desc: '异常涨粉/数据造假/断更/限流预警' },
-  { icon: BarChart3,    color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10', title: '同行百分位排名',   desc: '在同量级账号中的百分位与差距' },
-  { icon: Building2,    color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10', title: '品牌合作匹配',     desc: '适合合作的品牌类型+合作建议' },
-  { icon: Lightbulb,    color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10', title: '内容策略指南',     desc: '支柱方向/话题标签/最佳发布时间' },
-  { icon: Flame,        color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10', title: '趋势热点分析',     desc: '相关话题热度+账号适配度' },
-  { icon: Rocket,       color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10', title: '商业化方向建议',   desc: '3 条变现路径+优先级排序' },
-  { icon: FileDown,     color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10', title: '高清 PDF 导出',    desc: '完整版可分享商业分析报告' },
+  { icon: DollarSign,   color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10' },
+  { icon: TrendingUp,   color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10' },
+  { icon: Target,       color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10' },
+  { icon: Shield,       color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10' },
+  { icon: BarChart3,    color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10' },
+  { icon: Building2,    color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10' },
+  { icon: Lightbulb,    color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10' },
+  { icon: Flame,        color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10' },
+  { icon: Rocket,       color: 'text-[#FF0050]', bg: 'bg-[#FF0050]/10' },
+  { icon: FileDown,     color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10' },
 ]
 
 export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balanceLoading }: PaidWallProps) {
+  const { dict } = useI18n()
   const [step, setStep] = useState<Step>('choose')
   const [selectedPkg, setSelectedPkg] = useState<CreditPackage>(CREDIT_PACKAGES[1])
   const [email, setEmail] = useState('')
@@ -100,7 +102,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
     e?.preventDefault()
     if (loading) return
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('请输入有效的邮箱地址')
+      setError(dict.paidWall.invalidEmail)
       return
     }
     setLoading(true)
@@ -112,13 +114,13 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         body: JSON.stringify({ email: email.trim(), packageId: selectedPkg.id }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '发送失败')
+      if (!res.ok) throw new Error(data.error || dict.paidWall.sendFailed)
       setDevCode(data.devCode || null)
       setPendingEmail(email.trim(), selectedPkg.id)
       setStep('code')
       startCooldown()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '发送失败')
+      setError(err instanceof Error ? err.message : dict.paidWall.sendFailed)
     } finally {
       setLoading(false)
     }
@@ -132,7 +134,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
   async function handleVerify() {
     const fullCode = code.join('')
     if (fullCode.length !== 6) {
-      setError('请输入完整的 6 位验证码')
+      setError(dict.paidWall.invalidCode)
       return
     }
     setLoading(true)
@@ -144,7 +146,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         body: JSON.stringify({ email: email.trim(), code: fullCode }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '验证失败')
+      if (!res.ok) throw new Error(data.error || dict.paidWall.verifyFailed)
 
       clearPendingEmail()
       setActiveEmail(email.trim())
@@ -169,7 +171,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         onUnlock()
       }, 1500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '验证失败')
+      setError(err instanceof Error ? err.message : dict.paidWall.verifyFailed)
       setCode(['', '', '', '', '', ''])
       setTimeout(() => codeRefs.current[0]?.focus(), 50)
     } finally {
@@ -223,26 +225,26 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         <div className="text-center">
           <div className="inline-flex items-center gap-1.5 mb-3">
             <Lock className="h-3.5 w-3.5 text-[#FF0050]" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">深度分析已锁定</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">{dict.paidWall.badge}</span>
             <Lock className="h-3.5 w-3.5 text-[#FF0050]" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-            解锁 <span className="text-[#FF0050]">@{username || '此账号'}</span> 的完整商业价值报告
+            {t(dict.paidWall.title, { username: username || 'this account' })}
           </h2>
           <p className="mt-2 text-sm text-neutral-400">
-            付费后可查看以下 <span className="text-white font-semibold">10 大核心模块</span>，数据即时生成，支持 PDF 导出
+            {dict.paidWall.subtitle}
           </p>
           {balanceLoading && !balance && step === 'choose' && (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-700 bg-neutral-900/50 px-3 py-1 text-xs">
               <Loader2 className="h-3 w-3 animate-spin text-neutral-400" />
-              <span className="text-neutral-400">正在查询额度...</span>
+              <span className="text-neutral-400">{dict.paidWall.loadingCredits}</span>
             </div>
           )}
           {balance && balance.credits > 0 && step === 'choose' && (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#00F2EA]/30 bg-[#00F2EA]/5 px-3 py-1 text-xs">
               <Sparkles className="h-3 w-3 text-[#00F2EA]" />
               <span className="text-[#00F2EA] font-semibold">
-                当前剩余 {balance.credits} 次额度（{balance.email}）
+                {t(dict.paidWall.creditsRemaining, { count: balance.credits, email: balance.email })}
               </span>
             </div>
           )}
@@ -252,13 +254,14 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         <div className="mt-7 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
           {UNLOCK_MODULES.map((m, i) => {
             const Icon = m.icon
+            const mod = dict.paidWall.unlockModules[i] || { title: '', desc: '' }
             return (
               <div key={i} className="group relative rounded-xl border border-neutral-800 bg-[#111] p-3 transition-all hover:border-neutral-700 hover:bg-[#151515]">
                 <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${m.bg} mb-2`}>
                   <Icon className={`h-4 w-4 ${m.color}`} />
                 </div>
-                <div className="text-xs font-semibold text-white leading-tight">{m.title}</div>
-                <div className="mt-1 text-[10px] text-neutral-500 leading-snug line-clamp-2">{m.desc}</div>
+                <div className="text-xs font-semibold text-white leading-tight">{mod.title}</div>
+                <div className="mt-1 text-[10px] text-neutral-500 leading-snug line-clamp-2">{mod.desc}</div>
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Lock className="h-3 w-3 text-neutral-600" />
                 </div>
@@ -271,15 +274,15 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         <div className="mt-6 flex flex-wrap justify-center items-center gap-x-5 gap-y-2 text-[11px] text-neutral-500">
           <div className="flex items-center gap-1.5">
             <Users className="h-3 w-3 text-[#00F2EA]" />
-            <span><span className="text-[#00F2EA] font-semibold">1,247</span> 位创作者已解锁</span>
+            <span>{t(dict.paidWall.trustCreators, { count: 1247 })}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-3 w-3 text-[#FF0050]" />
-            <span>即时生成 · 无需等待</span>
+            <span>{dict.paidWall.trustInstant}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <RefreshCw className="h-3 w-3 text-[#00F2EA]" />
-            <span>额度永不过期 · 邮箱绑定可跨设备</span>
+            <span>{dict.paidWall.trustCredits}</span>
           </div>
         </div>
 
@@ -292,9 +295,9 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
               {step === 'code' && <KeyRound className="h-3.5 w-3.5 text-[#FF0050]" />}
               {step === 'success' && <CheckCircle2 className="h-3.5 w-3.5 text-[#00F2EA]" />}
               <span>
-                {step === 'email' && '通过邮箱绑定您的额度'}
-                {step === 'code' && '请查收邮件验证码'}
-                {step === 'success' && '解锁成功'}
+                {step === 'email' && dict.paidWall.stepEmail}
+                {step === 'code' && dict.paidWall.stepCode}
+                {step === 'success' && dict.paidWall.stepSuccess}
               </span>
             </div>
             <div className="flex-1 h-px bg-neutral-800" />
@@ -308,7 +311,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
             {balance && balance.credits > 0 ? (
               <div className="mt-6">
                 <div className="rounded-2xl border border-[#00F2EA]/30 bg-[#00F2EA]/5 p-5 text-center">
-                  <div className="text-sm text-neutral-400 mb-2">您的账户已有额度，可直接解锁本次报告</div>
+                  <div className="text-sm text-neutral-400 mb-2">{dict.paidWall.hasCreditsHint}</div>
                   <button
                     onClick={handleDirectUnlock}
                     disabled={isUnlocking}
@@ -318,12 +321,12 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                       {isUnlocking ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          正在解锁...
+                          {dict.paidWall.unlocking}
                         </>
                       ) : (
                         <>
                           <Zap className="h-4 w-4" />
-                          使用 1 次额度解锁完整报告（剩余 {balance.credits} 次）
+                          {t(dict.paidWall.useCreditUnlock, { remaining: balance.credits })}
                           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                         </>
                       )}
@@ -334,7 +337,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                     onClick={() => { setBalance(null); setActiveEmail(null) }}
                     className="mt-3 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
                   >
-                    使用其他邮箱购买新额度
+                    {dict.common.useDifferentEmail}
                   </button>
                 </div>
               </div>
@@ -342,8 +345,8 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
               <>
                 <div className="mt-6">
                   <div className="text-center mb-4">
-                    <div className="text-xs font-semibold text-white">选择适合您的评估套餐</div>
-                    <div className="text-[10px] text-neutral-500 mt-1">一次付费，永久有效 · 不自动续费 · 邮箱绑定可跨设备找回</div>
+                    <div className="text-xs font-semibold text-white">{dict.paidWall.choosePlan}</div>
+                    <div className="text-[10px] text-neutral-500 mt-1">{dict.paidWall.planSubtitle}</div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {CREDIT_PACKAGES.map(pkg => {
@@ -371,12 +374,9 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                             <span className={`text-3xl font-black ${isSelected ? 'text-white' : 'text-neutral-200'}`}>{pkg.price}</span>
                           </div>
                           <div className="mt-1 text-sm font-bold text-white">{pkg.label}</div>
-                          <div className="mt-0.5 text-[11px] text-neutral-500">{pkg.credits} 次评估 · {pkg.perUnit}</div>
+                          <div className="mt-0.5 text-[11px] text-neutral-500">{pkg.credits} evaluations · {pkg.perUnit}</div>
                           <div className="mt-3 space-y-1">
-                            {(pkg.id === 'pack3' ? ['3 次完整账号评估', '含 10 大模块全部分析', 'PDF 高清导出'] :
-                              pkg.id === 'pack10' ? ['10 次完整账号评估', '支持跨设备找回额度', 'PDF 高清导出', '优先客服支持'] :
-                              ['100 次完整账号评估', '跨设备同步额度', 'PDF 高清导出', '优先体验新功能 + 客服']
-                            ).map((f, i) => (
+                            {(dict.paidWall.packageFeatures[pkg.id as keyof typeof dict.paidWall.packageFeatures] || []).map((f, i) => (
                               <div key={i} className="flex items-start gap-1.5 text-[11px] text-neutral-400">
                                 <Check className={`h-3 w-3 mt-0.5 flex-shrink-0 ${isSelected ? 'text-[#00F2EA]' : 'text-neutral-600'}`} />
                                 <span>{f}</span>
@@ -385,7 +385,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                           </div>
                           {isSelected && (
                             <div className="mt-3 flex items-center justify-center gap-1 rounded-lg bg-[#FF0050] py-2 text-xs font-bold text-white">
-                              <span>已选择</span>
+                              <span>{dict.common.selected}</span>
                               <Check className="h-3 w-3" />
                             </div>
                           )}
@@ -401,7 +401,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     <Zap className="h-4 w-4" />
-                    ${selectedPkg.price} 解锁 {selectedPkg.credits} 次完整报告
+                    {t(dict.paidWall.ctaButton, { price: selectedPkg.price, count: selectedPkg.credits })}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
@@ -420,8 +420,8 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                   <Mail className="h-5 w-5 text-[#FF0050]" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white">输入您的邮箱</div>
-                  <div className="text-[11px] text-neutral-500">用于绑定额度，换设备时可通过邮箱验证码找回</div>
+                  <div className="text-sm font-semibold text-white">{dict.paidWall.emailTitle}</div>
+                  <div className="text-[11px] text-neutral-500">{dict.paidWall.emailDesc}</div>
                 </div>
               </div>
               <div className="relative">
@@ -429,7 +429,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                   type="email"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
-                  placeholder="your@email.com"
+                  placeholder={dict.paidWall.emailPlaceholder}
                   className="w-full rounded-xl border border-neutral-700 bg-[#0a0a0a] px-4 py-3 pr-12 text-sm text-white placeholder-neutral-600 outline-none focus:border-[#FF0050] focus:ring-2 focus:ring-[#FF0050]/20 transition-colors"
                   autoFocus
                 />
@@ -443,19 +443,19 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                 disabled={loading}
                 className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF0050] py-3 text-sm font-bold text-white hover:bg-[#e60049] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><KeyRound className="h-4 w-4" />发送验证码</>}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><KeyRound className="h-4 w-4" />{dict.paidWall.sendCode}</>}
               </button>
               <button
                 type="button"
                 onClick={() => { setStep('choose'); setError(''); }}
                 className="mt-2 w-full text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
               >
-                ← 返回选择套餐
+                {dict.paidWall.backToPackages}
               </button>
             </div>
             <div className="mt-3 flex items-start gap-2 text-[10px] text-neutral-500">
               <Clock className="h-3 w-3 mt-0.5 flex-shrink-0" />
-              <span>验证码 10 分钟内有效，我们不会发送营销邮件，仅用于额度绑定。<strong className="text-neutral-400">开发阶段：验证码将直接显示在界面上，无需实际查收邮件。</strong></span>
+              <span>{dict.paidWall.codeValid}</span>
             </div>
           </form>
         )}
@@ -469,14 +469,14 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                   <KeyRound className="h-5 w-5 text-[#00F2EA]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-white">输入验证码</div>
-                  <div className="text-[11px] text-neutral-500 truncate">已发送到 <span className="text-[#00F2EA]">{email}</span></div>
+                  <div className="text-sm font-semibold text-white">{dict.paidWall.codeTitle}</div>
+                  <div className="text-[11px] text-neutral-500 truncate">{t(dict.paidWall.codeSent, { email })}</div>
                 </div>
               </div>
 
               {devCode && (
                 <div className="mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-[11px] text-yellow-300">
-                  <span className="font-semibold">开发模式：</span>验证码 <code className="font-mono font-bold bg-yellow-500/20 px-1.5 py-0.5 rounded ml-1">{devCode}</code>（生产环境会发送到您的邮箱）
+                  <span className="font-semibold">{dict.paidWall.devCodeLabel}</span> <code className="font-mono font-bold bg-yellow-500/20 px-1.5 py-0.5 rounded ml-1">{devCode}</code> <span>{t(dict.paidWall.devNotice)}</span>
                 </div>
               )}
 
@@ -489,7 +489,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                     inputMode="numeric"
                     maxLength={1}
                     value={c}
-                    aria-label={`验证码第${i + 1}位`}
+                    aria-label={t(dict.paidWall.digitAria, { n: i + 1 })}
                     onChange={e => handleCodeChange(i, e.target.value)}
                     onKeyDown={e => handleCodeKeyDown(i, e)}
                     className="w-11 h-12 sm:w-12 sm:h-14 rounded-xl border border-neutral-700 bg-[#0a0a0a] text-center text-xl sm:text-2xl font-black text-white outline-none focus:border-[#FF0050] focus:ring-2 focus:ring-[#FF0050]/20 transition-colors"
@@ -504,7 +504,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                 disabled={loading || code.some(c => !c)}
                 className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF0050] py-3 text-sm font-bold text-white hover:bg-[#e60049] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4" />验证并解锁</>}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4" />{dict.paidWall.verifyAndUnlock}</>}
               </button>
 
               <div className="mt-3 flex items-center justify-between text-xs">
@@ -512,21 +512,20 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                   onClick={() => { setStep('email'); setCode(['', '', '', '', '', '']); setError('') }}
                   className="text-neutral-500 hover:text-neutral-300 transition-colors"
                 >
-                  ← 修改邮箱
+                  {dict.paidWall.changeEmail}
                 </button>
                 <button
                   onClick={handleResend}
                   disabled={cooldown > 0 || loading}
                   className="text-[#00F2EA] hover:text-[#00dccb] disabled:text-neutral-600 disabled:cursor-not-allowed transition-colors"
                 >
-                  {cooldown > 0 ? `${cooldown}s 后重发` : '重新发送验证码'}
+                  {cooldown > 0 ? t(dict.paidWall.resendIn, { s: cooldown }) : dict.paidWall.resendCode}
                 </button>
               </div>
             </div>
 
             <div className="mt-3 rounded-xl bg-neutral-900/50 px-4 py-2.5 text-[11px] text-neutral-500 text-center">
-              <span className="text-neutral-400">本次购买：</span>
-              <span className="text-white font-semibold">{selectedPkg.label}</span> · ${selectedPkg.price} · {selectedPkg.credits} 次评估
+              {t(dict.paidWall.purchaseSummary, { label: selectedPkg.label, price: selectedPkg.price, count: selectedPkg.credits })}
             </div>
           </div>
         )}
@@ -538,11 +537,11 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
               <div className="mx-auto w-14 h-14 rounded-full bg-[#00F2EA]/20 flex items-center justify-center mb-3">
                 <CheckCircle2 className="h-8 w-8 text-[#00F2EA]" />
               </div>
-              <div className="text-lg font-bold text-white">解锁成功！</div>
+              <div className="text-lg font-bold text-white">{dict.paidWall.successTitle}</div>
               <div className="mt-1 text-sm text-neutral-400">
-                {successBalance !== null && <>您的邮箱 <span className="text-[#00F2EA]">{email}</span> 已绑定，当前剩余 <span className="text-white font-semibold">{successBalance}</span> 次额度</>}
+                {successBalance !== null && t(dict.paidWall.successMessage, { email, balance: successBalance })}
               </div>
-              <div className="mt-3 text-xs text-neutral-500">正在为您加载完整报告...</div>
+              <div className="mt-3 text-xs text-neutral-500">{dict.paidWall.successLoading}</div>
             </div>
           </div>
         )}
@@ -550,10 +549,9 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         {/* ── 底部保障 ── */}
         {step === 'choose' && !(balance && balance.credits > 0) && (
           <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[10px] text-neutral-600">
-            <span>🔒 邮箱绑定额度</span>
-            <span>📧 无需注册 · 验证码即登录</span>
-            <span>❌ 不自动续费</span>
-            <span>💻 跨设备可找回</span>
+            {dict.paidWall.footerGuarantees.map((text, i) => (
+              <span key={i}>{text}</span>
+            ))}
           </div>
         )}
       </div>

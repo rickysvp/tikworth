@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { grantCredits } from '@/lib/credits-server'
 import { verifyCode, createSessionToken } from '@/lib/auth'
+import { getServerDict, t as serverT } from '@/lib/i18n/server'
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
@@ -11,20 +12,20 @@ export async function POST(req: NextRequest) {
     const email = String(body.email || '').trim().toLowerCase()
     const code = String(body.code || '').trim()
 
-    if (!email) return NextResponse.json({ error: '请输入邮箱', code: 'INVALID_EMAIL' }, { status: 400 })
+    if (!email) return NextResponse.json({ error: getServerDict().api.auth.NO_EMAIL, code: 'INVALID_EMAIL' }, { status: 400 })
     if (!/^\d{6}$/.test(code)) {
-      return NextResponse.json({ error: '请输入 6 位验证码', code: 'INVALID_CODE' }, { status: 400 })
+      return NextResponse.json({ error: getServerDict().api.auth.INVALID_CODE, code: 'INVALID_CODE' }, { status: 400 })
     }
 
     const result = await verifyCode(email, code)
     if (!result.ok) {
       const messages: Record<string, { msg: string; status: number }> = {
-        expired:    { msg: '验证码已过期，请重新获取', status: 410 },
-        wrong:      { msg: '验证码错误，请检查后重试', status: 401 },
-        not_found:  { msg: '请先获取验证码', status: 404 },
-        too_many:   { msg: '尝试次数过多，请重新获取验证码', status: 429 },
+        expired:    { msg: getServerDict().api.auth.VERIFY_FAILED, status: 410 },
+        wrong:      { msg: getServerDict().api.auth.VERIFY_FAILED, status: 401 },
+        not_found:  { msg: getServerDict().api.auth.VERIFY_FAILED, status: 404 },
+        too_many:   { msg: getServerDict().api.auth.VERIFY_FAILED, status: 429 },
       }
-      const err = messages[result.reason] || { msg: '验证失败', status: 400 }
+      const err = messages[result.reason] || { msg: getServerDict().api.auth.VERIFY_FAILED, status: 400 }
       return NextResponse.json({ error: err.msg, code: 'VERIFY_FAILED', reason: result.reason }, { status: err.status })
     }
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
           {
             price_data: {
               currency: 'usd',
-              product_data: { name: entry.packageId, description: `TikWorth ${entry.credits} 次评估额度` },
+              product_data: { name: entry.packageId, description: `TokValue ${entry.credits} evaluation credits` },
               unit_amount: Math.max(50, Math.round(entry.amount * 100)),
             },
             quantity: 1,
@@ -82,10 +83,10 @@ export async function POST(req: NextRequest) {
       packageId: entry.packageId,
       balance: balance.credits,
       token,
-      message: `验证成功！已为您发放 ${entry.credits} 次评估额度`,
+      message: serverT(getServerDict().api.auth.VERIFY_SUCCESS, { count: entry.credits }),
     })
   } catch (err) {
     console.error('[verify-code] error:', err)
-    return NextResponse.json({ error: '验证失败，请稍后再试', code: 'VERIFY_ERROR' }, { status: 500 })
+    return NextResponse.json({ error: getServerDict().api.auth.VERIFY_ERROR, code: 'VERIFY_ERROR' }, { status: 500 })
   }
 }

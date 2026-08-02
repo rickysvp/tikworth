@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { grantCredits } from '@/lib/credits-server'
+import { getServerDict } from '@/lib/i18n/server'
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || ''
 
 export async function POST(req: NextRequest) {
   if (!STRIPE_SECRET_KEY) {
-    return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
+    return NextResponse.json({ error: getServerDict().api.stripe.NOT_CONFIGURED }, { status: 503 })
   }
 
   const payload = await req.text()
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   let event: import('stripe').Stripe.Event
 
   if (!STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 503 })
+    return NextResponse.json({ error: getServerDict().api.stripe.WEBHOOK_SECRET_MISSING }, { status: 503 })
   }
 
   try {
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.warn('[stripe-webhook] signature verification failed:', msg)
-    return NextResponse.json({ error: `Webhook signature verification failed: ${msg}` }, { status: 400 })
+    return NextResponse.json({ error: getServerDict().api.stripe.SIGNATURE_FAILED }, { status: 400 })
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -35,14 +36,14 @@ export async function POST(req: NextRequest) {
       const creditsNum = parseInt(credits, 10)
       if (!Number.isFinite(creditsNum) || creditsNum <= 0) {
         console.warn('[stripe-webhook] invalid credits in metadata:', credits)
-        return NextResponse.json({ error: 'Invalid credits' }, { status: 400 })
+        return NextResponse.json({ error: getServerDict().api.stripe.INVALID_CREDITS }, { status: 400 })
       }
       try {
         await grantCredits(email.toLowerCase(), packageId, creditsNum, parseFloat(amount || '0'), session.id)
         console.log('[stripe-webhook] granted credits to', email, packageId, credits)
       } catch (err) {
         console.error('[stripe-webhook] failed to grant credits:', err)
-        return NextResponse.json({ error: 'Failed to grant credits' }, { status: 500 })
+        return NextResponse.json({ error: getServerDict().api.stripe.FAILED_GRANT }, { status: 500 })
       }
     }
   }

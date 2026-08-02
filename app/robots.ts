@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://tikworth.com/sitemap.xml',
+    sitemap: 'https://tokvalue.com/sitemap.xml',
   }
 }

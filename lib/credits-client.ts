@@ -5,9 +5,9 @@
 
 import type { CreditBalance } from './credits'
 
-const ACTIVE_EMAIL_KEY = 'tikworth_active_email'
-const TOKEN_KEY = 'tikworth_session_token'
-const CODES_KEY = 'tikworth_codes_v1'
+const ACTIVE_EMAIL_KEY = 'tokvalue_active_email'
+const TOKEN_KEY = 'tokvalue_session_token'
+const CODES_KEY = 'tokvalue_codes_v1'
 
 export function getActiveEmail(): string | null {
   if (typeof window === 'undefined') return null

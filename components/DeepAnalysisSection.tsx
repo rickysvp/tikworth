@@ -9,12 +9,14 @@ import { EngagementQualitySection } from '@/components/sections/EngagementQualit
 import { PeerBenchmarkSection } from '@/components/sections/PeerBenchmarkSection'
 import { SectionHeader } from '@/components/SectionHeader'
 import { formatNumber } from '@/lib/format'
+import { useI18n } from '@/lib/i18n/context'
 
 interface DeepAnalysisSectionProps {
   result: Evaluation
 }
 
 export function DeepAnalysisSection({ result }: DeepAnalysisSectionProps) {
+  const { dict } = useI18n()
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState(0)
@@ -27,17 +29,17 @@ export function DeepAnalysisSection({ result }: DeepAnalysisSectionProps) {
 
   return (
     <div className="mb-10">
-      <SectionHeader step="10" title="深度分析" icon={<Activity className="h-4 w-4" />} />
+      <SectionHeader step="10" title="Deep Analysis" icon={<Activity className="h-4 w-4" />} />
       <button
         onClick={() => setShowDeepAnalysis(!showDeepAnalysis)}
         className="w-full flex items-center justify-between rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-4 hover:border-neutral-700 transition-colors"
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
-            {showDeepAnalysis ? '收起深度分析' : '展开深度分析'}
+            {showDeepAnalysis ? dict.evaluation.deepAnalysis.collapseDeepAnalysis : dict.evaluation.deepAnalysis.expandDeepAnalysis}
           </span>
           {!showDeepAnalysis && (
-            <span className="text-xs text-neutral-600 ml-2">核心指标 / 趋势分析 / 账号健康 / 内容节奏 / 互动质量 / 对标数据</span>
+            <span className="text-xs text-neutral-600 ml-2">{dict.evaluation.deepAnalysis.subtitle}</span>
           )}
         </div>
         {showDeepAnalysis ? (
@@ -57,54 +59,54 @@ export function DeepAnalysisSection({ result }: DeepAnalysisSectionProps) {
         <div ref={contentRef} className="pt-6 space-y-6">
           {/* Key Metrics Grid */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">核心指标</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">{dict.evaluation.deepAnalysis.keyMetrics}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <MetricCard icon={<Activity className="h-5 w-5" />} label="互动率" value={`${result.metrics.engagementRate}%`} />
-              <MetricCard icon={<Eye className="h-5 w-5" />} label="平均播放" value={formatNumber(result.metrics.avgPlays)} />
-              <MetricCard icon={<Heart className="h-5 w-5" />} label="平均点赞" value={formatNumber(result.metrics.avgLikes)} />
-              <MetricCard icon={<MessageCircle className="h-5 w-5" />} label="平均评论" value={formatNumber(result.metrics.avgComments)} />
-              <MetricCard icon={<Share2 className="h-5 w-5" />} label="平均分享" value={formatNumber(result.metrics.avgShares)} />
-              <MetricCard icon={<Users className="h-5 w-5" />} label="粉关比" value={`${result.metrics.followerFollowingRatio}x`} />
-              <MetricCard icon={<TrendingUp className="h-5 w-5" />} label="流量增长" value={`${result.metrics.playGrowth > 0 ? '+' : ''}${result.metrics.playGrowth}%`} highlight={result.metrics.playGrowth > 0 ? 'positive' : result.metrics.playGrowth < -15 ? 'negative' : undefined} />
-              <MetricCard icon={<Activity className="h-5 w-5" />} label="播放波动" value={`CV ${result.metrics.cvPlays}`} highlight={result.metrics.cvPlays > 0.5 ? 'negative' : 'positive'} />
+              <MetricCard icon={<Activity className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.engagementRate} value={`${result.metrics.engagementRate}%`} />
+              <MetricCard icon={<Eye className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgPlays} value={formatNumber(result.metrics.avgPlays)} />
+              <MetricCard icon={<Heart className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgLikes} value={formatNumber(result.metrics.avgLikes)} />
+              <MetricCard icon={<MessageCircle className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgComments} value={formatNumber(result.metrics.avgComments)} />
+              <MetricCard icon={<Share2 className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgShares} value={formatNumber(result.metrics.avgShares)} />
+              <MetricCard icon={<Users className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.followerRatio} value={`${result.metrics.followerFollowingRatio}x`} />
+              <MetricCard icon={<TrendingUp className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.playGrowth} value={`${result.metrics.playGrowth > 0 ? '+' : ''}${result.metrics.playGrowth}%`} highlight={result.metrics.playGrowth > 0 ? 'positive' : result.metrics.playGrowth < -15 ? 'negative' : undefined} />
+              <MetricCard icon={<Activity className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.playVolatility} value={`CV ${result.metrics.cvPlays}`} highlight={result.metrics.cvPlays > 0.5 ? 'negative' : 'positive'} />
             </div>
           </div>
 
           {/* Trend & Top Post */}
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">近期趋势</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">{dict.evaluation.deepAnalysis.recentTrends}</h3>
               <div className="space-y-4">
-                <TrendRow label="近 15 天播放中位数" value={formatNumber(result.metrics.recentMedianPlays)} />
-                <TrendRow label="前 15 天播放中位数" value={formatNumber(result.metrics.olderMedianPlays)} />
-                <TrendRow label="距离上次更新" value={`${result.metrics.daysSinceLastPost} 天`} />
+                <TrendRow label={dict.evaluation.deepAnalysis.last15Days} value={formatNumber(result.metrics.recentMedianPlays)} />
+                <TrendRow label={dict.evaluation.deepAnalysis.previous15Days} value={formatNumber(result.metrics.olderMedianPlays)} />
+                <TrendRow label={dict.evaluation.deepAnalysis.daysSinceLastPost} value={`${result.metrics.daysSinceLastPost} days`} />
                 <div className="pt-2 border-t border-neutral-800">
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-400">趋势判断</span>
+                    <span className="text-neutral-400">{dict.evaluation.deepAnalysis.trend}</span>
                     <span className={result.metrics.playGrowth > 0 ? 'text-green-400' : result.metrics.playGrowth < -15 ? 'text-red-400' : 'text-amber-400'}>
-                      {result.metrics.playGrowth > 0 ? '上升' : result.metrics.playGrowth < -15 ? '下滑' : '持平'}
+                      {result.metrics.playGrowth > 0 ? dict.evaluation.deepAnalysis.rising : result.metrics.playGrowth < -15 ? dict.evaluation.deepAnalysis.declining : dict.evaluation.deepAnalysis.stable}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
             <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">最佳表现视频</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">{dict.evaluation.deepAnalysis.bestPerformingVideo}</h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">播放量</span>
+                  <span className="text-neutral-400">{dict.evaluation.deepAnalysis.topPostPlays}</span>
                   <span className="font-semibold">{formatNumber(result.metrics.topPostPlays)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">点赞数</span>
+                  <span className="text-neutral-400">{dict.evaluation.deepAnalysis.topPostLikes}</span>
                   <span className="font-semibold">{formatNumber(result.metrics.topPostLikes)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">爆款 / 粉丝比</span>
+                  <span className="text-neutral-400">{dict.evaluation.deepAnalysis.viralToFollowerRatio}</span>
                   <span className="font-semibold">{result.followerCount ? (result.metrics.topPostPlays / result.followerCount).toFixed(2) : '0'}x</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">每条视频平均点赞</span>
+                  <span className="text-neutral-400">{dict.evaluation.deepAnalysis.avgLikesPerVideo}</span>
                   <span className="font-semibold">{formatNumber(result.metrics.likesPerVideo)}</span>
                 </div>
               </div>

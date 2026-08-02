@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBalance } from '@/lib/credits-server'
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
+import { getServerDict } from '@/lib/i18n/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,11 +9,11 @@ export async function GET(req: NextRequest) {
   try {
     const token = getBearerToken(req)
     if (!token) {
-      return NextResponse.json({ error: '请先登录', code: 'UNAUTHORIZED' }, { status: 401 })
+      return NextResponse.json({ error: getServerDict().api.balance.UNAUTHORIZED, code: 'UNAUTHORIZED' }, { status: 401 })
     }
     const payload = await verifySessionToken(token)
     if (!payload) {
-      return NextResponse.json({ error: '登录已过期，请重新验证', code: 'UNAUTHORIZED' }, { status: 401 })
+      return NextResponse.json({ error: getServerDict().api.balance.SESSION_EXPIRED, code: 'UNAUTHORIZED' }, { status: 401 })
     }
 
     const balance = getBalance(payload.email)
@@ -31,6 +32,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (err) {
     console.error('[balance] error:', err)
-    return NextResponse.json({ error: '查询失败，请稍后再试', code: 'BALANCE_ERROR' }, { status: 500 })
+    return NextResponse.json({ error: getServerDict().api.balance.BALANCE_ERROR, code: 'BALANCE_ERROR' }, { status: 500 })
   }
 }

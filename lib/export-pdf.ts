@@ -71,7 +71,7 @@ export async function exportPdfReport(
       pageCount++
     }
 
-    pdf.save(`tikworth-${result.username}-report.pdf`)
+    pdf.save(`tokvalue-${result.username}-report.pdf`)
   } finally {
     canvasElement.style.fontFamily = originalFontFamily
   }

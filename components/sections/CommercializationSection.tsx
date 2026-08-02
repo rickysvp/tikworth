@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { formatUsd } from '@/lib/format'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Props {
   advice: CommercializationAdvice
@@ -29,12 +30,6 @@ const difficultyColors: Record<string, string> = {
   high: 'text-red-400 border-red-900/50 bg-red-950/30',
 }
 
-const difficultyLabels: Record<string, string> = {
-  low: '低门槛',
-  medium: '中等难度',
-  high: '高门槛',
-}
-
 const revenueColors: Record<string, string> = {
   high: 'text-green-400',
   medium: 'text-amber-400',
@@ -43,6 +38,7 @@ const revenueColors: Record<string, string> = {
 
 function DirectionCard({ direction, rank }: { direction: CommercializationAdvice['directions'][0]; rank: number }) {
   const [expanded, setExpanded] = useState(rank === 0)
+  const { dict } = useI18n()
 
   return (
     <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
@@ -68,10 +64,10 @@ function DirectionCard({ direction, rank }: { direction: CommercializationAdvice
           </div>
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${difficultyColors[direction.difficulty]}`}>
-              {difficultyLabels[direction.difficulty]}
+              {direction.difficulty === 'low' ? dict.evaluation.monetizationAdvice.easy : direction.difficulty === 'medium' ? dict.evaluation.monetizationAdvice.moderate : dict.evaluation.monetizationAdvice.hard}
             </span>
             <span className={`text-[10px] ${revenueColors[direction.revenuePotential]}`}>
-              {direction.revenuePotential === 'high' ? '高收益潜力' : direction.revenuePotential === 'medium' ? '中等收益' : '低收益'}
+              {direction.revenuePotential === 'high' ? dict.evaluation.monetizationAdvice.highPotential : direction.revenuePotential === 'medium' ? dict.evaluation.monetizationAdvice.mediumPotential : dict.evaluation.monetizationAdvice.lowPotential}
             </span>
           </div>
         </div>
@@ -81,7 +77,7 @@ function DirectionCard({ direction, rank }: { direction: CommercializationAdvice
           <div className="text-sm font-bold text-[#00F2EA] tabular-nums">
             {formatUsd(direction.estimatedMonthlyRevenue.low)} - {formatUsd(direction.estimatedMonthlyRevenue.high)}
           </div>
-          <div className="text-[10px] text-neutral-500">月收入预估</div>
+          <div className="text-[10px] text-neutral-500">{dict.evaluation.monetizationAdvice.estMonthly}</div>
         </div>
 
         {/* Fit score ring */}
@@ -125,7 +121,7 @@ function DirectionCard({ direction, rank }: { direction: CommercializationAdvice
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="h-3.5 w-3.5 text-neutral-500" />
-                <span className="text-[11px] text-neutral-500 uppercase tracking-wider">前置条件</span>
+                <span className="text-[11px] text-neutral-500 uppercase tracking-wider">{dict.evaluation.monetizationAdvice.prerequisites}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {direction.prerequisites.map((pre, i) => (
@@ -140,7 +136,7 @@ function DirectionCard({ direction, rank }: { direction: CommercializationAdvice
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Target className="h-3.5 w-3.5 text-[#FF0050]" />
-                <span className="text-[11px] text-neutral-500 uppercase tracking-wider">行动步骤</span>
+                <span className="text-[11px] text-neutral-500 uppercase tracking-wider">{dict.evaluation.monetizationAdvice.actionSteps}</span>
               </div>
               <div className="space-y-2">
                 {direction.actionSteps.map((step, i) => (
@@ -161,21 +157,22 @@ function DirectionCard({ direction, rank }: { direction: CommercializationAdvice
 }
 
 export function CommercializationSection({ advice }: Props) {
+  const { dict } = useI18n()
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <div className="flex items-center gap-2 mb-6">
         <DollarSign className="h-5 w-5 text-[#FF0050]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">商业化方向建议</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.monetizationAdvice.title}</h3>
       </div>
 
       {/* Primary & Secondary Recommendation */}
       <div className="grid gap-3 sm:grid-cols-2 mb-6">
         <div className="rounded-xl border border-[#FF0050]/20 bg-gradient-to-br from-[#FF0050]/5 to-[#0f0f0f] p-4">
-          <div className="text-[10px] text-[#FF0050] uppercase tracking-wider mb-1">首选推荐</div>
+          <div className="text-[10px] text-[#FF0050] uppercase tracking-wider mb-1">{dict.evaluation.monetizationAdvice.primaryPick}</div>
           <div className="text-xs text-neutral-300 leading-relaxed">{advice.primaryRecommendation}</div>
         </div>
         <div className="rounded-xl border border-[#00F2EA]/20 bg-gradient-to-br from-[#00F2EA]/5 to-[#0f0f0f] p-4">
-          <div className="text-[10px] text-[#00F2EA] uppercase tracking-wider mb-1">次选推荐</div>
+          <div className="text-[10px] text-[#00F2EA] uppercase tracking-wider mb-1">{dict.evaluation.monetizationAdvice.secondaryPick}</div>
           <div className="text-xs text-neutral-300 leading-relaxed">{advice.secondaryRecommendation}</div>
         </div>
       </div>
@@ -185,7 +182,7 @@ export function CommercializationSection({ advice }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-[#00F2EA]" />
-            <span className="text-xs text-neutral-500">组合运营后预估月收入</span>
+            <span className="text-xs text-neutral-500">{dict.evaluation.monetizationAdvice.estCombinedMonthly}</span>
           </div>
           <div className="text-xl font-bold text-[#00F2EA] tabular-nums">
             {formatUsd(advice.estimatedTotalMonthly.low)} - {formatUsd(advice.estimatedTotalMonthly.high)}

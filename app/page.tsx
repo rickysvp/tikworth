@@ -8,7 +8,7 @@ import { Evaluation } from '@/types'
 import { ScoreGauge } from '@/components/ScoreGauge'
 import { RadarChart } from '@/components/RadarChart'
 import { RiskList } from '@/components/RiskList'
-import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2 } from 'lucide-react'
+import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { GrowthPlanSection } from '@/components/sections/GrowthPlanSection'
 import { IncomeBreakdownSection } from '@/components/sections/IncomeBreakdownSection'
@@ -28,11 +28,17 @@ import { APP_VERSION } from '@/lib/version'
 import { formatNumber } from '@/lib/format'
 import { useToast, ToastContainer } from '@/components/Toast'
 import type { CreditBalance } from '@/lib/credits'
+
+import { useI18n, t } from '@/lib/i18n'
+import { CREDIT_PACKAGES } from '@/lib/credits'
 import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken } from '@/lib/credits-client'
+import { ParticleBackground } from '@/components/ParticleBackground'
+import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 
 const examples = ['charlidamelio', 'mrbeast', 'khaby.lame', 'zachking']
 
 function HomePageContent() {
+  const { dict } = useI18n()
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<Evaluation | null>(null)
@@ -49,6 +55,8 @@ function HomePageContent() {
   const pendingUsername = useRef<string | null>(null)
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [showVerifyModal, setShowVerifyModal] = useState(false)
+  
   const searchParams = useSearchParams()
   const router = useRouter()
   const paidHandled = useRef(false)
@@ -132,7 +140,7 @@ function HomePageContent() {
       await exportPdfReport(result, true, reportRef.current)
     } catch (err) {
       console.error('[export-pdf] failed:', err)
-      toast('PDF 导出失败：' + (err instanceof Error ? err.message : String(err)))
+      toast(dict.toast.pdfExportFailed + (err instanceof Error ? err.message : String(err)))
     }
   }
 
@@ -168,21 +176,21 @@ function HomePageContent() {
           pendingUsername.current = target
           setNeedPurchase(true)
         } else {
-          setError(data.error || '评估失败')
+          setError(data.error || dict.errors.evaluationFailed)
         }
       } else {
         setResult(data)
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        setError('请求超时，请刷新页面后重试')
+        setError(dict.errors.requestTimeout)
       } else {
-        setError('网络错误，请检查网络连接后重试')
+        setError(dict.errors.networkError)
       }
     } finally {
       setLoading(false)
     }
-  }, [username])
+  }, [username, dict.errors.networkError, dict.errors.requestTimeout, dict.errors.evaluationFailed])
 
   // Handle URL params: ?paid=success (Stripe callback) and ?u=username (client navigation)
   useEffect(() => {
@@ -215,81 +223,74 @@ function HomePageContent() {
     try {
       const canvas = await html2canvas(reportRef.current, { backgroundColor: '#0a0a0a', scale: 2 })
       const link = document.createElement('a')
-      link.download = `tikworth-${result.username}.png`
+      link.download = `tokvalue-${result.username}.png`
       link.href = canvas.toDataURL('image/png')
       link.click()
     } catch (err) {
       console.error('[export-png] failed:', err)
-      toast('PNG 导出失败：' + (err instanceof Error ? err.message : String(err)))
+      toast(dict.toast.pngExportFailed + (err instanceof Error ? err.message : String(err)))
     }
   }
 
   return (
     <main className="min-h-screen pb-20">
       {/* TopBar */}
-      <header className="sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl">
-        {/* 底部渐变光线 */}
+      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl">
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/40 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent to-[#00F2EA]/[0.03] pointer-events-none" />
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center gap-4">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center gap-4">
           {/* Logo */}
-          <Link href="/" className="group flex items-center gap-2 shrink-0 w-[160px]">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#00F2EA]/40 blur-md group-hover:bg-[#00F2EA]/60 transition-colors" />
-              <div className="relative h-6 w-6 rounded-md bg-gradient-to-br from-[#00F2EA] to-[#FF0050] flex items-center justify-center shadow-lg shadow-[#00F2EA]/20">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-black" fill="currentColor">
-                  <path d="M16.5 3a5.5 5.5 0 0 0-5.5 5.5v8a3.5 3.5 0 1 1-3.5-3.5c.17 0 .34.01.5.04V10.5a6 6 0 1 0 6 6V8.5a3.5 3.5 0 0 0 2.5-3.35V3z"/>
-                </svg>
-              </div>
-            </div>
-            <span className="text-base font-black tracking-tight bg-gradient-to-r from-[#00F2EA] via-white to-[#FF0050] bg-clip-text text-transparent">
-              TikWorth
-            </span>
+          <Link href="/" className="group shrink-0">
+            <Image src="/tokvalue.png" alt="TokValue" width={160} height={40} className="h-10 w-auto object-contain" />
           </Link>
 
-          {/* 中间导航 */}
+          {/* Navigation */}
           <nav className="hidden md:flex items-center justify-center gap-1 flex-1">
-            <Link href="/tracker" className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors">
-              <BarChart3 className="h-3.5 w-3.5" />
-              账号追踪
-              <span className="absolute inset-x-2 -bottom-0.5 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/60 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform" />
-            </Link>
-            <Link href="/history" className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors">
-              <Clock className="h-3.5 w-3.5" />
-              评估历史
-              <span className="absolute inset-x-2 -bottom-0.5 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/60 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform" />
-            </Link>
+            {[
+              { label: dict.nav.tracker, href: '/tracker', icon: BarChart3 },
+              { label: dict.nav.history, href: '/history', icon: Clock },
+              { label: dict.nav.pricing, href: '#pricing', icon: Zap },
+              { label: dict.nav.howItWorks, href: '#capabilities', icon: Lightbulb },
+            ].map(item => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors"
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+                <span className="absolute inset-x-2 -bottom-0.5 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/60 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform" />
+              </a>
+            ))}
           </nav>
 
-          {/* 右侧状态区 */}
+          {/* Right side */}
           <div className="flex items-center justify-end gap-2 min-w-0 w-[160px] sm:w-auto">
-            {/* 支付成功提示 */}
             {paymentSuccess && (
               <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-[11px] font-medium text-green-300 animate-fade-in-up">
                 <CheckCircle2 className="h-3 w-3" />
-                额度已到账
+                {dict.nav.creditsAdded}
               </div>
             )}
 
-            {/* 加载中 */}
             {balanceLoading && !creditBalance ? (
               <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                <span className="hidden sm:inline">查询额度</span>
+                <span className="hidden sm:inline">{dict.nav.loadingCredits}</span>
               </div>
             ) : creditBalance ? (
               <>
-                {/* 额度胶囊 */}
+                {/* Credit badge */}
                 <div className="group relative">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#00F2EA]/40 to-[#FF0050]/30 rounded-full blur-sm opacity-60 group-hover:opacity-100 transition-opacity" />
                   <div className="relative flex items-center gap-1.5 rounded-full border border-[#00F2EA]/40 bg-[#0a0a0a] px-3 py-1">
                     <Zap className="h-3 w-3 text-[#00F2EA]" fill="#00F2EA" />
                     <span className="text-xs font-bold text-[#00F2EA] tabular-nums">{creditBalance.credits}</span>
-                    <span className="text-[10px] text-neutral-500">credits</span>
+                    <span className="text-[10px] text-neutral-500">{dict.common.evaluations}</span>
                   </div>
                 </div>
 
-                {/* 用户标识 */}
+                {/* User info */}
                 <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-neutral-800 bg-neutral-900/60 py-0.5 pl-0.5 pr-2.5 min-w-0">
                   <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#FF0050] to-[#00F2EA] flex items-center justify-center text-[10px] font-bold text-black shrink-0">
                     {(creditBalance.email[0] || '?').toUpperCase()}
@@ -300,39 +301,40 @@ function HomePageContent() {
                   <button
                     onClick={() => { setCreditBalance(null); setActiveEmail(null) }}
                     className="ml-0.5 text-neutral-600 hover:text-neutral-300 transition-colors shrink-0"
-                    aria-label="切换账号"
+                    aria-label={dict.common.switchAccount}
                   >
                     <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M9 18l6-6-6-6"/>
                     </svg>
                   </button>
                 </div>
-
-                {/* 移动端切换按钮 */}
-                <button
-                  onClick={() => { setCreditBalance(null); setActiveEmail(null) }}
-                  className="sm:hidden text-neutral-500 hover:text-neutral-300 transition-colors p-1"
-                  aria-label="切换账号"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 18l6-6-6-6"/>
-                  </svg>
-                </button>
               </>
-            ) : null}
+            ) : (
+              <button
+                onClick={() => setShowVerifyModal(true)}
+                className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#FF0050] to-[#ff2d6a] px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-[#FF0050]/20 hover:shadow-xl hover:shadow-[#FF0050]/30 transition-all"
+              >
+                <span className="relative z-10 flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" />
+                  {dict.nav.verifyEmail}
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              </button>
+            )}
           </div>
         </div>
       </header>
       {/* Hero / Tool */}
       <section className="relative overflow-hidden border-b border-neutral-800">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#FF0050]/10 via-transparent to-transparent" />
-        <div className="mx-auto max-w-3xl px-4 py-16 sm:py-20 relative">
+        <ParticleBackground />
+        <div className="mx-auto max-w-3xl px-4 py-20 sm:py-24 relative">
           <div className="text-center mb-8">
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">
-              <span className="gradient-text">TikWorth</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4">
+              {dict.home.hero.title}
             </h1>
             <p className="text-lg text-neutral-400 max-w-xl mx-auto">
-              输入一个 TikTok 账号，10 秒内判断这个号值不值得投 / 合作
+              {dict.home.hero.subtitle}
             </p>
           </div>
 
@@ -343,8 +345,8 @@ function HomePageContent() {
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="输入 TikTok 用户名"
-                aria-label="TikTok 用户名"
+                placeholder={dict.home.hero.placeholder}
+                aria-label={dict.home.hero.ariaLabel}
                 autoComplete="off"
                 className="flex-1 bg-transparent text-lg outline-none placeholder:text-neutral-600"
               />
@@ -354,7 +356,7 @@ function HomePageContent() {
                 className="ml-3 inline-flex items-center gap-2 rounded-xl bg-[#FF0050] px-5 py-2.5 font-semibold text-white hover:bg-[#d60043] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                {loading ? '评估中' : '开始评估'}
+                {loading ? dict.common.analyzing : dict.common.evaluate}
               </button>
             </div>
           </form>
@@ -380,14 +382,373 @@ function HomePageContent() {
         </div>
       </section>
 
-      {/* Purchase required: 评估需要额度，显示付费墙 */}
+      {/* Landing Page Sections (shown when no result) */}
+      {!result && !loading && !needPurchase && (
+        <>
+          {/* Social Proof */}
+          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
+            <div className="mx-auto max-w-5xl px-4">
+              <div className="grid grid-cols-3 gap-8 text-center">
+                {[
+                  { value: '12,847+', label: dict.home.socialProof.accountsEvaluated },
+                  { value: '$2.4B+', label: dict.home.socialProof.totalValueAssessed },
+                  { value: '98.2%', label: dict.home.socialProof.satisfactionRate },
+                ].map((stat, i) => (
+                  <div key={i}>
+                    <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Use Cases */}
+          <section className="border-b border-neutral-800 py-16">
+            <div className="mx-auto max-w-5xl px-4">
+              <h2 className="text-2xl font-bold text-center mb-10">{dict.home.useCases.title}</h2>
+              <div className="grid gap-6 md:grid-cols-3">
+                {[
+                  {
+                    icon: Building2, title: dict.home.useCases.brands.title,
+                    desc: dict.home.useCases.brands.desc,
+                    cta: dict.home.useCases.brands.cta,
+                    action: () => document.querySelector('input')?.focus(),
+                  },
+                  {
+                    icon: User, title: dict.home.useCases.creators.title,
+                    desc: dict.home.useCases.creators.desc,
+                    cta: dict.home.useCases.creators.cta,
+                    action: () => { setUsername(''); document.querySelector('input')?.focus() },
+                  },
+                  {
+                    icon: Users, title: dict.home.useCases.agencies.title,
+                    desc: dict.home.useCases.agencies.desc,
+                    cta: dict.home.useCases.agencies.cta,
+                    action: () => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }),
+                  },
+                ].map((item, i) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={i} className="group rounded-2xl border border-neutral-800 bg-[#141414] p-6 hover:border-[#00F2EA]/30 transition-all hover:-translate-y-1">
+                      <div className="w-11 h-11 rounded-xl bg-[#00F2EA]/10 flex items-center justify-center mb-4">
+                        <Icon className="h-5 w-5 text-[#00F2EA]" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                      <p className="text-sm text-neutral-400 leading-relaxed mb-4">{item.desc}</p>
+                      <button onClick={item.action} className="text-sm font-medium text-[#FF0050] hover:text-[#ff2d6a] transition-colors">
+                        {item.cta} →
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* Core Capabilities */}
+          <section id="capabilities" className="border-b border-neutral-800 py-20">
+            <div className="mx-auto max-w-5xl px-4">
+              <div className="text-center mb-14">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 px-4 py-1.5 text-xs font-medium text-[#00F2EA] mb-4">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {dict.home.capabilities.badge}
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+                  {dict.home.capabilities.title}
+                </h2>
+                <p className="text-neutral-500 text-sm max-w-2xl mx-auto leading-relaxed">
+                  {dict.home.capabilities.description}
+                </p>
+              </div>
+
+              {/* 1. BUSINESS VALUATION — Wide Card */}
+              <div className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#0f0f0f] via-[#0f0f0f] to-[#FF0050]/[0.04] p-6 sm:p-8 mb-5 hover:border-[#FF0050]/30 transition-all group">
+                <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10">
+                  <div className="lg:w-[340px] shrink-0">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF0050]/10 border border-[#FF0050]/20 px-3 py-1 text-[10px] font-semibold text-[#FF0050] uppercase tracking-wider mb-4">
+                      <DollarSign className="h-3 w-3" /> {dict.home.capabilities.valuation.badge}
+                    </span>
+                    <h3 className="text-xl font-bold mb-2">{dict.home.capabilities.valuation.title}</h3>
+                    <p className="text-sm text-neutral-400 leading-relaxed mb-5">
+                      {dict.home.capabilities.valuation.desc}
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FF0050]/5 border border-[#FF0050]/10">
+                        <DollarSign className="h-5 w-5 text-[#FF0050] shrink-0" />
+                        <div>
+                          <div className="text-[10px] text-neutral-500 uppercase tracking-wider">{dict.home.capabilities.valuation.rangeLabel}</div>
+                          <div className="text-base font-bold text-[#FF0050]">{dict.home.capabilities.valuation.rangeValue}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FF0050]/5 border border-[#FF0050]/10">
+                        <Globe className="h-5 w-5 text-[#FF0050] shrink-0" />
+                        <div>
+                          <div className="text-[10px] text-neutral-500 uppercase tracking-wider">{dict.home.capabilities.valuation.coverageLabel}</div>
+                          <div className="text-sm font-semibold text-white">{dict.home.capabilities.valuation.coverageValue}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 grid gap-3 sm:grid-cols-2">
+                    <CapFeature icon={<DollarSign className="h-4 w-4" />} color="pink" title={dict.home.capabilities.valuation.features.incomeBreakdown.title} items={dict.home.capabilities.valuation.features.incomeBreakdown.items} />
+                    <CapFeature icon={<TrendingUp className="h-4 w-4" />} color="pink" title={dict.home.capabilities.valuation.features.revenueRoadmap.title} items={dict.home.capabilities.valuation.features.revenueRoadmap.items} />
+                    <CapFeature icon={<Layers className="h-4 w-4" />} color="pink" title={dict.home.capabilities.valuation.features.valueBreakdown.title} items={dict.home.capabilities.valuation.features.valueBreakdown.items} />
+                    <CapFeature icon={<Trophy className="h-4 w-4" />} color="pink" title={dict.home.capabilities.valuation.features.peerBenchmarking.title} items={dict.home.capabilities.valuation.features.peerBenchmarking.items} />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. AUTHORITY & RISK — Wide Card */}
+              <div className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#0f0f0f] via-[#0f0f0f] to-[#00F2EA]/[0.04] p-6 sm:p-8 mb-5 hover:border-[#00F2EA]/30 transition-all group">
+                <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10">
+                  <div className="lg:w-[340px] shrink-0">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00F2EA]/10 border border-[#00F2EA]/20 px-3 py-1 text-[10px] font-semibold text-[#00F2EA] uppercase tracking-wider mb-4">
+                      <Shield className="h-3 w-3" /> {dict.home.capabilities.authority.badge}
+                    </span>
+                    <h3 className="text-xl font-bold mb-2">{dict.home.capabilities.authority.title}</h3>
+                    <p className="text-sm text-neutral-400 leading-relaxed mb-5">
+                      {dict.home.capabilities.authority.desc}
+                    </p>
+                    <div className="mb-4">
+                      <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2">{dict.home.capabilities.authority.tierDistribution}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[
+                          { tier: 'S', color: 'bg-green-500/20 text-green-400', pct: dict.tiers.tierDistribution.S },
+                          { tier: 'A', color: 'bg-green-400/20 text-green-400', pct: dict.tiers.tierDistribution.A },
+                          { tier: 'B', color: 'bg-amber-400/20 text-amber-400', pct: dict.tiers.tierDistribution.B },
+                          { tier: 'C', color: 'bg-neutral-500/20 text-neutral-400', pct: dict.tiers.tierDistribution.C },
+                          { tier: 'D', color: 'bg-red-500/20 text-red-400', pct: dict.tiers.tierDistribution.D },
+                          { tier: 'E', color: 'bg-red-600/20 text-red-500', pct: dict.tiers.tierDistribution.E },
+                          { tier: 'F', color: 'bg-red-800/20 text-red-600', pct: dict.tiers.tierDistribution.F },
+                        ].map(t => (
+                          <span key={t.tier} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold">
+                            <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full ${t.color} text-[11px]`}>{t.tier}</span>
+                            <span className="text-neutral-500 text-[10px]">{t.pct}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-[#00F2EA]/5 border border-[#00F2EA]/10">
+                      <Eye className="h-5 w-5 text-[#00F2EA] shrink-0" />
+                      <div className="text-xs text-neutral-400">
+                        {t(dict.home.capabilities.authority.brandCheck, { pct: '85' })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 grid gap-3 sm:grid-cols-2">
+                    <CapFeature icon={<Scale className="h-4 w-4" />} color="cyan" title={dict.home.capabilities.authority.features.radarScoring.title} items={dict.home.capabilities.authority.features.radarScoring.items} />
+                    <CapFeature icon={<AlertTriangle className="h-4 w-4" />} color="cyan" title={dict.home.capabilities.authority.features.riskIntelligence.title} items={dict.home.capabilities.authority.features.riskIntelligence.items} />
+                    <CapFeature icon={<Building2 className="h-4 w-4" />} color="cyan" title={dict.home.capabilities.authority.features.brandSuitability.title} items={dict.home.capabilities.authority.features.brandSuitability.items} />
+                    <CapFeature icon={<Activity className="h-4 w-4" />} color="cyan" title={dict.home.capabilities.authority.features.accountHealth.title} items={dict.home.capabilities.authority.features.accountHealth.items} />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. GROWTH & MONETIZATION — Wide Card */}
+              <div className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#0f0f0f] via-[#0f0f0f] to-[#FF0050]/[0.04] p-6 sm:p-8 mb-5 hover:border-[#FF0050]/30 transition-all group">
+                <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10">
+                  <div className="lg:w-[340px] shrink-0">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF0050]/10 border border-[#FF0050]/20 px-3 py-1 text-[10px] font-semibold text-[#FF0050] uppercase tracking-wider mb-4">
+                      <Rocket className="h-3 w-3" /> {dict.home.capabilities.growth.badge}
+                    </span>
+                    <h3 className="text-xl font-bold mb-2">{dict.home.capabilities.growth.title}</h3>
+                    <p className="text-sm text-neutral-400 leading-relaxed mb-5">
+                      {dict.home.capabilities.growth.desc}
+                    </p>
+                    <div className="space-y-2 text-xs">
+                      {dict.home.capabilities.growth.guarantees.map((text, i) => (
+                        <div key={i} className="flex items-center gap-2 text-neutral-400">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-[#00F2EA] shrink-0" />
+                          <span>{text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 grid gap-3 sm:grid-cols-2">
+                    <CapFeature icon={<Lightbulb className="h-4 w-4" />} color="pink" title={dict.home.capabilities.growth.features.contentStrategy.title} items={dict.home.capabilities.growth.features.contentStrategy.items} />
+                    <CapFeature icon={<Rocket className="h-4 w-4" />} color="pink" title={dict.home.capabilities.growth.features.monetizationBlueprint.title} items={dict.home.capabilities.growth.features.monetizationBlueprint.items} />
+                    <CapFeature icon={<Flame className="h-4 w-4" />} color="pink" title={dict.home.capabilities.growth.features.trendForecasting.title} items={dict.home.capabilities.growth.features.trendForecasting.items} />
+                    <CapFeature icon={<MessageCircle className="h-4 w-4" />} color="pink" title={dict.home.capabilities.growth.features.engagementDeepDive.title} items={dict.home.capabilities.growth.features.engagementDeepDive.items} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Capabilities Summary */}
+              <div className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#0f0f0f] to-[#141414] p-6 mb-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Radio className="h-4 w-4 text-[#FF0050]" />
+                  <h4 className="text-sm font-semibold text-neutral-300">{dict.home.capabilities.alsoIncluded.title}</h4>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {dict.home.capabilities.alsoIncluded.items.map((item, i) => {
+                    const icons = [FileDown, RefreshCw, Globe, BarChart3, LineChart, Wallet]
+                    const Icon = icons[i] || Radio
+                    return (
+                    <div key={i} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-neutral-900/50 border border-neutral-800 hover:border-[#FF0050]/30 transition-colors text-center">
+                      <Icon className="h-4 w-4 text-[#00F2EA]" />
+                      <span className="text-[11px] font-medium text-neutral-300">{item.label}</span>
+                      <span className="text-[10px] text-neutral-500">{item.desc}</span>
+                    </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* CTA Banner */}
+              <div className="text-center mt-8">
+                <p className="text-sm text-neutral-500 mb-4">{dict.home.capabilities.ctaHint}</p>
+                <button
+                  onClick={() => {
+                    const input = document.querySelector<HTMLInputElement>('input[placeholder*="username"]')
+                    if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#FF0050] to-[#e60049] px-6 py-3 text-sm font-semibold text-white hover:from-[#e60049] hover:to-[#cc0040] transition-all shadow-lg shadow-[#FF0050]/25"
+                >
+                  {dict.home.capabilities.cta}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Pricing Preview */}
+          <section id="pricing" className="border-b border-neutral-800 py-16">
+            <div className="mx-auto max-w-3xl px-4">
+              <h2 className="text-2xl font-bold text-center mb-2">{dict.home.pricing.title}</h2>
+              <p className="text-neutral-500 text-center mb-10 text-sm">{dict.home.pricing.subtitle}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {CREDIT_PACKAGES.map(pkg => (
+                  <div key={pkg.id} className={`relative rounded-2xl border-2 p-5 text-center transition-all ${
+                    pkg.highlight ? 'border-[#FF0050] bg-[#FF0050]/5' : 'border-neutral-800 bg-[#141414]'
+                  }`}>
+                    {pkg.badge && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#FF0050] px-2.5 py-0.5 text-[10px] font-bold text-white">
+                          <Star className="h-2.5 w-2.5" />{dict.creditPackages[pkg.id as keyof typeof dict.creditPackages]?.badge ?? pkg.badge}
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-xs text-neutral-500 uppercase tracking-wider mb-2">{dict.creditPackages[pkg.id as keyof typeof dict.creditPackages]?.label ?? pkg.label}</div>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-neutral-400">$</span>
+                      <span className="text-4xl font-black text-white">{pkg.price}</span>
+                    </div>
+                    <div className="text-sm text-neutral-500 mt-1">{pkg.credits} evaluations</div>
+                    <div className="text-xs text-neutral-600 mt-0.5">{pkg.perUnit}</div>
+                    <button
+                      onClick={() => { setShowVerifyModal(true) }}
+                      className={`mt-4 w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                        pkg.highlight
+                          ? 'bg-[#FF0050] text-white hover:bg-[#e60049]'
+                          : 'border border-neutral-700 text-neutral-300 hover:border-[#FF0050] hover:text-[#FF0050]'
+                      }`}
+                    >
+                      {dict.common.getStarted}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 flex justify-center gap-5 text-[10px] text-neutral-600">
+                {dict.home.pricing.footer.map((text, i) => (
+                  <span key={i}>{text}</span>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* FAQ */}
+          <section className="border-b border-neutral-800 py-16">
+            <div className="mx-auto max-w-2xl px-4">
+              <div className="text-center mb-10">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 px-4 py-1.5 text-xs font-medium text-[#00F2EA] mb-4">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  {dict.home.faq.badge}
+                </div>
+                <h2 className="text-2xl font-bold">{dict.home.faq.title}</h2>
+              </div>
+
+              {Object.entries(dict.home.faq.questions).map(([key, item]) => (
+                <FAQItem key={key} question={item.q} answer={item.a} />
+              ))}
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
+            <div className="mx-auto max-w-5xl px-4 py-12">
+              {/* Disclaimer Banner */}
+              <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 mb-10">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 h-5 w-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-3 w-3 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">{dict.home.footer.disclaimer.title}</h4>
+                    <p className="text-xs text-neutral-500 leading-relaxed">
+                      {dict.home.footer.disclaimer.text}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-8 sm:grid-cols-4">
+                {/* Brand */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Image src="/tokvalue.png" alt="TokValue" width={140} height={36} className="h-9 w-auto object-contain" />
+                  </div>
+                  <p className="text-xs text-neutral-500 leading-relaxed mb-3">
+                    {dict.home.footer.tagline}
+                  </p>
+                  <span className="text-[10px] text-neutral-600">v{APP_VERSION}</span>
+                </div>
+
+                {/* Product */}
+                <div>
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.product}</h4>
+                  <ul className="space-y-2">
+                    <li><a href="#capabilities" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
+                    <li><a href="#pricing" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
+                    <li><Link href="/tracker" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
+                    <li><Link href="/history" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
+                  </ul>
+                </div>
+
+                {/* Data & Methodology */}
+                <div>
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.dataMethodology}</h4>
+                  <ul className="space-y-2">
+                    {dict.home.footer.methodologyItems.map((item, i) => (
+                      <li key={i}><span className="text-xs text-neutral-500">{item}</span></li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Legal */}
+                <div>
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.legal}</h4>
+                  <ul className="space-y-2">
+                    {dict.home.footer.legalItems.map((item, i) => (
+                      <li key={i}><span className="text-xs text-neutral-500">{item}</span></li>
+                    ))}
+                    <li><span className="text-xs text-neutral-600">{t('© {year} TokValue. All rights reserved.', { year: new Date().getFullYear() })}</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </footer>
+        </>
+      )}
+
+      {/* Purchase required: needs credits to evaluate */}
       {needPurchase && !result && (
         <section className="mx-auto max-w-3xl px-4 py-10">
           <div className="rounded-2xl border border-[#FF0050]/30 bg-[#FF0050]/5 p-4 mb-6 text-center">
             <p className="text-sm text-neutral-300">
-              评估此账号需要消耗 <span className="text-[#FF0050] font-bold">1 次额度</span>
+              {dict.evaluation.purchaseRequired.usesCredit}
               <br />
-              <span className="text-xs text-neutral-500">购买后立即查看完整评估报告</span>
+              <span className="text-xs text-neutral-500">{dict.evaluation.purchaseRequired.purchaseToView}</span>
             </p>
           </div>
           <PaidWall onUnlock={handleUnlock} result={null} existingBalance={creditBalance} isUnlocking={isUnlocking} balanceLoading={balanceLoading} />
@@ -415,7 +776,7 @@ function HomePageContent() {
                   )}
                   {result.mock && (
                     <span className="inline-block rounded-full border border-amber-700/50 bg-amber-950/30 px-2.5 py-0.5 text-xs text-amber-400">
-                      Mock 演示数据
+                      {dict.common.mockData}
                     </span>
                   )}
                 </div>
@@ -424,10 +785,10 @@ function HomePageContent() {
                   <p className="text-sm text-neutral-400 mt-1 line-clamp-1">{result.bio}</p>
                 )}
                 <div className="flex items-center gap-4 mt-2 text-sm flex-wrap">
-                  <span><span className="font-semibold tabular-nums">{formatNumber(result.followerCount)}</span> <span className="text-neutral-500">粉丝</span></span>
-                  <span><span className="font-semibold tabular-nums">{formatNumber(result.followingCount)}</span> <span className="text-neutral-500">关注</span></span>
-                  <span><span className="font-semibold tabular-nums">{formatNumber(result.totalLikes)}</span> <span className="text-neutral-500">总点赞</span></span>
-                  <span><span className="font-semibold tabular-nums">{result.videoCount}</span> <span className="text-neutral-500">视频</span></span>
+                  <span><span className="font-semibold tabular-nums">{formatNumber(result.followerCount)}</span> <span className="text-neutral-500">{dict.common.followers}</span></span>
+                  <span><span className="font-semibold tabular-nums">{formatNumber(result.followingCount)}</span> <span className="text-neutral-500">{dict.common.following}</span></span>
+                  <span><span className="font-semibold tabular-nums">{formatNumber(result.totalLikes)}</span> <span className="text-neutral-500">{dict.common.totalLikes}</span></span>
+                  <span><span className="font-semibold tabular-nums">{result.videoCount}</span> <span className="text-neutral-500">{dict.common.videos}</span></span>
                   {result.region && (
                     <span className="inline-flex items-center gap-1 text-neutral-500">
                       <MapPin className="h-3 w-3" />
@@ -460,14 +821,14 @@ function HomePageContent() {
             </div>
 
             {/* ===== Layer 1: Business Value Banner (商业价值首屏) ===== */}
-            <SectionHeader step="01" title="商业价值评估" icon={<Star className="h-4 w-4" />} />
+            <SectionHeader step="01" title={dict.evaluation.sections.businessValuation} icon={<Star className="h-4 w-4" />} />
             <div className="mb-10 rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#0f0f0f] to-[#141414] p-6 sm:p-8">
               <div className="flex flex-col lg:flex-row items-start gap-6">
                 {/* Left: Dollar Value Hero */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-4">
                     <Star className="h-4 w-4 text-[#FF0050]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">账号估值</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">{dict.evaluation.valuation.label}</span>
                   </div>
                   <span className="text-5xl sm:text-6xl font-black tracking-tight text-[#00F2EA]">
                     ${formatNumber(result.businessValue.totalValue.low)} - ${formatNumber(result.businessValue.totalValue.high)}
@@ -529,16 +890,16 @@ function HomePageContent() {
             <div className="mb-10 flex items-center gap-2 rounded-xl border border-[#FF0050]/15 bg-[#FF0050]/5 px-4 py-3">
               <Star className="h-4 w-4 shrink-0 text-[#FF0050]" />
               <span className="text-xs text-neutral-400">
-                解锁查看：<span className="text-neutral-300">5 个收入渠道</span> · <span className="text-neutral-300">8 大商业化方向</span> · <span className="text-neutral-300">趋势分析 + 品牌匹配</span> · <span className="text-neutral-300">12 月收入预测</span>
+                {dict.evaluation.unlockTeaser} <span className="text-neutral-300">{dict.evaluation.unlockItems.incomeChannels}</span> · <span className="text-neutral-300">{dict.evaluation.unlockItems.monetizationPaths}</span> · <span className="text-neutral-300">{dict.evaluation.unlockItems.trendBrandMatching}</span> · <span className="text-neutral-300">{dict.evaluation.unlockItems.revenueForecast}</span>
               </span>
             </div>
 
-            {/* ===== Layer 2: Conclusion Area (评估结论) ===== */}
-            <SectionHeader step="02" title="评估结论" icon={<Target className="h-4 w-4" />} />
+            {/* ===== Layer 2: Conclusion Area (Assessment Conclusion) ===== */}
+            <SectionHeader step="02" title={dict.evaluation.sections.assessmentConclusion} icon={<Target className="h-4 w-4" />} />
             <div className="mb-10 rounded-2xl border border-[#00F2EA]/20 bg-gradient-to-br from-[#00F2EA]/5 to-[#FF0050]/5 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="h-5 w-5 text-[#FF0050]" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">评估结论</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.conclusion.label}</h3>
               </div>
               <div className="text-xl font-bold mb-5">{result.summary.headline}</div>
 
@@ -546,7 +907,7 @@ function HomePageContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <ThumbsUp className="h-4 w-4 text-green-400" />
-                    <span className="text-sm font-medium text-green-400">核心优势</span>
+                    <span className="text-sm font-medium text-green-400">{dict.evaluation.conclusion.strengths}</span>
                   </div>
                   <ul className="space-y-1.5">
                     {result.summary.strengths.map((s, i) => (
@@ -556,14 +917,14 @@ function HomePageContent() {
                       </li>
                     ))}
                     {result.summary.strengths.length === 0 && (
-                      <li className="text-sm text-neutral-500">暂无突出优势</li>
+                      <li className="text-sm text-neutral-500">{dict.evaluation.conclusion.noStrengths}</li>
                     )}
                   </ul>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="h-4 w-4 text-amber-400" />
-                    <span className="text-sm font-medium text-amber-400">主要短板</span>
+                    <span className="text-sm font-medium text-amber-400">{dict.evaluation.conclusion.weaknesses}</span>
                   </div>
                   <ul className="space-y-1.5">
                     {result.summary.weaknesses.map((w, i) => (
@@ -573,7 +934,7 @@ function HomePageContent() {
                       </li>
                     ))}
                     {result.summary.weaknesses.length === 0 && (
-                      <li className="text-sm text-neutral-500">无明显短板</li>
+                      <li className="text-sm text-neutral-500">{dict.evaluation.conclusion.noWeaknesses}</li>
                     )}
                   </ul>
                 </div>
@@ -583,14 +944,14 @@ function HomePageContent() {
                 <div className="flex items-start gap-3 rounded-xl border border-neutral-800 bg-[#0f0f0f] p-4">
                   <Users className="mt-0.5 h-5 w-5 shrink-0 text-[#00F2EA]" />
                   <div>
-                    <div className="text-xs text-neutral-500 mb-1">适合谁用</div>
+                    <div className="text-xs text-neutral-500 mb-1">{dict.evaluation.conclusion.targetAudience}</div>
                     <div className="text-sm text-neutral-200">{result.summary.targetAudience}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 rounded-xl border border-neutral-800 bg-[#0f0f0f] p-4">
                   <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-[#FF0050]" />
                   <div>
-                    <div className="text-xs text-neutral-500 mb-1">最佳行动建议</div>
+                    <div className="text-xs text-neutral-500 mb-1">{dict.evaluation.conclusion.bestAction}</div>
                     <div className="text-sm text-neutral-200">{result.summary.bestAction}</div>
                   </div>
                 </div>
@@ -603,7 +964,7 @@ function HomePageContent() {
                 <div className="flex items-start gap-3 pt-3 border-t border-[#00F2EA]/10">
                   <DollarSign className="mt-0.5 h-5 w-5 shrink-0 text-[#00F2EA]" />
                   <div>
-                    <div className="text-sm font-medium text-[#00F2EA]">合作报价参考</div>
+                    <div className="text-sm font-medium text-[#00F2EA]">{dict.evaluation.conclusion.priceReference}</div>
                     <div className="mt-1 text-sm text-neutral-300">{result.priceAdvice}</div>
                   </div>
                 </div>
@@ -614,13 +975,13 @@ function HomePageContent() {
                 <div className="flex items-center gap-2 rounded-xl border border-[#00F2EA]/20 bg-[#00F2EA]/5 px-3 py-2.5">
                   <TrendingUp className="h-4 w-4 shrink-0 text-[#00F2EA]" />
                   <span className="text-xs text-neutral-400">
-                    互动率 <span className="text-[#00F2EA] font-semibold">{result.metrics.engagementRate}%</span> 超过 <span className="text-[#00F2EA] font-semibold">{result.peerBenchmark ? Math.round((1 - result.peerBenchmark.percentile / 100) * 100) : '--'}%</span> 同类账号
+                    {t(dict.resultLabels.peerComparison, { pct: result.metrics.engagementRate, pct2: result.peerBenchmark ? Math.round((1 - result.peerBenchmark.percentile / 100) * 100) : '--' })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 rounded-xl border border-[#FF0050]/20 bg-[#FF0050]/5 px-3 py-2.5">
                   <Star className="h-4 w-4 shrink-0 text-[#FF0050]" />
                   <span className="text-xs text-neutral-400">
-                    品牌合作价值排名 <span className="text-[#FF0050] font-semibold">Top {result.peerRanking?.tierLabel || '--'}</span>
+                    {t(dict.resultLabels.brandRank, { tier: result.peerRanking?.tierLabel || '--' })}
                   </span>
                 </div>
               </div>
@@ -640,14 +1001,14 @@ function HomePageContent() {
             {/* ===== Premium Content: 评估已收费，全部可见 ===== */}
             <div ref={lockedRef}>
               {/* Section: Income & Growth */}
-              <SectionHeader step="03" title="收入与增长" icon={<DollarSign className="h-4 w-4" />} />
+              <SectionHeader step="03" title={dict.evaluation.sections.incomeAndGrowth} icon={<DollarSign className="h-4 w-4" />} />
               <div className="mb-10 space-y-4">
                 <IncomeBreakdownSection estimate={result.incomeEstimate} />
 
                 <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-4">
                   {result.monetizationPath.eligiblePrograms.length > 0 ? (
                     <div>
-                      <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wider">已满足变现门槛</div>
+                      <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wider">{dict.resultLabels.monetizationEligible}</div>
                       <div className="flex flex-wrap gap-2">
                         {result.monetizationPath.eligiblePrograms.map((program, i) => (
                           <span key={i} className="rounded-full border border-green-900/50 bg-green-950/30 px-3 py-1 text-xs text-green-400">
@@ -658,7 +1019,7 @@ function HomePageContent() {
                     </div>
                   ) : result.monetizationPath.nearestThreshold ? (
                     <div className="rounded-xl border border-amber-900/50 bg-amber-950/30 p-3">
-                      <div className="text-xs text-amber-400 mb-1 uppercase tracking-wider">最近门槛</div>
+                      <div className="text-xs text-amber-400 mb-1 uppercase tracking-wider">{dict.resultLabels.nearestThreshold}</div>
                       <div className="text-sm text-neutral-300">{result.monetizationPath.nearestThreshold.program} — {result.monetizationPath.nearestThreshold.gap}</div>
                     </div>
                   ) : null}
@@ -669,46 +1030,46 @@ function HomePageContent() {
               </div>
 
               {/* Section: Radar & Risks */}
-              <SectionHeader step="04" title="雷达评分与风险检测" icon={<Shield className="h-4 w-4" />} />
+              <SectionHeader step="04" title={dict.evaluation.sections.radarAndRisk} icon={<Shield className="h-4 w-4" />} />
               <div className="mb-10">
                 <div className="grid gap-8 lg:grid-cols-2">
                   <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">10 维度雷达评分</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">{dict.resultLabels.radarScore}</h3>
                     <RadarChart dimensions={result.dimensions} />
                   </div>
                   <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-6">风险信号</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-6">{dict.resultLabels.riskSignals}</h3>
                     <RiskList risks={result.riskFlags} />
                   </div>
                 </div>
               </div>
 
               {/* Section: Peer Ranking */}
-              <SectionHeader step="05" title="同行对比排名" icon={<BarChart3 className="h-4 w-4" />} />
+              <SectionHeader step="05" title={dict.evaluation.sections.peerRanking} icon={<BarChart3 className="h-4 w-4" />} />
               <div className="mb-10">
                 <PeerRankingSection ranking={result.peerRanking} />
               </div>
 
               {/* Section: Brand Matching */}
-              <SectionHeader step="06" title="品牌合作匹配" icon={<Building2 className="h-4 w-4" />} />
+              <SectionHeader step="06" title={dict.evaluation.sections.brandMatching} icon={<Building2 className="h-4 w-4" />} />
               <div className="mb-10">
                 <BrandMatchingSection matching={result.brandMatching} />
               </div>
 
               {/* Section: Content Strategy */}
-              <SectionHeader step="07" title="内容策略指南" icon={<Lightbulb className="h-4 w-4" />} />
+              <SectionHeader step="07" title={dict.evaluation.sections.contentStrategy} icon={<Lightbulb className="h-4 w-4" />} />
               <div className="mb-10">
                 <ContentStrategySection strategy={result.contentStrategy} />
               </div>
 
               {/* Section: Trend Analysis */}
-              <SectionHeader step="08" title="趋势分析" icon={<TrendingUp className="h-4 w-4" />} />
+              <SectionHeader step="08" title={dict.evaluation.sections.trendAnalysis} icon={<TrendingUp className="h-4 w-4" />} />
               <div className="mb-10">
                 <TrendAnalysisSection trendAnalysis={result.trendAnalysis} />
               </div>
 
               {/* Section: Commercialization Advice */}
-              <SectionHeader step="09" title="商业化方向建议" icon={<DollarSign className="h-4 w-4" />} />
+              <SectionHeader step="09" title={dict.evaluation.sections.monetizationAdvice} icon={<DollarSign className="h-4 w-4" />} />
               <div className="mb-10">
                 <CommercializationSection advice={result.commercializationAdvice} />
               </div>
@@ -718,9 +1079,9 @@ function HomePageContent() {
             </div>
 
             {/* Footer */}
-            <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-500">
-              <span>评估时间：{new Date(result.computedAt).toLocaleString('zh-CN')}</span>
-              <span>数据来源第三方 API / Mock，仅供参考，不构成投资或合作建议</span>
+            <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-600 pt-4 border-t border-neutral-800">
+              <span>{dict.common.evaluatedAt} {new Date(result.computedAt).toLocaleString('en-US')}</span>
+              <span>{t('© {year} TokValue. {disclaimer}', { year: new Date().getFullYear(), disclaimer: dict.common.dataDisclaimer })}</span>
             </div>
           </div>
 
@@ -735,7 +1096,7 @@ function HomePageContent() {
                 className="inline-flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-5 py-2.5 text-sm font-medium hover:border-[#00F2EA] hover:text-[#00F2EA] transition-colors"
               >
                 <Download className="h-4 w-4" />
-                导出报告
+                {dict.evaluation.exportReport}
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
               </button>
               {showExportMenu && (
@@ -746,7 +1107,7 @@ function HomePageContent() {
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"
                   >
                     <ImageIcon className="h-4 w-4 text-[#FF0050]" />
-                    导出 PNG 图片
+                    {dict.evaluation.exportPng}
                   </button>
                   <button
                     onClick={handleExportPdf}
@@ -754,7 +1115,7 @@ function HomePageContent() {
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-300 hover:bg-neutral-800 transition-colors border-t border-neutral-800"
                   >
                     <FileText className="h-4 w-4 text-[#00F2EA]" />
-                    导出 PDF 报告
+                    {dict.evaluation.exportPdf}
                   </button>
                 </div>
               )}
@@ -769,99 +1130,65 @@ function HomePageContent() {
               }`}
             >
               <BookmarkPlus className="h-4 w-4" />
-              {isSaved ? '已保存到追踪' : '保存到追踪'}
+              {isSaved ? dict.evaluation.savedToTracker : dict.evaluation.saveToTracker}
             </button>
             <Link
               href="/history"
               className="inline-flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-5 py-2.5 text-sm font-medium hover:border-[#FF0050] hover:text-[#FF0050] transition-colors"
             >
               <History className="h-4 w-4" />
-              评估历史
+              {dict.nav.history}
             </Link>
           </div>
         </section>
       )}
 
-      {/* Empty state features */}
-      {!result && !loading && (
-        <section className="mx-auto max-w-5xl px-4 py-12">
-          <div className="grid gap-6 sm:grid-cols-2">
-            <FeatureCard
-              icon={<Users className="h-6 w-6 text-[#FF0050]" />}
-              title="投前尽调"
-              desc="买粉号、僵尸号、掉权重号一眼识别，降低红人合作踩坑概率。"
-            />
-            <FeatureCard
-              icon={<TrendingUp className="h-6 w-6 text-[#00F2EA]" />}
-              title="多维评估"
-              desc="10 维度雷达评分 + 0-100 总分，从流量触达到品牌潜力全面拆解。"
-            />
-            <FeatureCard
-              icon={<Shield className="h-6 w-6 text-[#FF0050]" />}
-              title="合作建议"
-              desc="按 S/A/B/C/D 等级直接给出谈价、压价或放弃建议。"
-            />
-
-            {/* Demo Preview Card */}
-            <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6 hover:border-neutral-700 transition-colors flex flex-col">
-              <p className="text-sm text-neutral-500 mb-4">示例账号评估预览</p>
-
-              <div className="mb-4">
-                <span className="text-3xl sm:text-4xl font-black tracking-tight text-[#00F2EA]">$12K - $45K</span>
-              </div>
-
-              <div className="flex items-center gap-2 mb-5">
-                <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-green-500/20 text-green-400 font-bold text-sm">A</span>
-                <span className="text-sm text-green-400 font-medium">A 级账号</span>
-              </div>
-
-              <div className="space-y-2.5 mb-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">互动率</span>
-                  <span className="font-semibold tabular-nums">4.2%</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">粉丝数</span>
-                  <span className="font-semibold tabular-nums">2.5M</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">内容分类</span>
-                  <span className="font-semibold">娱乐 / 舞蹈</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => { setUsername('charlidamelio'); handleEvaluate('charlidamelio') }}
-                className="mt-auto w-full rounded-xl bg-[#FF0050] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#d60043] transition-colors"
-              >
-                免费评估你的账号
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
+      
 
       {/* Footer */}
       <footer className="border-t border-neutral-800 bg-[#0a0a0a] py-6">
-        <div className="mx-auto max-w-5xl px-4 text-center text-xs text-neutral-600">
-          TikWorth v{APP_VERSION}
+        <div className="mx-auto max-w-5xl px-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-600">
+            <span>{t(dict.resultLabels.copyrightLine, { year: new Date().getFullYear(), version: APP_VERSION })}</span>
+            <div className="flex items-center gap-4">
+              <span>{dict.common.tiktokTrademark}</span>
+              <span>{dict.common.dataDisclaimer}</span>
+            </div>
+          </div>
         </div>
       </footer>
       <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <VerifyEmailModal
+        isOpen={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        onUnlock={handleUnlock}
+        existingBalance={creditBalance}
+      />
     </main>
   )
 }
 
-function FeatureCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6 hover:border-neutral-700 transition-colors">
-      <div className="mb-4">{icon}</div>
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-neutral-400 leading-relaxed">{desc}</p>
+    <div className="border-b border-neutral-800">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-4 text-left text-sm font-medium text-white hover:text-[#00F2EA] transition-colors"
+      >
+        {question}
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="pb-4 text-sm text-neutral-400 leading-relaxed">{answer}</div>
+      )}
     </div>
   )
 }
+
+
 
 function valueIcon(name: string) {
   const icons: Record<string, React.ReactNode> = {
@@ -874,6 +1201,36 @@ function valueIcon(name: string) {
     ShoppingBag: <ShoppingBag className="h-3.5 w-3.5 text-neutral-500" />,
   }
   return icons[name] || <Activity className="h-3.5 w-3.5 text-neutral-500" />
+}
+
+function CapFeature({ icon, color, title, items }: {
+  icon: React.ReactNode
+  color: 'pink' | 'cyan'
+  title: string
+  items: readonly string[]
+}) {
+  const borderColor = color === 'pink' ? 'border-[#FF0050]/20 group-hover:border-[#FF0050]/40' : 'border-[#00F2EA]/20 group-hover:border-[#00F2EA]/40'
+  const iconBg = color === 'pink' ? 'bg-[#FF0050]/10' : 'bg-[#00F2EA]/10'
+  const iconColor = color === 'pink' ? 'text-[#FF0050]' : 'text-[#00F2EA]'
+  const dotColor = color === 'pink' ? 'bg-[#FF0050]/60' : 'bg-[#00F2EA]/60'
+  return (
+    <div className={`rounded-xl border ${borderColor} bg-neutral-900/40 p-4 transition-all`}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`flex items-center justify-center h-7 w-7 rounded-lg ${iconBg} ${iconColor}`}>
+          {icon}
+        </div>
+        <h4 className="text-sm font-semibold text-white">{title}</h4>
+      </div>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-400 leading-relaxed">
+            <span className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${dotColor}`} />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 export default function HomePage() {

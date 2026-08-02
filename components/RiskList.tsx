@@ -2,13 +2,16 @@
 
 import { Evaluation } from '@/types'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 
 export function RiskList({ risks }: { risks: Evaluation['riskFlags'] }) {
+  const { dict } = useI18n()
+
   if (!risks.length) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-green-900/40 bg-green-950/20 p-4">
         <ShieldCheck className="h-5 w-5 text-green-400" />
-        <span className="text-sm text-green-100">未检测到明显风险信号</span>
+        <span className="text-sm text-green-100">{dict.evaluation.risk.noSignals}</span>
       </div>
     )
   }

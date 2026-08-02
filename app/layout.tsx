@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { I18nBody } from "./i18n-body";
+import { getServerDict } from "@/lib/i18n/server";
+
+const d = getServerDict();
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -14,20 +18,25 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://tikworth.com'),
-  title: "TikWorth - TikTok 账号商业价值评估",
-  description: "输入一个 TikTok 账号，10 秒内输出「这个号值不值得投/合作」的专业结论。0-100 评分 + S/A/B/C/D 等级 + 7 维度拆解 + 风险预警。",
+  metadataBase: new URL('https://tokvalue.com'),
+  title: d.seo.title,
+  description: d.seo.description,
+  icons: {
+    icon: '/W.png',
+    shortcut: '/W.png',
+    apple: '/W.png',
+  },
   openGraph: {
-    title: "TikWorth - TikTok 账号商业价值评估",
-    description: "输入一个 TikTok 账号，10 秒内输出「这个号值不值得投/合作」的专业结论。",
+    title: d.seo.title,
+    description: d.seo.shortDescription,
     type: 'website',
-    locale: 'zh_CN',
-    siteName: 'TikWorth',
+    locale: 'en_US',
+    siteName: 'TokValue',
   },
   twitter: {
     card: 'summary_large_image',
-    title: "TikWorth - TikTok 账号商业价值评估",
-    description: "输入一个 TikTok 账号，10 秒内输出「这个号值不值得投/合作」的专业结论。",
+    title: d.seo.title,
+    description: d.seo.shortDescription,
   },
   robots: {
     index: true,
@@ -41,11 +50,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a] text-neutral-100 min-h-screen`}
       >
-        {children}
+        <I18nBody>
+          {children}
+        </I18nBody>
       </body>
     </html>
   );

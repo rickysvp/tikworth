@@ -13,8 +13,10 @@ import {
   Users, Eye, DollarSign, Activity, Shield, Calendar,
   Star, Target, AlertTriangle, CheckCircle2,
 } from 'lucide-react'
+import { useI18n, t } from '@/lib/i18n'
 
 export default function TrackerPage() {
+  const { dict } = useI18n()
   const [evaluations, setEvaluations] = useState<TrackedEvaluation[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [showClearConfirm, setShowClearConfirm] = useState(false)
@@ -59,31 +61,31 @@ export default function TrackerPage() {
           className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#FF0050] transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          返回评估
+          {dict.tracker.backToEvaluation}
         </Link>
         <div className="flex items-center justify-between mt-4">
           <div>
-            <h1 className="text-3xl font-bold">账号追踪</h1>
+            <h1 className="text-3xl font-bold">{dict.tracker.title}</h1>
             <p className="mt-2 text-neutral-500">
-              追踪 {uniqueUsernames.length} 个账号 · {evaluations.length} 条评估记录
+              {t(dict.tracker.tracking, { count: uniqueUsernames.length, records: evaluations.length })}
             </p>
           </div>
           {evaluations.length > 0 && (
             showClearConfirm ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-neutral-400">确认清除？</span>
+                <span className="text-xs text-neutral-400">{dict.tracker.confirmClear}</span>
                 <button
                   onClick={handleClearAll}
                   className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  确认
+                  {dict.common.confirm}
                 </button>
                 <button
                   onClick={() => setShowClearConfirm(false)}
                   className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
                 >
-                  取消
+                  {dict.common.cancel}
                 </button>
               </div>
             ) : (
@@ -92,7 +94,7 @@ export default function TrackerPage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-red-900/40 bg-red-950/20 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
-                清除全部
+                {dict.tracker.clearAll}
               </button>
             )
           )}
@@ -106,11 +108,11 @@ export default function TrackerPage() {
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-[#00F2EA]" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
-                {selectedIds.length === 2 ? '对比分析' : '账号详情'}
+                {selectedIds.length === 2 ? dict.tracker.comparison : dict.tracker.accountDetail}
               </h2>
             </div>
             <span className="text-xs text-neutral-500">
-              选择 2 个记录进行对比（当前 {selectedIds.length}/2）
+              {t(dict.tracker.selectHint, { current: selectedIds.length })}
             </span>
           </div>
 
@@ -126,15 +128,15 @@ export default function TrackerPage() {
       {evaluations.length === 0 ? (
         <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-12 text-center">
           <Target className="mx-auto h-10 w-10 text-neutral-600 mb-4" />
-          <p className="text-neutral-400 mb-2">暂无追踪记录</p>
+          <p className="text-neutral-400 mb-2">{dict.tracker.emptyTitle}</p>
           <p className="text-sm text-neutral-600 mb-6">
-            在评估结果页点击「保存到追踪」，即可开始追踪账号的商业价值变化
+            {dict.tracker.emptyDesc}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 rounded-xl bg-[#FF0050] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#d60043] transition-colors"
           >
-            去评估第一个账号
+            {dict.tracker.emptyCta}
           </Link>
         </div>
       ) : (
@@ -169,15 +171,15 @@ export default function TrackerPage() {
                   <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {new Date(evaluation.timestamp).toLocaleDateString('zh-CN')}
+                      {new Date(evaluation.timestamp).toLocaleDateString('en-US')}
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="h-3 w-3" />
-                      {formatTrackNumber(evaluation.followerCount)} 粉丝
+                      {formatTrackNumber(evaluation.followerCount)} {dict.tracker.followers}
                     </span>
                     <span className="flex items-center gap-1">
                       <Eye className="h-3 w-3" />
-                      {formatTrackNumber(evaluation.avgPlays)} 平均播放
+                      {formatTrackNumber(evaluation.avgPlays)} {dict.tracker.avgPlays}
                     </span>
                   </div>
                 </div>
@@ -207,7 +209,7 @@ export default function TrackerPage() {
                     handleRemove(evaluation.username)
                   }}
                   className="p-2 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-950/20 transition-colors"
-                  title="移除追踪"
+                  title={dict.common.delete}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -223,56 +225,57 @@ export default function TrackerPage() {
 // ========== Comparison View ==========
 
 function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }) {
+  const { dict } = useI18n()
   const newer = new Date(a.timestamp) > new Date(b.timestamp) ? a : b
   const older = new Date(a.timestamp) > new Date(b.timestamp) ? b : a
 
   const rows: { label: string; icon: React.ReactNode; valueA: string; valueB: string; change: number; isPositiveGood: boolean }[] = [
     {
-      label: '商业价值', icon: <DollarSign className="h-4 w-4" />,
+      label: dict.tracker.businessValue, icon: <DollarSign className="h-4 w-4" />,
       valueA: formatTrackUsd(newer.businessValue.mid),
       valueB: formatTrackUsd(older.businessValue.mid),
       change: older.businessValue.mid > 0 ? ((newer.businessValue.mid - older.businessValue.mid) / older.businessValue.mid) * 100 : 0,
       isPositiveGood: true,
     },
     {
-      label: '评分', icon: <Star className="h-4 w-4" />,
+      label: dict.tracker.score, icon: <Star className="h-4 w-4" />,
       valueA: String(newer.score),
       valueB: String(older.score),
       change: older.score > 0 ? ((newer.score - older.score) / older.score) * 100 : 0,
       isPositiveGood: true,
     },
     {
-      label: '粉丝数', icon: <Users className="h-4 w-4" />,
+      label: dict.tracker.followers, icon: <Users className="h-4 w-4" />,
       valueA: formatTrackNumber(newer.followerCount),
       valueB: formatTrackNumber(older.followerCount),
       change: older.followerCount > 0 ? ((newer.followerCount - older.followerCount) / older.followerCount) * 100 : 0,
       isPositiveGood: true,
     },
     {
-      label: '互动率', icon: <Activity className="h-4 w-4" />,
+      label: dict.tracker.engagementRate, icon: <Activity className="h-4 w-4" />,
       valueA: newer.engagementRate + '%',
       valueB: older.engagementRate + '%',
       change: newer.engagementRate - older.engagementRate,
       isPositiveGood: true,
     },
     {
-      label: '平均播放', icon: <Eye className="h-4 w-4" />,
+      label: dict.tracker.avgPlays, icon: <Eye className="h-4 w-4" />,
       valueA: formatTrackNumber(newer.avgPlays),
       valueB: formatTrackNumber(older.avgPlays),
       change: older.avgPlays > 0 ? ((newer.avgPlays - older.avgPlays) / older.avgPlays) * 100 : 0,
       isPositiveGood: true,
     },
     {
-      label: '月收入预估', icon: <TrendingUp className="h-4 w-4" />,
+      label: dict.tracker.monthlyIncome, icon: <TrendingUp className="h-4 w-4" />,
       valueA: formatTrackUsd(newer.incomeEstimate.mid),
       valueB: formatTrackUsd(older.incomeEstimate.mid),
       change: older.incomeEstimate.mid > 0 ? ((newer.incomeEstimate.mid - older.incomeEstimate.mid) / older.incomeEstimate.mid) * 100 : 0,
       isPositiveGood: true,
     },
     {
-      label: '风险信号', icon: <Shield className="h-4 w-4" />,
-      valueA: newer.riskCount + '个',
-      valueB: older.riskCount + '个',
+      label: dict.tracker.riskSignals, icon: <Shield className="h-4 w-4" />,
+      valueA: String(newer.riskCount),
+      valueB: String(older.riskCount),
       change: -(newer.riskCount - older.riskCount),
       isPositiveGood: false,
     },
@@ -282,13 +285,13 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
     <div>
       {/* Header labels */}
       <div className="grid grid-cols-2 sm:grid-cols-[1fr_120px_40px_120px] gap-2 sm:gap-4 mb-3 px-2">
-        <span className="text-xs text-neutral-500 uppercase tracking-wider">指标 / 变化</span>
+        <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.tracker.metricChange}</span>
         <span className="text-xs text-neutral-500 uppercase tracking-wider text-right">
-          {new Date(newer.timestamp).toLocaleDateString('zh-CN')}
+          {new Date(newer.timestamp).toLocaleDateString('en-US')}
         </span>
         <span className="hidden sm:block" />
         <span className="hidden sm:block text-xs text-neutral-500 uppercase tracking-wider text-right">
-          {new Date(older.timestamp).toLocaleDateString('zh-CN')}
+          {new Date(older.timestamp).toLocaleDateString('en-US')}
         </span>
       </div>
 
@@ -296,7 +299,7 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
         {rows.map((row, i) => {
           const isPositive = (row.isPositiveGood && row.change > 0) || (!row.isPositiveGood && row.change > 0)
           const isNegative = (row.isPositiveGood && row.change < 0) || (!row.isPositiveGood && row.change < 0)
-          const changeText = row.label === '互动率' || row.label === '风险信号'
+          const changeText = row.label === dict.tracker.engagementRate || row.label === dict.tracker.riskSignals
             ? `${row.change > 0 ? '+' : ''}${row.change.toFixed(1)}`
             : `${row.change > 0 ? '+' : ''}${row.change.toFixed(0)}%`
 
@@ -344,7 +347,7 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
               <span className="hidden sm:block text-sm text-neutral-500 tabular-nums text-right">{row.valueB}</span>
               {/* Mobile: older value below */}
               <span className="sm:hidden col-span-2 text-xs text-neutral-500 tabular-nums text-right -mt-1">
-                前值: {row.valueB}
+                {dict.tracker.previousValue} {row.valueB}
               </span>
             </div>
           )
@@ -356,11 +359,11 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
         <div className="flex items-start gap-2 rounded-xl border border-neutral-800 bg-neutral-900/50 p-3">
           <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
           <div className="text-xs text-neutral-400">
-            <span className="text-neutral-300 font-medium">对比摘要：</span>
-            从 {new Date(older.timestamp).toLocaleDateString('zh-CN')} 到 {new Date(newer.timestamp).toLocaleDateString('zh-CN')}，
-            商业价值 {newer.businessValue.mid >= older.businessValue.mid ? '增长' : '下降'} {Math.abs(newer.businessValue.mid - older.businessValue.mid) > 0 ? formatTrackUsd(Math.abs(newer.businessValue.mid - older.businessValue.mid)) : '0'}，
-            评分 {newer.score >= older.score ? '+' : ''}{newer.score - older.score} 分。
-            {newer.riskCount > older.riskCount ? ' 风险信号增加，建议关注账号健康。' : newer.riskCount < older.riskCount ? ' 风险信号减少，账号健康度改善。' : ''}
+            <span className="text-neutral-300 font-medium">{dict.tracker.comparisonSummary}</span>
+            {' '}{dict.tracker.from} {new Date(older.timestamp).toLocaleDateString('en-US')} {dict.tracker.to} {new Date(newer.timestamp).toLocaleDateString('en-US')}.
+            {' '}{dict.tracker.businessValue} {newer.businessValue.mid >= older.businessValue.mid ? dict.tracker.increased : dict.tracker.decreased} {Math.abs(newer.businessValue.mid - older.businessValue.mid) > 0 ? formatTrackUsd(Math.abs(newer.businessValue.mid - older.businessValue.mid)) : '$0'}.
+            {' '}{dict.tracker.score} {newer.score >= older.score ? '+' : ''}{newer.score - older.score}.
+            {newer.riskCount > older.riskCount ? dict.tracker.riskIncreased : newer.riskCount < older.riskCount ? dict.tracker.riskDecreased : ''}
           </div>
         </div>
       </div>
@@ -371,16 +374,17 @@ function ComparisonView({ a, b }: { a: TrackedEvaluation; b: TrackedEvaluation }
 // ========== Single View ==========
 
 function SingleView({ evaluation }: { evaluation: TrackedEvaluation }) {
+  const { dict } = useI18n()
   return (
     <div className="space-y-4">
       {/* Overview cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
-          <div className="text-xs text-neutral-500 mb-1">商业价值</div>
+          <div className="text-xs text-neutral-500 mb-1">{dict.tracker.businessValue}</div>
           <div className="text-xl font-bold text-[#00F2EA] tabular-nums">{formatTrackUsd(evaluation.businessValue.mid)}</div>
         </div>
         <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
-          <div className="text-xs text-neutral-500 mb-1">评分 · 等级</div>
+          <div className="text-xs text-neutral-500 mb-1">{dict.tracker.score}</div>
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold tabular-nums">{evaluation.score}</span>
             <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${
@@ -390,11 +394,11 @@ function SingleView({ evaluation }: { evaluation: TrackedEvaluation }) {
           </div>
         </div>
         <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
-          <div className="text-xs text-neutral-500 mb-1">月收入预估</div>
+          <div className="text-xs text-neutral-500 mb-1">{dict.tracker.monthlyIncome}</div>
           <div className="text-xl font-bold text-[#FF0050] tabular-nums">{formatTrackUsd(evaluation.incomeEstimate.mid)}</div>
         </div>
         <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
-          <div className="text-xs text-neutral-500 mb-1">品牌合作价值</div>
+          <div className="text-xs text-neutral-500 mb-1">{dict.tracker.brandValue}</div>
           <div className="text-xl font-bold text-[#00F2EA] tabular-nums">{formatTrackUsd(evaluation.brandMatchingValue.mid)}</div>
         </div>
       </div>
@@ -402,31 +406,31 @@ function SingleView({ evaluation }: { evaluation: TrackedEvaluation }) {
       {/* Detail rows */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">粉丝数</span>
+          <span className="text-sm text-neutral-500">{dict.tracker.followers}</span>
           <span className="text-sm font-semibold tabular-nums">{formatTrackNumber(evaluation.followerCount)}</span>
         </div>
         <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">视频数</span>
+          <span className="text-sm text-neutral-500">{dict.tracker.videos}</span>
           <span className="text-sm font-semibold tabular-nums">{evaluation.videoCount}</span>
         </div>
         <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">互动率</span>
+          <span className="text-sm text-neutral-500">{dict.tracker.engagementRate}</span>
           <span className="text-sm font-semibold tabular-nums">{evaluation.engagementRate}%</span>
         </div>
         <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">平均播放</span>
+          <span className="text-sm text-neutral-500">{dict.tracker.avgPlays}</span>
           <span className="text-sm font-semibold tabular-nums">{formatTrackNumber(evaluation.avgPlays)}</span>
         </div>
         <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">风险信号</span>
+          <span className="text-sm text-neutral-500">{dict.tracker.riskSignals}</span>
           <span className={`text-sm font-semibold tabular-nums ${evaluation.riskCount > 0 ? 'text-amber-400' : 'text-green-400'}`}>
-            {evaluation.riskCount}个
+            {evaluation.riskCount}
           </span>
         </div>
         <div className="flex justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">评估时间</span>
+          <span className="text-sm text-neutral-500">{dict.tracker.evaluationTime}</span>
           <span className="text-sm font-semibold tabular-nums">
-            {new Date(evaluation.timestamp).toLocaleDateString('zh-CN')}
+            {new Date(evaluation.timestamp).toLocaleDateString('en-US')}
           </span>
         </div>
       </div>

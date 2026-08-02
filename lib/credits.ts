@@ -3,6 +3,8 @@
  * No fs / localStorage / window references here — safe for both server and client.
  */
 
+import { getServerDict } from '@/lib/i18n/server'
+
 export interface CreditBalance {
   email: string
   credits: number
@@ -18,7 +20,7 @@ export interface CreditBalance {
 }
 
 export interface CreditPackage {
-  id: 'pack3' | 'pack10' | 'pack100'
+  id: 'pack1' | 'pack6' | 'pack30'
   label: string
   credits: number
   price: number       // USD
@@ -27,10 +29,12 @@ export interface CreditPackage {
   highlight?: boolean
 }
 
+const dict = getServerDict()
+
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: 'pack3', label: '轻量体验', credits: 3, price: 9, perUnit: '$3/次' },
-  { id: 'pack10', label: '常用推荐', credits: 10, price: 19, perUnit: '$1.9/次', badge: '最受欢迎', highlight: true },
-  { id: 'pack100', label: '重度创作者', credits: 100, price: 69, perUnit: '$0.69/次' },
+  { id: 'pack1', label: dict.creditPackages.pack1.label, credits: 1, price: 9, perUnit: '$9/eval' },
+  { id: 'pack6', label: dict.creditPackages.pack6.label, credits: 6, price: 29, perUnit: '$4.83/eval', badge: dict.creditPackages.pack6.badge, highlight: true },
+  { id: 'pack30', label: dict.creditPackages.pack30.label, credits: 30, price: 99, perUnit: '$3.30/eval' },
 ]
 
 export function findPackage(id: string): CreditPackage | undefined {

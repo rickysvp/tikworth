@@ -2,6 +2,7 @@
 
 import { ContentStrategy } from '@/types'
 import { Lightbulb, Hash, Clock, Users, BookOpen, Camera, TrendingUp, ArrowRight } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Props {
   strategy: ContentStrategy
@@ -20,16 +21,17 @@ const volumeColors: Record<string, string> = {
 }
 
 export function ContentStrategySection({ strategy }: Props) {
+  const { dict } = useI18n()
   return (
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <div className="flex items-center gap-2 mb-6">
         <Lightbulb className="h-5 w-5 text-[#FF0050]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">内容策略指南</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{dict.evaluation.contentStrategy.title}</h3>
       </div>
 
       {/* Content Pillars */}
       <div className="mb-6">
-        <div className="text-xs text-neutral-500 mb-3 uppercase tracking-wider">内容支柱</div>
+        <div className="text-xs text-neutral-500 mb-3 uppercase tracking-wider">{dict.evaluation.contentStrategy.contentPillars}</div>
         <div className="grid gap-3 sm:grid-cols-3">
           {strategy.pillars.map((pillar, idx) => (
             <div key={idx} className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
@@ -37,7 +39,7 @@ export function ContentStrategySection({ strategy }: Props) {
                 <span className="text-[#FF0050]">{iconMap[pillar.icon] || <BookOpen className="h-4 w-4" />}</span>
                 <span className="text-sm font-semibold">{pillar.type}</span>
               </div>
-              <div className="text-[11px] text-neutral-500 mb-2">{pillar.frequency} · 预计互动 {pillar.expectedEngagement}</div>
+              <div className="text-[11px] text-neutral-500 mb-2">{pillar.frequency} · Est. {pillar.expectedEngagement}</div>
               <div className="space-y-1 mb-2">
                 {pillar.examples.map((ex, ei) => (
                   <div key={ei} className="text-[11px] text-neutral-400 flex items-start gap-1">
@@ -56,7 +58,7 @@ export function ContentStrategySection({ strategy }: Props) {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Hash className="h-4 w-4 text-neutral-500" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">推荐标签</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.contentStrategy.hashtags}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {strategy.recommendedHashtags.map((tag, idx) => (
@@ -72,7 +74,7 @@ export function ContentStrategySection({ strategy }: Props) {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Clock className="h-4 w-4 text-neutral-500" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">最佳发布时刻</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.contentStrategy.bestPostTimes}</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           {strategy.optimalSchedule.map((slot, idx) => (
@@ -89,13 +91,13 @@ export function ContentStrategySection({ strategy }: Props) {
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-3">
           <Users className="h-4 w-4 text-neutral-500" />
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">合作创意</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">{dict.evaluation.contentStrategy.collaborationIdeas}</span>
         </div>
         <div className="space-y-2">
           {strategy.collaborationIdeas.map((idea, idx) => (
             <div key={idx} className="flex items-start gap-3 rounded-xl border border-neutral-800 bg-neutral-900/50 p-3">
               <span className={`mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${idea.potential === 'high' ? 'bg-[#00F2EA]/20 text-[#00F2EA]' : 'bg-amber-500/20 text-amber-400'}`}>
-                {idea.potential === 'high' ? '高' : '中'}
+                {idea.potential === 'high' ? dict.evaluation.contentStrategy.potentialHigh : dict.evaluation.contentStrategy.potentialMed}
               </span>
               <div>
                 <div className="text-sm font-medium">{idea.type}</div>
