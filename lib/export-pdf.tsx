@@ -492,7 +492,7 @@ function PeerRankingSection({ result }: { result: Evaluation }) {
           </View>
         </View>
       ))}
-      <Text style={[S.body, { marginTop: 4, fontStyle: 'italic' }]}>{pr.insight}</Text>
+      <Text style={[S.body, { marginTop: 4, color: C.muted }]}>{pr.insight}</Text>
     </View>
   )
 }

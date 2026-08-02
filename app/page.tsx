@@ -33,6 +33,7 @@ import { CREDIT_PACKAGES } from '@/lib/credits'
 import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCreditsApi } from '@/lib/credits-client'
 import { ParticleBackground } from '@/components/ParticleBackground'
 import { VerifyEmailModal } from '@/components/VerifyEmailModal'
+import { ShareModal } from '@/components/ShareModal'
 
 // Client-side analytics tracking helper
 function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
@@ -69,6 +70,7 @@ function HomePageContent() {
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
   
@@ -183,23 +185,10 @@ function HomePageContent() {
     }
   }
 
-  async function handleShareLink() {
+  function handleShareLink() {
     if (!result) return
     setShowExportMenu(false)
-    try {
-      const res = await fetch('/api/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: result.username }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to create share link')
-      await navigator.clipboard.writeText(data.shareUrl)
-      toast(dict.evaluation.shareLinkCopied)
-    } catch (err) {
-      console.error('[share-link] failed:', err)
-      toast(dict.evaluation.shareLinkError)
-    }
+    setShowShareModal(true)
   }
 
   const handleEvaluate = useCallback(async (name?: string) => {
@@ -316,7 +305,26 @@ function HomePageContent() {
     if (!reportRef.current || !result) return
     setShowExportMenu(false)
     try {
-      const canvas = await html2canvas(reportRef.current, { backgroundColor: '#0a0a0a', scale: 2 })
+      // Temporarily remove sticky positioning to avoid html2canvas rendering issues
+      const reportEl = reportRef.current
+      const canvas = await html2canvas(reportEl, {
+        backgroundColor: '#0a0a0a',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        windowWidth: reportEl.scrollWidth,
+        windowHeight: reportEl.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          // Fix sticky header in cloned document
+          const stickyHeaders = clonedDoc.querySelectorAll('[class*="sticky"]')
+          stickyHeaders.forEach((el) => {
+            (el as HTMLElement).style.position = 'relative'
+          })
+        },
+      })
       const link = document.createElement('a')
       link.download = `tokvalue-${result.username}.png`
       link.href = canvas.toDataURL('image/png')
@@ -795,60 +803,7 @@ function HomePageContent() {
             </div>
           </section>
 
-          {/* Footer */}
-          <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
-            <div className="mx-auto max-w-5xl px-4 py-14">
-              <div className="grid gap-10 sm:grid-cols-3">
-                {/* Brand */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Image src="/tokvalue.png" alt="TokValue" width={140} height={36} className="h-9 w-auto object-contain" />
-                  </div>
-                  <p className="text-sm text-neutral-500 leading-relaxed mb-4">
-                    {dict.home.footer.tagline}
-                  </p>
-                  <a href="mailto:connect@tokvalue.com" className="inline-flex items-center gap-2 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">
-                    <Mail className="h-3.5 w-3.5" />
-                    connect@tokvalue.com
-                  </a>
-                </div>
 
-                {/* Product */}
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.product}</h4>
-                  <ul className="space-y-3">
-                    <li><a href="#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
-                    <li><a href="#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
-                    <li><Link href="/tracker" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
-                    <li><Link href="/history" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
-                  </ul>
-                </div>
-
-                {/* Legal */}
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.legal}</h4>
-                  <ul className="space-y-3">
-                    <li><Link href="/privacy" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
-                    <li><Link href="/terms" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Bar */}
-            <div className="border-t border-neutral-800">
-              <div className="mx-auto max-w-5xl px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-xs text-neutral-600">
-                  {t('© {year} TokValue. All rights reserved.', { year: new Date().getFullYear() })}
-                </p>
-                <div className="flex items-center gap-x-4 gap-y-1 flex-wrap justify-center">
-                  <span className="text-xs text-neutral-600">{dict.home.footer.legalItems[0]}</span>
-                  <span className="text-neutral-800">·</span>
-                  <span className="text-xs text-neutral-600">{dict.home.footer.legalItems[3]}</span>
-                </div>
-              </div>
-            </div>
-          </footer>
         </>
       )}
 
@@ -1265,13 +1220,55 @@ function HomePageContent() {
       
 
       {/* Footer */}
-      <footer className="border-t border-neutral-800 bg-[#0a0a0a] py-6">
-        <div className="mx-auto max-w-5xl px-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-600">
-            <span>{t(dict.resultLabels.copyrightLine, { year: new Date().getFullYear() })}</span>
-            <div className="flex items-center gap-4">
-              <span>{dict.common.tiktokTrademark}</span>
-              <span>{dict.common.dataDisclaimer}</span>
+      <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
+        <div className="mx-auto max-w-5xl px-4 py-14">
+          <div className="grid gap-10 sm:grid-cols-3">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Image src="/tokvalue.png" alt="TokValue" width={140} height={36} className="h-9 w-auto object-contain" />
+              </div>
+              <p className="text-sm text-neutral-500 leading-relaxed mb-4">
+                {dict.home.footer.tagline}
+              </p>
+              <a href="mailto:connect@tokvalue.com" className="inline-flex items-center gap-2 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">
+                <Mail className="h-3.5 w-3.5" />
+                connect@tokvalue.com
+              </a>
+            </div>
+
+            {/* Product */}
+            <div>
+              <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.product}</h4>
+              <ul className="space-y-3">
+                <li><a href="#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
+                <li><a href="#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
+                <li><Link href="/tracker" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
+                <li><Link href="/history" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.legal}</h4>
+              <ul className="space-y-3">
+                <li><Link href="/privacy" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
+                <li><Link href="/terms" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="border-t border-neutral-800">
+          <div className="mx-auto max-w-5xl px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-neutral-600">
+              {t('© {year} TokValue. All rights reserved.', { year: new Date().getFullYear() })}
+            </p>
+            <div className="flex items-center gap-x-4 gap-y-1 flex-wrap justify-center">
+              <span className="text-xs text-neutral-600">{dict.home.footer.legalItems[0]}</span>
+              <span className="text-neutral-800">·</span>
+              <span className="text-xs text-neutral-600">{dict.home.footer.legalItems[3]}</span>
             </div>
           </div>
         </div>
@@ -1283,6 +1280,13 @@ function HomePageContent() {
         onUnlock={handleUnlock}
         existingBalance={creditBalance}
       />
+      {result && (
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          username={result.username}
+        />
+      )}
     </main>
   )
 }
