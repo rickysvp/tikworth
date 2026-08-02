@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const dbUrl = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
+  const rawUrl = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '')
+  const dbUrl = rawUrl.replace(/\s+/g, '')
   let pgOk = false
   let pgError = ''
 
@@ -21,6 +22,8 @@ export async function GET() {
     vercel: !!process.env.VERCEL,
     nodeEnv: process.env.NODE_ENV,
     hasDbUrl: !!dbUrl,
+    dbUrlLength: rawUrl.length,
+    dbUrlNeedsClean: rawUrl.length !== dbUrl.length,
     pgOk,
     pgError: pgError || null,
     hasResend: !!process.env.RESEND_API_KEY,

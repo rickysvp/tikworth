@@ -11,7 +11,7 @@ import type { NeonQueryFunction } from '@neondatabase/serverless'
 import { withFileLock, atomicWriteJson, dataDir as DATA_DIR } from '@/lib/file-lock'
 
 const CODES_FILE = path.join(DATA_DIR, 'verification_codes.json')
-const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
+const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
 
 let sql: NeonQueryFunction<false, false> | null = null
 let pgReady = false

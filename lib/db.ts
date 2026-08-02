@@ -6,7 +6,7 @@ import { withFileLock } from '@/lib/file-lock'
 
 const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? '/tmp' : join(process.cwd(), 'data'))
 const DATA_PATH = join(DATA_DIR, 'evaluations.json')
-const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
+const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
 
 type Store = 'postgres' | 'file' | 'memory'
 

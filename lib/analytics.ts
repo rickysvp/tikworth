@@ -29,7 +29,7 @@ export interface AnalyticsEvent {
 
 // ── DB init ──
 
-const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
+const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
 const EVENTS_FILE = path.join(DATA_DIR, 'analytics_events.json')
 const AUDIT_FILE = path.join(DATA_DIR, 'admin_audit_log.json')
 
