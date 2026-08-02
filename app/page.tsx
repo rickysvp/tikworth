@@ -427,31 +427,19 @@ function HomePageContent() {
       {!result && !loading && !needPurchase && (
         <>
           {/* Social Proof */}
-          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-16">
+          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
             <div className="mx-auto max-w-5xl px-4">
-              <div className="grid gap-8 lg:grid-cols-2 items-center">
-                <div className="relative rounded-2xl overflow-hidden border border-neutral-800">
-                  <Image
-                    src="/images/social-proof.jpg"
-                    alt="TokValue Analytics Dashboard"
-                    width={640}
-                    height={360}
-                    className="w-full h-auto object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/80 via-transparent to-transparent lg:bg-gradient-to-r lg:from-[#0a0a0a]/60 lg:via-transparent lg:to-transparent" />
-                </div>
-                <div className="grid grid-cols-3 gap-8 text-center">
-                  {[
-                    { value: '12,847+', label: dict.home.socialProof.accountsEvaluated },
-                    { value: '$2.4B+', label: dict.home.socialProof.totalValueAssessed },
-                    { value: '98.2%', label: dict.home.socialProof.satisfactionRate },
-                  ].map((stat, i) => (
-                    <div key={i}>
-                      <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
-                      <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
+              <div className="grid grid-cols-3 gap-8 text-center">
+                {[
+                  { value: '12,847+', label: dict.home.socialProof.accountsEvaluated },
+                  { value: '$2.4B+', label: dict.home.socialProof.totalValueAssessed },
+                  { value: '98.2%', label: dict.home.socialProof.satisfactionRate },
+                ].map((stat, i) => (
+                  <div key={i}>
+                    <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
@@ -528,15 +516,6 @@ function HomePageContent() {
                 <p className="text-neutral-500 text-sm max-w-2xl mx-auto leading-relaxed">
                   {dict.home.capabilities.description}
                 </p>
-                <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 max-w-3xl mx-auto">
-                  <Image
-                    src="/images/capabilities.jpg"
-                    alt="TokValue Capabilities Overview"
-                    width={960}
-                    height={400}
-                    className="w-full h-auto object-cover"
-                  />
-                </div>
               </div>
 
               {/* 1. BUSINESS VALUATION — Wide Card */}
@@ -704,16 +683,7 @@ function HomePageContent() {
           <section id="pricing" className="border-b border-neutral-800 py-16">
             <div className="mx-auto max-w-3xl px-4">
               <h2 className="text-2xl font-bold text-center mb-2">{dict.home.pricing.title}</h2>
-              <p className="text-neutral-500 text-center mb-8 text-sm">{dict.home.pricing.subtitle}</p>
-              <div className="mb-8 rounded-2xl overflow-hidden border border-neutral-800">
-                <Image
-                  src="/images/pricing.jpg"
-                  alt="TokValue Pricing Plans"
-                  width={800}
-                  height={300}
-                  className="w-full h-auto object-cover"
-                />
-              </div>
+              <p className="text-neutral-500 text-center mb-10 text-sm">{dict.home.pricing.subtitle}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {CREDIT_PACKAGES.map(pkg => (
                   <div key={pkg.id} className={`relative rounded-2xl border-2 p-5 text-center transition-all ${
