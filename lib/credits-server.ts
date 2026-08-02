@@ -1,6 +1,10 @@
 /**
  * Server-side credits logic — PostgreSQL persistence.
  * Only import this from API routes / server components (never from client components).
+ *
+ * NOTE: Neon Serverless uses HTTP fetch, each SQL call is a separate request.
+ * Do NOT use SELECT ... FOR UPDATE — it requires a transaction context.
+ * Use atomic INSERT ON CONFLICT / UPDATE RETURNING instead.
  */
 
 import type { CreditBalance } from './credits'
@@ -70,47 +74,33 @@ export async function grantCredits(
   await initTable()
   const s = await getSql()
 
-  // Use a transaction via SELECT ... FOR UPDATE to prevent race conditions
-  const rows = await s`SELECT * FROM credit_balances WHERE email = ${key} FOR UPDATE`
-  const existing = rows[0] ? rowToBalance(rows[0]) : null
-
-  const purchases = existing?.purchases || []
-
-  // 幂等：同一 paymentId 不重复发放
-  if (paymentId && purchases.some(p => p.paymentId === paymentId)) {
-    return existing!
+  // 幂等检查：同一 paymentId 不重复发放
+  if (paymentId) {
+    const existing = await s`SELECT purchases FROM credit_balances WHERE email = ${key}`
+    if (existing[0]) {
+      const purchases = Array.isArray(existing[0].purchases)
+        ? existing[0].purchases as Array<{ paymentId?: string }>
+        : []
+      if (purchases.some(p => p.paymentId === paymentId)) {
+        // Already granted, return current balance
+        return getBalance(key) as Promise<CreditBalance>
+      }
+    }
   }
 
   const newPurchase = { packageId, credits, amount, purchasedAt: Date.now(), paymentId }
-  const newPurchases = [newPurchase, ...purchases]
 
-  if (existing) {
-    await s`
-      UPDATE credit_balances
-      SET credits = credits + ${credits},
-          total_purchased = total_purchased + ${credits},
-          purchases = ${JSON.stringify(newPurchases)}::jsonb
-      WHERE email = ${key}
-    `
-    return {
-      ...existing,
-      credits: existing.credits + credits,
-      totalPurchased: existing.totalPurchased + credits,
-      purchases: newPurchases,
-    }
-  } else {
-    await s`
-      INSERT INTO credit_balances (email, credits, total_purchased, purchases, verified_at)
-      VALUES (${key}, ${credits}, ${credits}, ${JSON.stringify(newPurchases)}::jsonb, ${Date.now()})
-    `
-    return {
-      email: key,
-      credits,
-      totalPurchased: credits,
-      purchases: newPurchases,
-      verifiedAt: Date.now(),
-    }
-  }
+  // Atomic upsert: INSERT if new, UPDATE if exists
+  const rows = await s`
+    INSERT INTO credit_balances (email, credits, total_purchased, purchases, verified_at)
+    VALUES (${key}, ${credits}, ${credits}, ${JSON.stringify([newPurchase])}::jsonb, ${Date.now()})
+    ON CONFLICT (email) DO UPDATE SET
+      credits = credit_balances.credits + ${credits},
+      total_purchased = credit_balances.total_purchased + ${credits},
+      purchases = ${JSON.stringify([newPurchase])}::jsonb || credit_balances.purchases
+    RETURNING *
+  `
+  return rowToBalance(rows[0] as Record<string, unknown>)
 }
 
 export async function consumeCredit(email: string): Promise<{ ok: boolean; balance?: CreditBalance; reason?: string }> {
@@ -120,22 +110,19 @@ export async function consumeCredit(email: string): Promise<{ ok: boolean; balan
   await initTable()
   const s = await getSql()
 
-  // Use SELECT ... FOR UPDATE to prevent race conditions
-  const rows = await s`SELECT * FROM credit_balances WHERE email = ${key} FOR UPDATE`
-  if (!rows[0]) return { ok: false, reason: 'NOT_FOUND' }
-
-  const bal = rowToBalance(rows[0])
-  if (bal.credits <= 0) return { ok: false, reason: 'NO_CREDITS' }
-
-  const newCredits = bal.credits - 1
-  await s`
+  // Atomic: decrement only if credits > 0, return updated row
+  const rows = await s`
     UPDATE credit_balances
-    SET credits = ${newCredits}
-    WHERE email = ${key}
+    SET credits = credits - 1
+    WHERE email = ${key} AND credits > 0
+    RETURNING *
   `
-
-  return {
-    ok: true,
-    balance: { ...bal, credits: newCredits },
+  if (!rows[0]) {
+    // Check if user exists at all
+    const exists = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+    if (!exists[0]) return { ok: false, reason: 'NOT_FOUND' }
+    return { ok: false, reason: 'NO_CREDITS' }
   }
+
+  return { ok: true, balance: rowToBalance(rows[0] as Record<string, unknown>) }
 }
