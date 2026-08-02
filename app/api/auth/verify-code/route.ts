@@ -101,6 +101,12 @@ export async function POST(req: NextRequest) {
       }
 
       const session = await creemRes.json()
+      console.log('[verify-code] Creem checkout created:', JSON.stringify({
+        id: session.id,
+        checkout_url: session.checkout_url ? '(present)' : '(missing)',
+        status: session.status,
+        orderStatus: session.order?.status,
+      }))
       const checkoutId = session.id || ''
       // Store pending purchase so success page can claim credits without webhook
       if (checkoutId) {
@@ -112,6 +118,9 @@ export async function POST(req: NextRequest) {
           checkoutId,
           createdAt: Date.now(),
         })
+        console.log('[verify-code] Pending purchase stored for:', email, 'checkoutId:', checkoutId)
+      } else {
+        console.error('[verify-code] No checkout ID in Creem response!', JSON.stringify(session).slice(0, 200))
       }
       return NextResponse.json({
         ok: true,
