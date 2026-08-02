@@ -182,6 +182,30 @@ export async function claimPendingPurchase(email: string): Promise<CreditBalance
   return balance
 }
 
+// Get pending purchase without claiming — used for Creem verification before claim
+export async function getPendingPurchase(email: string): Promise<PendingPurchase | null> {
+  const key = email.toLowerCase().trim()
+  if (!key) return null
+  await initPendingTable()
+  const s = await getSql()
+  const rows = await s`SELECT * FROM pending_purchases WHERE email = ${key}`
+  if (!rows[0]) return null
+  const r = rows[0] as Record<string, unknown>
+  const createdAt = Number(r.created_at)
+  if (Date.now() - createdAt > 30 * 60 * 1000) {
+    await s`DELETE FROM pending_purchases WHERE email = ${key}`
+    return null
+  }
+  return {
+    email: key,
+    packageId: String(r.package_id),
+    credits: Number(r.credits),
+    amount: Number(r.amount),
+    checkoutId: String(r.checkout_id),
+    createdAt,
+  }
+}
+
 export async function consumeCredit(email: string): Promise<{ ok: boolean; balance?: CreditBalance; reason?: string }> {
   const key = email.toLowerCase().trim()
   if (!key) return { ok: false, reason: 'NOT_FOUND' }
