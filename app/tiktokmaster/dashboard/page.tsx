@@ -3,8 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { LogOut, TrendingUp, DollarSign, Users, Activity, BarChart3, Settings, Loader2, CheckCircle2, XCircle } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
+import {
+  LogOut, TrendingUp, DollarSign, Users, Activity, BarChart3,
+  Settings, Loader2, CheckCircle2, XCircle, Search, FileText,
+  Eye, MousePointerClick, CreditCard, Zap, RefreshCw, Filter,
+  ArrowUpRight, ArrowDownRight, Clock, AlertCircle,
+} from 'lucide-react'
+import {
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
+} from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
 
 // ── Types ──
@@ -55,7 +63,19 @@ interface StatsData {
   }>
 }
 
-type Tab = 'overview' | 'funnel' | 'revenue' | 'users' | 'ops'
+interface LogItem {
+  id: number
+  eventType: string
+  path: string
+  username: string
+  email: string
+  metadata: Record<string, unknown> | null
+  ipHash: string
+  userAgent: string
+  createdAt: string
+}
+
+type Tab = 'overview' | 'funnel' | 'revenue' | 'users' | 'logs' | 'ops'
 
 // ── Helpers ──
 function fmtUsd(n: number): string {
@@ -72,16 +92,48 @@ function pct(a: number, b: number): string {
   if (b === 0) return '0.0%'
   return `${((a / b) * 100).toFixed(1)}%`
 }
-
-const TAB_COLORS: Record<Tab, string> = {
-  overview: 'border-[#00F2EA] text-[#00F2EA]',
-  funnel: 'border-[#FF0050] text-[#FF0050]',
-  revenue: 'border-green-400 text-green-400',
-  users: 'border-purple-400 text-purple-400',
-  ops: 'border-amber-400 text-amber-400',
+function fmtTime(s: string): string {
+  const d = new Date(s)
+  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+function fmtDate(s: string): string {
+  return new Date(s).toLocaleDateString('zh-CN')
 }
 
-const PIE_COLORS = ['#00F2EA', '#FF0050', '#22c55e', '#a855f7']
+// 事件类型中文映射
+const EVENT_LABELS: Record<string, { label: string; color: string }> = {
+  page_view: { label: '页面浏览', color: 'text-blue-400' },
+  search: { label: '搜索账号', color: 'text-cyan-400' },
+  evaluate_start: { label: '开始评估', color: 'text-purple-400' },
+  evaluate_done: { label: '评估完成', color: 'text-green-400' },
+  paywall_view: { label: '付费墙展示', color: 'text-amber-400' },
+  paywall_click: { label: '付费墙点击', color: 'text-orange-400' },
+  purchase: { label: '购买完成', color: 'text-[#00F2EA]' },
+  email_sent: { label: '邮件发送', color: 'text-pink-400' },
+  email_verified: { label: '邮箱验证', color: 'text-indigo-400' },
+  share_created: { label: '分享创建', color: 'text-teal-400' },
+}
+
+function getEventLabel(type: string): { label: string; color: string } {
+  return EVENT_LABELS[type] || { label: type, color: 'text-neutral-400' }
+}
+
+const PIE_COLORS = ['#00F2EA', '#FF0050', '#22c55e', '#a855f7', '#f59e0b']
+
+const PACKAGE_LABELS: Record<string, string> = {
+  pack1: '单次评估',
+  pack6: '6次套餐',
+  pack30: '30次套餐',
+}
+
+const TAB_CONFIG: Record<Tab, { label: string; icon: React.ReactNode; activeColor: string }> = {
+  overview: { label: '数据总览', icon: <Activity className="h-4 w-4" />, activeColor: 'text-[#00F2EA] border-[#00F2EA]' },
+  funnel:   { label: '转化漏斗', icon: <BarChart3 className="h-4 w-4" />, activeColor: 'text-[#FF0050] border-[#FF0050]' },
+  revenue:  { label: '收入分析', icon: <DollarSign className="h-4 w-4" />, activeColor: 'text-green-400 border-green-400' },
+  users:    { label: '用户管理', icon: <Users className="h-4 w-4" />, activeColor: 'text-purple-400 border-purple-400' },
+  logs:     { label: '系统日志', icon: <FileText className="h-4 w-4" />, activeColor: 'text-amber-400 border-amber-400' },
+  ops:      { label: '运营操作', icon: <Settings className="h-4 w-4" />, activeColor: 'text-cyan-400 border-cyan-400' },
+}
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -89,6 +141,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<StatsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   // Credit grant form state
   const [grantMode, setGrantMode] = useState<'single' | 'batch'>('single')
@@ -102,6 +155,15 @@ export default function AdminDashboard() {
   // Credit history
   const [history, setHistory] = useState<Array<{ id: number; target_email: string; credits: number; reason: string; created_at: string }>>([])
 
+  // System logs
+  const [logs, setLogs] = useState<LogItem[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logFilter, setLogFilter] = useState('')
+  const [logTypeFilter, setLogTypeFilter] = useState('all')
+
+  // User search
+  const [userSearch, setUserSearch] = useState('')
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
 
   const fetchStats = useCallback(async () => {
@@ -113,8 +175,9 @@ export default function AdminDashboard() {
       if (res.status === 401) { localStorage.removeItem('admin_token'); router.push('/tiktokmaster'); return }
       const data = await res.json()
       setStats(data)
+      setLastRefresh(new Date())
     } catch (err) {
-      setError('Failed to load stats')
+      setError('数据加载失败')
       console.error(err)
     } finally {
       setLoading(false)
@@ -132,8 +195,25 @@ export default function AdminDashboard() {
     } catch {}
   }, [token])
 
+  const fetchLogs = useCallback(async () => {
+    if (!token) return
+    setLogsLoading(true)
+    try {
+      const res = await fetch('/api/tiktokmaster/logs?limit=100', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setLogs(data.items || [])
+    } catch {
+      console.error('获取日志失败')
+    } finally {
+      setLogsLoading(false)
+    }
+  }, [token])
+
   useEffect(() => { fetchStats() }, [fetchStats])
   useEffect(() => { if (tab === 'ops') fetchHistory() }, [tab, fetchHistory])
+  useEffect(() => { if (tab === 'logs') fetchLogs() }, [tab, fetchLogs])
 
   async function handleGrant() {
     if (!token) return
@@ -142,11 +222,11 @@ export default function AdminDashboard() {
       : grantBatchEmails.split(/[\n,]+/).map(e => e.trim()).filter(Boolean)
 
     if (emails.length === 0) {
-      setGrantResult({ success: false, msg: 'Please enter at least one email' })
+      setGrantResult({ success: false, msg: '请输入至少一个邮箱' })
       return
     }
     if (!grantReason.trim()) {
-      setGrantResult({ success: false, msg: 'Reason is required' })
+      setGrantResult({ success: false, msg: '请填写赠送原因' })
       return
     }
 
@@ -163,17 +243,17 @@ export default function AdminDashboard() {
       })
       const data = await res.json()
       if (res.ok) {
-        setGrantResult({ success: true, msg: `Granted ${data.granted} x ${grantCredits} = ${data.totalCredits} evaluations to ${data.granted} email(s)` })
+        setGrantResult({ success: true, msg: `已向 ${data.granted} 个邮箱赠送 ${data.totalCredits} 次评估` })
         setGrantEmail('')
         setGrantBatchEmails('')
         setGrantReason('')
         fetchHistory()
         fetchStats()
       } else {
-        setGrantResult({ success: false, msg: data.error || 'Failed' })
+        setGrantResult({ success: false, msg: data.error || '操作失败' })
       }
     } catch {
-      setGrantResult({ success: false, msg: 'Network error' })
+      setGrantResult({ success: false, msg: '网络错误' })
     } finally {
       setGrantLoading(false)
     }
@@ -195,7 +275,10 @@ export default function AdminDashboard() {
   if (error && !stats) {
     return (
       <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-red-400">{error}</div>
+        <div className="text-red-400 flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          {error}
+        </div>
       </main>
     )
   }
@@ -204,40 +287,78 @@ export default function AdminDashboard() {
   const f = stats!.funnel
   const r = stats!.revenue
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'overview', label: 'Overview', icon: <Activity className="h-4 w-4" /> },
-    { key: 'funnel', label: 'Funnel', icon: <BarChart3 className="h-4 w-4" /> },
-    { key: 'revenue', label: 'Revenue', icon: <DollarSign className="h-4 w-4" /> },
-    { key: 'users', label: 'Users', icon: <Users className="h-4 w-4" /> },
-    { key: 'ops', label: 'Ops', icon: <Settings className="h-4 w-4" /> },
+  const tabs = Object.entries(TAB_CONFIG).map(([key, cfg]) => ({
+    key: key as Tab,
+    ...cfg,
+  }))
+
+  // 过滤用户列表
+  const filteredUsers = stats!.users.filter(u =>
+    !userSearch || u.email.toLowerCase().includes(userSearch.toLowerCase())
+  )
+
+  // 过滤日志
+  const filteredLogs = logs.filter(l => {
+    if (logTypeFilter !== 'all' && l.eventType !== logTypeFilter) return false
+    if (logFilter) {
+      const q = logFilter.toLowerCase()
+      return l.email.toLowerCase().includes(q) ||
+             l.path.toLowerCase().includes(q) ||
+             l.username.toLowerCase().includes(q) ||
+             l.eventType.toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  // 转化率计算
+  const funnelSteps = [
+    { label: '页面浏览', value: f.pageViews, color: '#3b82f6', icon: <Eye className="h-4 w-4" /> },
+    { label: '搜索账号', value: f.searches, color: '#06b6d4', icon: <Search className="h-4 w-4" /> },
+    { label: '开始评估', value: f.evaluateStarts, color: '#a855f7', icon: <Zap className="h-4 w-4" /> },
+    { label: '付费墙展示', value: f.paywallViews, color: '#f59e0b', icon: <FileText className="h-4 w-4" /> },
+    { label: '付费墙点击', value: f.paywallClicks, color: '#FF0050', icon: <MousePointerClick className="h-4 w-4" /> },
+    { label: '购买完成', value: f.purchases, color: '#22c55e', icon: <CreditCard className="h-4 w-4" /> },
   ]
 
   return (
     <main className="min-h-screen bg-[#0a0a0a]">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-50 bg-[#0a0a0a]/90 backdrop-blur border-b border-neutral-800">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* ── 顶部导航栏 ── */}
+      <header className="sticky top-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-neutral-800/80">
+        <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <Image src="/tokvalue.png" alt="TokValue" width={100} height={24} className="h-6 w-auto object-contain" />
-            <span className="text-xs text-neutral-600 border-l border-neutral-800 pl-3">Admin Console</span>
+            <span className="text-xs text-neutral-600 border-l border-neutral-800 pl-3">管理后台</span>
           </div>
-          <button onClick={logout} className="flex items-center gap-2 text-xs text-neutral-500 hover:text-red-400 transition-colors">
-            <LogOut className="h-3.5 w-3.5" />
-            Logout
-          </button>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-neutral-600 flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              {lastRefresh.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+            <button
+              onClick={() => { setLoading(true); fetchStats() }}
+              className="text-xs text-neutral-500 hover:text-[#00F2EA] flex items-center gap-1.5 transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" />
+              刷新
+            </button>
+            <button onClick={logout} className="flex items-center gap-2 text-xs text-neutral-500 hover:text-red-400 transition-colors">
+              <LogOut className="h-3.5 w-3.5" />
+              退出
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Tab Bar */}
-      <div className="border-b border-neutral-800 bg-[#0a0a0a]">
-        <div className="max-w-7xl mx-auto px-6 flex gap-1">
+      {/* ── Tab 导航 ── */}
+      <div className="sticky top-14 z-40 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-neutral-800/80">
+        <div className="max-w-[1400px] mx-auto px-6 flex gap-1">
           {tabs.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors ${
                 tab === t.key
-                  ? `${TAB_COLORS[t.key]}`
+                  ? `${t.activeColor}`
                   : 'border-transparent text-neutral-500 hover:text-neutral-300'
               }`}
             >
@@ -248,273 +369,338 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* ── Tab: Overview ── */}
+      {/* ── 内容区 ── */}
+      <div className="max-w-[1400px] mx-auto px-6 py-6">
+
+        {/* ════════ Tab: 数据总览 ════════ */}
         {tab === 'overview' && (
           <div className="space-y-6">
-            {/* Row 1: Revenue */}
+            {/* 核心指标卡片 */}
             <div className="grid grid-cols-4 gap-4">
-              <MetricCard label="Total Revenue" value={fmtUsd(o.totalRevenue)} icon={<DollarSign className="h-4 w-4" />} color="cyan" />
-              <MetricCard label="Revenue Today" value={fmtUsd(o.revenueToday)} icon={<DollarSign className="h-4 w-4" />} color="cyan" />
-              <MetricCard label="Revenue This Week" value={fmtUsd(o.revenueWeek)} icon={<DollarSign className="h-4 w-4" />} color="cyan" />
-              <MetricCard label="Revenue This Month" value={fmtUsd(o.revenueMonth)} icon={<DollarSign className="h-4 w-4" />} color="cyan" />
-            </div>
-            {/* Row 2: Payers */}
-            <div className="grid grid-cols-4 gap-4">
-              <MetricCard label="Total Payers" value={fmtNum(o.totalPayers)} icon={<Users className="h-4 w-4" />} color="pink" />
-              <MetricCard label="Payers Today" value={fmtNum(o.payersToday)} icon={<Users className="h-4 w-4" />} color="pink" />
-              <MetricCard label="Payers This Week" value={fmtNum(o.payersWeek)} icon={<Users className="h-4 w-4" />} color="pink" />
-              <MetricCard label="Payers This Month" value={fmtNum(o.payersMonth)} icon={<Users className="h-4 w-4" />} color="pink" />
-            </div>
-            {/* Row 3: Evaluations */}
-            <div className="grid grid-cols-4 gap-4">
-              <MetricCard label="Evaluations Today" value={fmtNum(o.evaluationsToday)} icon={<Activity className="h-4 w-4" />} color="green" />
-              <MetricCard label="Evaluations This Week" value={fmtNum(o.evaluationsWeek)} icon={<Activity className="h-4 w-4" />} color="green" />
-              <MetricCard label="Evaluations This Month" value={fmtNum(o.evaluationsMonth)} icon={<Activity className="h-4 w-4" />} color="green" />
-              <MetricCard label="Remaining Unused" value={fmtNum(o.remainingCredits)} icon={<TrendingUp className="h-4 w-4" />} color="amber" />
+              <StatCard
+                label="总收入"
+                value={fmtUsd(o.totalRevenue)}
+                sub={`今日 ${fmtUsd(o.revenueToday)}`}
+                icon={<DollarSign className="h-5 w-5" />}
+                gradient="from-[#00F2EA]/20 to-transparent"
+                accent="text-[#00F2EA]"
+                border="border-[#00F2EA]/30"
+              />
+              <StatCard
+                label="付费用户"
+                value={fmtNum(o.totalPayers)}
+                sub={`今日新增 ${fmtNum(o.payersToday)}`}
+                icon={<Users className="h-5 w-5" />}
+                gradient="from-[#FF0050]/20 to-transparent"
+                accent="text-[#FF0050]"
+                border="border-[#FF0050]/30"
+              />
+              <StatCard
+                label="评估次数（本月）"
+                value={fmtNum(o.evaluationsMonth)}
+                sub={`今日 ${fmtNum(o.evaluationsToday)}`}
+                icon={<Activity className="h-5 w-5" />}
+                gradient="from-green-500/20 to-transparent"
+                accent="text-green-400"
+                border="border-green-500/30"
+              />
+              <StatCard
+                label="未使用评估数"
+                value={fmtNum(o.remainingCredits)}
+                sub="待消耗额度"
+                icon={<TrendingUp className="h-5 w-5" />}
+                gradient="from-amber-500/20 to-transparent"
+                accent="text-amber-400"
+                border="border-amber-500/30"
+              />
             </div>
 
-            {/* Row 4: PV / UV */}
-            <div className="rounded-2xl border border-purple-500/20 bg-[#141414] p-6">
-              <h3 className="text-sm font-semibold text-neutral-400 mb-4">Traffic (PV / UV)</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-[#0f0f0f] p-4">
-                    <div className="text-xs text-neutral-500 mb-1">Total</div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.totalPV)}</span>
-                      <span className="text-sm text-neutral-500">PV</span>
-                    </div>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.totalUV)}</span>
-                      <span className="text-xs text-neutral-500">UV</span>
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-[#0f0f0f] p-4">
-                    <div className="text-xs text-neutral-500 mb-1">Today</div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.pvToday)}</span>
-                      <span className="text-sm text-neutral-500">PV</span>
-                    </div>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.uvToday)}</span>
-                      <span className="text-xs text-neutral-500">UV</span>
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-[#0f0f0f] p-4">
-                    <div className="text-xs text-neutral-500 mb-1">7 Days</div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.pvWeek)}</span>
-                      <span className="text-sm text-neutral-500">PV</span>
-                    </div>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.uvWeek)}</span>
-                      <span className="text-xs text-neutral-500">UV</span>
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-[#0f0f0f] p-4">
-                    <div className="text-xs text-neutral-500 mb-1">30 Days</div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold tabular-nums text-purple-400">{fmtNum(stats!.pvuv.pvMonth)}</span>
-                      <span className="text-sm text-neutral-500">PV</span>
-                    </div>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-lg font-bold tabular-nums text-purple-300">{fmtNum(stats!.pvuv.uvMonth)}</span>
-                      <span className="text-xs text-neutral-500">UV</span>
-                    </div>
-                  </div>
+            {/* 收入趋势 + PV/UV 趋势 */}
+            <div className="grid grid-cols-2 gap-4">
+              <ChartCard title="收入趋势（近30天）" icon={<DollarSign className="h-4 w-4" />}>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={r.byDay}>
+                      <defs>
+                        <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#00F2EA" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="#00F2EA" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#525252' }} />
+                      <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }}
+                        labelStyle={{ color: '#737373' }}
+                      />
+                      <Area type="monotone" dataKey="amount" stroke="#00F2EA" strokeWidth={2} fill="url(#revGradient)" name="收入" />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                {/* PV/UV bar comparison */}
-                <div className="rounded-xl bg-[#0f0f0f] p-4">
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[
-                        { name: 'Today', PV: stats!.pvuv.pvToday, UV: stats!.pvuv.uvToday },
-                        { name: '7 Days', PV: stats!.pvuv.pvWeek, UV: stats!.pvuv.uvWeek },
-                        { name: '30 Days', PV: stats!.pvuv.pvMonth, UV: stats!.pvuv.uvMonth },
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#525252' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #1f1f1f', borderRadius: 8 }} />
-                        <Bar dataKey="PV" fill="#a855f7" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="UV" fill="#c084fc" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+              </ChartCard>
+
+              <ChartCard title="流量趋势（PV / UV）" icon={<BarChart3 className="h-4 w-4" />}>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { name: '今日', PV: stats!.pvuv.pvToday, UV: stats!.pvuv.uvToday },
+                      { name: '近7天', PV: stats!.pvuv.pvWeek, UV: stats!.pvuv.uvWeek },
+                      { name: '近30天', PV: stats!.pvuv.pvMonth, UV: stats!.pvuv.uvMonth },
+                      { name: '总计', PV: stats!.pvuv.totalPV, UV: stats!.pvuv.totalUV },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#525252' }} />
+                      <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }}
+                      />
+                      <Bar dataKey="PV" fill="#a855f7" radius={[4, 4, 0, 0]} name="页面浏览" />
+                      <Bar dataKey="UV" fill="#c084fc" radius={[4, 4, 0, 0]} name="独立访客" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
+              </ChartCard>
             </div>
 
-            {/* Revenue Trend Chart */}
-            <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
-              <h3 className="text-sm font-semibold text-neutral-400 mb-4">Revenue Trend (30 Days)</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={r.byDay}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#525252' }} />
-                    <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#141414', border: '1px solid #1f1f1f', borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: '#737373' }}
-                    />
-                    <Line type="monotone" dataKey="amount" stroke="#00F2EA" strokeWidth={2} dot={false} name="Revenue" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+            {/* 详细指标表格 */}
+            <div className="grid grid-cols-3 gap-4">
+              <DetailCard title="收入明细" icon={<DollarSign className="h-4 w-4" />} accent="text-[#00F2EA]">
+                <DetailRow label="总收入" value={fmtUsd(o.totalRevenue)} />
+                <DetailRow label="今日收入" value={fmtUsd(o.revenueToday)} />
+                <DetailRow label="本周收入" value={fmtUsd(o.revenueWeek)} />
+                <DetailRow label="本月收入" value={fmtUsd(o.revenueMonth)} />
+              </DetailCard>
+              <DetailCard title="付费用户" icon={<Users className="h-4 w-4" />} accent="text-[#FF0050]">
+                <DetailRow label="总付费用户" value={fmtNum(o.totalPayers)} />
+                <DetailRow label="今日新增" value={fmtNum(o.payersToday)} />
+                <DetailRow label="本周新增" value={fmtNum(o.payersWeek)} />
+                <DetailRow label="本月新增" value={fmtNum(o.payersMonth)} />
+              </DetailCard>
+              <DetailCard title="评估使用" icon={<Activity className="h-4 w-4" />} accent="text-green-400">
+                <DetailRow label="今日评估" value={fmtNum(o.evaluationsToday)} />
+                <DetailRow label="本周评估" value={fmtNum(o.evaluationsWeek)} />
+                <DetailRow label="本月评估" value={fmtNum(o.evaluationsMonth)} />
+                <DetailRow label="未使用额度" value={fmtNum(o.remainingCredits)} />
+              </DetailCard>
             </div>
           </div>
         )}
 
-        {/* ── Tab: Funnel ── */}
+        {/* ════════ Tab: 转化漏斗 ════════ */}
         {tab === 'funnel' && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
-              <h3 className="text-sm font-semibold text-neutral-400 mb-6">Conversion Funnel (30 Days)</h3>
-              <div className="space-y-3">
-                {[
-                  { label: 'Page Views', value: f.pageViews, color: '#525252' },
-                  { label: 'Searches', value: f.searches, color: '#737373' },
-                  { label: 'Evaluate Starts', value: f.evaluateStarts, color: '#a855f7' },
-                  { label: 'Paywall Views', value: f.paywallViews, color: '#f59e0b' },
-                  { label: 'Paywall Clicks', value: f.paywallClicks, color: '#FF0050' },
-                  { label: 'Purchases', value: f.purchases, color: '#22c55e' },
-                ].map((step, i) => {
-                  const prev = i > 0 ? [f.pageViews, f.searches, f.evaluateStarts, f.paywallViews, f.paywallClicks][i - 1] : f.pageViews
+            <ChartCard title="转化漏斗（近30天）" icon={<BarChart3 className="h-4 w-4" />}>
+              <div className="space-y-4 pt-2">
+                {funnelSteps.map((step, i) => {
+                  const prev = i > 0 ? funnelSteps[i - 1].value : step.value
                   const rate = i === 0 ? '100%' : pct(step.value, prev)
                   const maxVal = Math.max(f.pageViews, 1)
                   const width = `${Math.max((step.value / maxVal) * 100, 2)}%`
+                  const isIncrease = i === 0 || step.value >= prev
                   return (
                     <div key={step.label}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-neutral-300">{step.label}</span>
-                        <span className="text-xs text-neutral-500">
-                          {fmtNum(step.value)} · {rate}
-                        </span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span style={{ color: step.color }}>{step.icon}</span>
+                          <span className="text-sm text-neutral-200">{step.label}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold tabular-nums text-white">{fmtNum(step.value)}</span>
+                          <span className="text-xs text-neutral-500">{rate}</span>
+                          {i > 0 && (
+                            <span className={`text-xs flex items-center gap-0.5 ${isIncrease ? 'text-green-400' : 'text-red-400'}`}>
+                              {isIncrease ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="h-8 bg-[#0f0f0f] rounded-lg overflow-hidden">
+                      <div className="h-10 bg-[#0f0f0f] rounded-lg overflow-hidden border border-neutral-800/50">
                         <div
                           className="h-full rounded-lg transition-all flex items-center px-3"
                           style={{ width, backgroundColor: step.color }}
                         >
-                          <span className="text-xs font-semibold text-white">{fmtNum(step.value)}</span>
+                          <span className="text-xs font-semibold text-white/90">{fmtNum(step.value)}</span>
                         </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
+            </ChartCard>
+
+            {/* 漏斗转化率汇总 */}
+            <div className="grid grid-cols-4 gap-4">
+              <StatCard
+                label="搜索→评估转化率"
+                value={pct(f.evaluateStarts, f.searches)}
+                icon={<Zap className="h-5 w-5" />}
+                gradient="from-purple-500/20 to-transparent"
+                accent="text-purple-400"
+                border="border-purple-500/30"
+              />
+              <StatCard
+                label="评估→付费墙转化率"
+                value={pct(f.paywallViews, f.evaluateStarts)}
+                icon={<FileText className="h-5 w-5" />}
+                gradient="from-amber-500/20 to-transparent"
+                accent="text-amber-400"
+                border="border-amber-500/30"
+              />
+              <StatCard
+                label="付费墙→购买转化率"
+                value={pct(f.purchases, f.paywallViews)}
+                icon={<CreditCard className="h-5 w-5" />}
+                gradient="from-[#FF0050]/20 to-transparent"
+                accent="text-[#FF0050]"
+                border="border-[#FF0050]/30"
+              />
+              <StatCard
+                label="整体转化率"
+                value={pct(f.purchases, f.pageViews)}
+                icon={<TrendingUp className="h-5 w-5" />}
+                gradient="from-green-500/20 to-transparent"
+                accent="text-green-400"
+                border="border-green-500/30"
+              />
             </div>
           </div>
         )}
 
-        {/* ── Tab: Revenue ── */}
+        {/* ════════ Tab: 收入分析 ════════ */}
         {tab === 'revenue' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              {/* Package Distribution Pie */}
-              <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
-                <h3 className="text-sm font-semibold text-neutral-400 mb-4">Package Distribution</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <ChartCard title="套餐分布" icon={<PieChart className="h-4 w-4" />}>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={r.byPackage} dataKey="count" nameKey="id" cx="50%" cy="50%" outerRadius={80} label={(props: PieLabelRenderProps) => `${props.name}: ${props.value}`}>
+                      <Pie
+                        data={r.byPackage.map(p => ({ ...p, name: PACKAGE_LABELS[p.id] || p.id }))}
+                        dataKey="count"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={(props: PieLabelRenderProps) => `${props.name}: ${props.value}次`}
+                      >
                         {r.byPackage.map((_, i) => (
                           <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #1f1f1f', borderRadius: 8 }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </ChartCard>
 
-              {/* Daily Revenue Bar */}
-              <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
-                <h3 className="text-sm font-semibold text-neutral-400 mb-4">Daily Revenue</h3>
+              <ChartCard title="每日收入（近14天）" icon={<DollarSign className="h-4 w-4" />}>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={r.byDay.slice(-14)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#525252' }} />
                       <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #1f1f1f', borderRadius: 8 }} />
-                      <Bar dataKey="amount" fill="#00F2EA" radius={[4, 4, 0, 0]} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }}
+                      />
+                      <Bar dataKey="amount" fill="#00F2EA" radius={[4, 4, 0, 0]} name="收入" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </ChartCard>
             </div>
 
-            {/* Revenue Table */}
+            {/* 套餐销售明细 */}
             <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
-              <h3 className="text-sm font-semibold text-neutral-400 mb-4">Package Sales</h3>
+              <h3 className="text-sm font-semibold text-neutral-300 mb-4 flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-[#00F2EA]" />
+                套餐销售明细
+              </h3>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-neutral-600 border-b border-neutral-800">
-                    <th className="pb-3 font-medium">Package</th>
-                    <th className="pb-3 font-medium text-right">Count</th>
-                    <th className="pb-3 font-medium text-right">Revenue</th>
+                  <tr className="text-left text-xs text-neutral-500 border-b border-neutral-800">
+                    <th className="pb-3 font-medium">套餐名称</th>
+                    <th className="pb-3 font-medium text-right">销售次数</th>
+                    <th className="pb-3 font-medium text-right">总收入</th>
+                    <th className="pb-3 font-medium text-right">占比</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {r.byPackage.map((pkg, i) => (
-                    <tr key={i} className="border-b border-neutral-800/50">
-                      <td className="py-3 text-neutral-300">{pkg.id}</td>
-                      <td className="py-3 text-right tabular-nums">{pkg.count}</td>
-                      <td className="py-3 text-right tabular-nums text-[#00F2EA]">{fmtUsd(pkg.revenue)}</td>
-                    </tr>
-                  ))}
+                  {r.byPackage.map((pkg, i) => {
+                    const totalRev = r.byPackage.reduce((s, p) => s + p.revenue, 0)
+                    return (
+                      <tr key={i} className="border-b border-neutral-800/50">
+                        <td className="py-3 text-neutral-200">{PACKAGE_LABELS[pkg.id] || pkg.id}</td>
+                        <td className="py-3 text-right tabular-nums">{pkg.count} 次</td>
+                        <td className="py-3 text-right tabular-nums text-[#00F2EA] font-semibold">{fmtUsd(pkg.revenue)}</td>
+                        <td className="py-3 text-right tabular-nums text-neutral-500">{pct(pkg.revenue, totalRev)}</td>
+                      </tr>
+                    )
+                  })}
+                  {r.byPackage.length === 0 && (
+                    <tr><td colSpan={4} className="py-8 text-center text-neutral-600">暂无销售数据</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* ── Tab: Users ── */}
+        {/* ════════ Tab: 用户管理 ════════ */}
         {tab === 'users' && (
           <div className="space-y-6">
             <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-neutral-400">
-                  User List
-                  <span className="ml-2 text-xs text-neutral-600">({stats!.users.length} users)</span>
-                </h3>
-                <div className="flex gap-2">
-                  <span className="px-2 py-1 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
-                    {stats!.users.filter(u => u.hasPaid).length} Paid
-                  </span>
-                  <span className="px-2 py-1 rounded text-xs bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
-                    {stats!.users.filter(u => !u.hasPaid).length} Free
-                  </span>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-semibold text-neutral-300">用户列表</h3>
+                  <span className="text-xs text-neutral-600">共 {stats!.users.length} 人</span>
+                  <div className="flex gap-2 ml-2">
+                    <span className="px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
+                      {stats!.users.filter(u => u.hasPaid).length} 已付费
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-xs bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
+                      {stats!.users.filter(u => !u.hasPaid).length} 免费用户
+                    </span>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-600" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    placeholder="搜索邮箱..."
+                    className="w-56 rounded-lg border border-neutral-700 bg-[#0f0f0f] pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none"
+                  />
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-neutral-600 border-b border-neutral-800">
-                      <th className="pb-3 font-medium">Email</th>
-                      <th className="pb-3 font-medium">Payment</th>
-                      <th className="pb-3 font-medium text-right">Remaining</th>
-                      <th className="pb-3 font-medium text-right">Purchased</th>
-                      <th className="pb-3 font-medium">Verified</th>
-                      <th className="pb-3 font-medium">Last Purchase</th>
+                    <tr className="text-left text-xs text-neutral-500 border-b border-neutral-800">
+                      <th className="pb-3 font-medium">邮箱</th>
+                      <th className="pb-3 font-medium">付费状态</th>
+                      <th className="pb-3 font-medium text-right">剩余评估</th>
+                      <th className="pb-3 font-medium text-right">累计购买</th>
+                      <th className="pb-3 font-medium">注册时间</th>
+                      <th className="pb-3 font-medium">最近购买</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {stats!.users.map((u, i) => (
-                      <tr key={i} className="border-b border-neutral-800/50">
-                        <td className="py-3 text-neutral-300">{u.email}</td>
+                    {filteredUsers.map((u, i) => (
+                      <tr key={i} className="border-b border-neutral-800/50 hover:bg-neutral-800/20 transition-colors">
+                        <td className="py-3 text-neutral-200">{u.email}</td>
                         <td className="py-3">
                           {u.hasPaid ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/20">
-                              <CheckCircle2 className="h-3 w-3" /> Paid
+                              <CheckCircle2 className="h-3 w-3" /> 已付费
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-neutral-500/10 text-neutral-500 border border-neutral-500/20">
-                              <XCircle className="h-3 w-3" /> Free
+                              <XCircle className="h-3 w-3" /> 免费用户
                             </span>
                           )}
                         </td>
@@ -524,14 +710,14 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-3 text-right tabular-nums text-neutral-400">{u.totalPurchased}</td>
-                        <td className="py-3 text-neutral-500 text-xs">{new Date(u.verifiedAt).toLocaleDateString('en-US')}</td>
+                        <td className="py-3 text-neutral-500 text-xs">{fmtDate(u.verifiedAt)}</td>
                         <td className="py-3 text-neutral-500 text-xs">
-                          {u.lastPurchaseAt ? new Date(u.lastPurchaseAt).toLocaleDateString('en-US') : '-'}
+                          {u.lastPurchaseAt ? fmtDate(u.lastPurchaseAt) : '—'}
                         </td>
                       </tr>
                     ))}
-                    {stats!.users.length === 0 && (
-                      <tr><td colSpan={6} className="py-8 text-center text-neutral-600">No users yet</td></tr>
+                    {filteredUsers.length === 0 && (
+                      <tr><td colSpan={6} className="py-8 text-center text-neutral-600">暂无用户数据</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -540,113 +726,231 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Tab: Operations ── */}
-        {tab === 'ops' && (
+        {/* ════════ Tab: 系统日志 ════════ */}
+        {tab === 'logs' && (
           <div className="space-y-6">
-            {/* Credit Grant Form */}
-            <div className="rounded-2xl border border-[#00F2EA]/20 bg-[#141414] p-6">
-              <h3 className="text-sm font-semibold text-neutral-400 mb-4">Grant Evaluations</h3>
-
-              <div className="flex gap-4 mb-4">
-                <button
-                  onClick={() => setGrantMode('single')}
-                  className={`px-4 py-2 rounded-lg text-sm border transition-colors ${grantMode === 'single' ? 'border-[#00F2EA] text-[#00F2EA] bg-[#00F2EA]/10' : 'border-neutral-700 text-neutral-500'}`}
-                >
-                  Single Email
-                </button>
-                <button
-                  onClick={() => setGrantMode('batch')}
-                  className={`px-4 py-2 rounded-lg text-sm border transition-colors ${grantMode === 'batch' ? 'border-[#00F2EA] text-[#00F2EA] bg-[#00F2EA]/10' : 'border-neutral-700 text-neutral-500'}`}
-                >
-                  Batch (CSV)
-                </button>
+            <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-semibold text-neutral-300 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-amber-400" />
+                    系统事件日志
+                  </h3>
+                  <span className="text-xs text-neutral-600">共 {logs.length} 条</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={logTypeFilter}
+                    onChange={e => setLogTypeFilter(e.target.value)}
+                    className="rounded-lg border border-neutral-700 bg-[#0f0f0f] px-3 py-1.5 text-xs text-neutral-300 focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="all">全部类型</option>
+                    <option value="page_view">页面浏览</option>
+                    <option value="search">搜索账号</option>
+                    <option value="evaluate_start">开始评估</option>
+                    <option value="evaluate_done">评估完成</option>
+                    <option value="paywall_view">付费墙展示</option>
+                    <option value="paywall_click">付费墙点击</option>
+                    <option value="purchase">购买完成</option>
+                    <option value="email_sent">邮件发送</option>
+                    <option value="email_verified">邮箱验证</option>
+                    <option value="share_created">分享创建</option>
+                  </select>
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-600" />
+                    <input
+                      type="text"
+                      value={logFilter}
+                      onChange={e => setLogFilter(e.target.value)}
+                      placeholder="搜索邮箱/路径..."
+                      className="w-48 rounded-lg border border-neutral-700 bg-[#0f0f0f] pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={fetchLogs}
+                    className="text-xs text-neutral-500 hover:text-amber-400 flex items-center gap-1.5 transition-colors"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    刷新
+                  </button>
+                </div>
               </div>
 
-              {grantMode === 'single' ? (
-                <input
-                  type="email"
-                  value={grantEmail}
-                  onChange={e => setGrantEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none mb-4"
-                />
+              {logsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
+                </div>
               ) : (
-                <textarea
-                  value={grantBatchEmails}
-                  onChange={e => setGrantBatchEmails(e.target.value)}
-                  placeholder="user1@example.com&#10;user2@example.com&#10;user3@example.com"
-                  rows={4}
-                  className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none mb-4 resize-none"
-                />
-              )}
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs text-neutral-500 mb-1">Evaluations to Grant</label>
-                  <input
-                    type="number"
-                    value={grantCredits}
-                    onChange={e => setGrantCredits(Number(e.target.value))}
-                    min={1}
-                    max={100}
-                    className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white focus:border-[#00F2EA] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-neutral-500 mb-1">Reason</label>
-                  <input
-                    type="text"
-                    value={grantReason}
-                    onChange={e => setGrantReason(e.target.value)}
-                    placeholder="Customer refund / promotion"
-                    className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleGrant}
-                disabled={grantLoading}
-                className="w-full rounded-xl bg-[#00F2EA] text-black font-semibold py-2.5 text-sm hover:bg-[#00D8D0] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-              >
-                {grantLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {grantLoading ? 'Granting...' : 'Grant Evaluations'}
-              </button>
-
-              {grantResult && (
-                <div className={`mt-4 p-3 rounded-lg text-sm flex items-center gap-2 ${grantResult.success ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
-                  {grantResult.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0" />}
-                  {grantResult.msg}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-neutral-500 border-b border-neutral-800">
+                        <th className="pb-3 font-medium w-10">#</th>
+                        <th className="pb-3 font-medium w-32">时间</th>
+                        <th className="pb-3 font-medium w-28">事件类型</th>
+                        <th className="pb-3 font-medium">邮箱/用户</th>
+                        <th className="pb-3 font-medium">路径</th>
+                        <th className="pb-3 font-medium w-32">IP哈希</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLogs.map((log, i) => {
+                        const ev = getEventLabel(log.eventType)
+                        return (
+                          <tr key={log.id} className="border-b border-neutral-800/30 hover:bg-neutral-800/20 transition-colors">
+                            <td className="py-2.5 text-neutral-600 text-xs tabular-nums">{i + 1}</td>
+                            <td className="py-2.5 text-neutral-400 text-xs">{fmtTime(log.createdAt)}</td>
+                            <td className="py-2.5">
+                              <span className={`text-xs font-medium ${ev.color}`}>{ev.label}</span>
+                            </td>
+                            <td className="py-2.5 text-neutral-300 text-xs">{log.email || log.username || '—'}</td>
+                            <td className="py-2.5 text-neutral-500 text-xs font-mono">{log.path || '—'}</td>
+                            <td className="py-2.5 text-neutral-600 text-xs font-mono">{log.ipHash ? log.ipHash.slice(0, 12) + '...' : '—'}</td>
+                          </tr>
+                        )
+                      })}
+                      {filteredLogs.length === 0 && (
+                        <tr><td colSpan={6} className="py-8 text-center text-neutral-600">暂无日志数据</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
 
-            {/* Credit History */}
-            <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
-              <h3 className="text-sm font-semibold text-neutral-400 mb-4">Recent Grant History</h3>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-neutral-600 border-b border-neutral-800">
-                    <th className="pb-3 font-medium">Time</th>
-                    <th className="pb-3 font-medium">Email</th>
-                    <th className="pb-3 font-medium text-right">Evaluations</th>
-                    <th className="pb-3 font-medium">Reason</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((h, i) => (
-                    <tr key={i} className="border-b border-neutral-800/50">
-                      <td className="py-3 text-neutral-500 text-xs">{new Date(h.created_at).toLocaleString('en-US')}</td>
-                      <td className="py-3 text-neutral-300">{h.target_email}</td>
-                      <td className="py-3 text-right tabular-nums text-[#00F2EA]">{h.credits}</td>
-                      <td className="py-3 text-neutral-500 text-xs">{h.reason}</td>
-                    </tr>
-                  ))}
-                  {history.length === 0 && (
-                    <tr><td colSpan={4} className="py-8 text-center text-neutral-600">No grant history yet</td></tr>
-                  )}
-                </tbody>
-              </table>
+            {/* 日志统计 */}
+            <div className="grid grid-cols-5 gap-3">
+              {Object.entries(EVENT_LABELS).slice(0, 5).map(([type, cfg]) => {
+                const count = logs.filter(l => l.eventType === type).length
+                return (
+                  <div key={type} className="rounded-xl border border-neutral-800 bg-[#141414] p-4">
+                    <div className={`text-xs ${cfg.color} mb-1`}>{cfg.label}</div>
+                    <div className="text-xl font-bold tabular-nums text-white">{count}</div>
+                    <div className="text-xs text-neutral-600 mt-1">条记录</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ════════ Tab: 运营操作 ════════ */}
+        {tab === 'ops' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              {/* 赠送评估次数 */}
+              <div className="rounded-2xl border border-[#00F2EA]/20 bg-[#141414] p-6">
+                <h3 className="text-sm font-semibold text-neutral-300 mb-4 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-[#00F2EA]" />
+                  赠送评估次数
+                </h3>
+
+                <div className="flex gap-3 mb-4">
+                  <button
+                    onClick={() => setGrantMode('single')}
+                    className={`px-4 py-2 rounded-lg text-sm border transition-colors ${grantMode === 'single' ? 'border-[#00F2EA] text-[#00F2EA] bg-[#00F2EA]/10' : 'border-neutral-700 text-neutral-500'}`}
+                  >
+                    单个邮箱
+                  </button>
+                  <button
+                    onClick={() => setGrantMode('batch')}
+                    className={`px-4 py-2 rounded-lg text-sm border transition-colors ${grantMode === 'batch' ? 'border-[#00F2EA] text-[#00F2EA] bg-[#00F2EA]/10' : 'border-neutral-700 text-neutral-500'}`}
+                  >
+                    批量赠送
+                  </button>
+                </div>
+
+                {grantMode === 'single' ? (
+                  <input
+                    type="email"
+                    value={grantEmail}
+                    onChange={e => setGrantEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none mb-4"
+                  />
+                ) : (
+                  <textarea
+                    value={grantBatchEmails}
+                    onChange={e => setGrantBatchEmails(e.target.value)}
+                    placeholder={'user1@example.com\nuser2@example.com\nuser3@example.com'}
+                    rows={4}
+                    className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none mb-4 resize-none"
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-xs text-neutral-500 mb-1.5">赠送次数</label>
+                    <input
+                      type="number"
+                      value={grantCredits}
+                      onChange={e => setGrantCredits(Number(e.target.value))}
+                      min={1}
+                      max={100}
+                      className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white focus:border-[#00F2EA] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-neutral-500 mb-1.5">赠送原因</label>
+                    <input
+                      type="text"
+                      value={grantReason}
+                      onChange={e => setGrantReason(e.target.value)}
+                      placeholder="客户补偿 / 活动推广"
+                      className="w-full rounded-xl border border-neutral-700 bg-[#0f0f0f] px-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:border-[#00F2EA] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGrant}
+                  disabled={grantLoading}
+                  className="w-full rounded-xl bg-[#00F2EA] text-black font-semibold py-2.5 text-sm hover:bg-[#00D8D0] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {grantLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {grantLoading ? '正在赠送...' : '确认赠送'}
+                </button>
+
+                {grantResult && (
+                  <div className={`mt-4 p-3 rounded-lg text-sm flex items-center gap-2 ${grantResult.success ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+                    {grantResult.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0" />}
+                    {grantResult.msg}
+                  </div>
+                )}
+              </div>
+
+              {/* 赠送历史 */}
+              <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
+                <h3 className="text-sm font-semibold text-neutral-300 mb-4 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-neutral-400" />
+                  赠送历史记录
+                </h3>
+                <div className="overflow-y-auto max-h-[400px]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-[#141414]">
+                      <tr className="text-left text-xs text-neutral-500 border-b border-neutral-800">
+                        <th className="pb-3 font-medium">时间</th>
+                        <th className="pb-3 font-medium">邮箱</th>
+                        <th className="pb-3 font-medium text-right">次数</th>
+                        <th className="pb-3 font-medium">原因</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.map((h, i) => (
+                        <tr key={i} className="border-b border-neutral-800/30">
+                          <td className="py-2.5 text-neutral-500 text-xs whitespace-nowrap">{fmtTime(h.created_at)}</td>
+                          <td className="py-2.5 text-neutral-300 text-xs">{h.target_email}</td>
+                          <td className="py-2.5 text-right tabular-nums text-[#00F2EA] font-semibold">{h.credits}</td>
+                          <td className="py-2.5 text-neutral-500 text-xs">{h.reason}</td>
+                        </tr>
+                      ))}
+                      {history.length === 0 && (
+                        <tr><td colSpan={4} className="py-8 text-center text-neutral-600">暂无赠送记录</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -655,17 +959,70 @@ export default function AdminDashboard() {
   )
 }
 
-// ── Metric Card Component ──
-function MetricCard({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: 'cyan' | 'pink' | 'green' | 'amber' }) {
-  const borderColor = color === 'cyan' ? 'border-[#00F2EA]/20' : color === 'pink' ? 'border-[#FF0050]/20' : color === 'green' ? 'border-green-500/20' : 'border-amber-500/20'
-  const iconColor = color === 'cyan' ? 'text-[#00F2EA]' : color === 'pink' ? 'text-[#FF0050]' : color === 'green' ? 'text-green-400' : 'text-amber-400'
+// ── 组件 ──
+
+function StatCard({ label, value, sub, icon, gradient, accent, border }: {
+  label: string
+  value: string
+  sub?: string
+  icon: React.ReactNode
+  gradient: string
+  accent: string
+  border: string
+}) {
   return (
-    <div className={`rounded-xl border ${borderColor} bg-[#141414] p-4`}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className={iconColor}>{icon}</span>
-        <span className="text-xs text-neutral-500">{label}</span>
+    <div className={`relative overflow-hidden rounded-2xl border ${border} bg-[#141414] p-5`}>
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} pointer-events-none`} />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs text-neutral-400">{label}</span>
+          <span className={accent}>{icon}</span>
+        </div>
+        <div className="text-2xl font-bold tabular-nums text-white">{value}</div>
+        {sub && <div className="text-xs text-neutral-500 mt-1">{sub}</div>}
       </div>
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
+    </div>
+  )
+}
+
+function ChartCard({ title, icon, children }: {
+  title: string
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
+      <h3 className="text-sm font-semibold text-neutral-300 mb-4 flex items-center gap-2">
+        <span className="text-neutral-500">{icon}</span>
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+
+function DetailCard({ title, icon, accent, children }: {
+  title: string
+  icon: React.ReactNode
+  accent: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-5">
+      <h3 className="text-sm font-semibold text-neutral-300 mb-3 flex items-center gap-2">
+        <span className={accent}>{icon}</span>
+        {title}
+      </h3>
+      <div className="space-y-2">{children}</div>
+    </div>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-neutral-500">{label}</span>
+      <span className="font-semibold tabular-nums text-neutral-200">{value}</span>
     </div>
   )
 }
