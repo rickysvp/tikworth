@@ -36,7 +36,6 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 8
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('[verify-code] START')
     const body = await req.json().catch(() => ({}))
     const email = String(body.email || '').trim().toLowerCase()
     const code = String(body.code || '').trim()
@@ -46,7 +45,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: getServerDict().api.auth.INVALID_CODE, code: 'INVALID_CODE' }, { status: 400 })
     }
 
-    console.log('[verify-code] verifying code...')
     const result = await verifyCode(email, code)
     if (!result.ok) {
       const messages: Record<string, { msg: string; status: number }> = {
@@ -56,12 +54,10 @@ export async function POST(req: NextRequest) {
         too_many:   { msg: getServerDict().api.auth.VERIFY_TOO_MANY, status: 429 },
       }
       const err = messages[result.reason] || { msg: getServerDict().api.auth.VERIFY_FAILED, status: 400 }
-      console.log(`[verify-code] ${result.reason} for ${email}`)
       return NextResponse.json({ error: err.msg, code: 'VERIFY_FAILED', reason: result.reason }, { status: err.status })
     }
 
     const { entry } = result
-    console.log('[verify-code] creating token...')
     const token = await createSessionToken(email)
 
     // ── Payment flow ──────────────────────────────────────────────────
@@ -72,7 +68,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: getServerDict().api.creem.NOT_CONFIGURED, code: 'CREEM_CONFIG_ERROR' }, { status: 503 })
       }
 
-      console.log('[verify-code] creating Creem checkout...')
       const apiBase = getCreemApiBase()
       let creemRes: Response
       try {
@@ -106,7 +101,6 @@ export async function POST(req: NextRequest) {
       }
 
       const session = await creemRes.json()
-      console.log('[verify-code] Creem checkout created, redirecting...')
       return NextResponse.json({
         ok: true,
         requiresPayment: true,
@@ -116,7 +110,6 @@ export async function POST(req: NextRequest) {
     }
 
     // DEV MODE / Creem 未配置: 直接发放额度
-    console.log('[verify-code] DEV MODE: granting credits...')
     const balance = await grantCredits(email, entry.packageId, entry.credits, entry.amount)
     return NextResponse.json({
       ok: true,

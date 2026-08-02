@@ -1,72 +1,66 @@
 import type { Evaluation } from '@/types'
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs'
-import { join } from 'path'
-import { withFileLock } from '@/lib/file-lock'
+import type { NeonQueryFunction } from '@neondatabase/serverless'
 
-const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), 'data')
-const SHARES_PATH = join(DATA_DIR, 'shares.json')
+const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
 
-interface ShareEntry {
-  id: string
-  evaluation: Evaluation
-  createdAt: string
+let sql: NeonQueryFunction<false, false> | null = null
+let initPromise: Promise<void> | null = null
+
+async function getSql(): Promise<NeonQueryFunction<false, false>> {
+  if (sql) return sql
+  const { neon } = await import('@neondatabase/serverless')
+  sql = neon(DATABASE_URL)
+  return sql
 }
 
-function readShares(): ShareEntry[] {
-  try {
-    if (!existsSync(SHARES_PATH)) return []
-    const raw = readFileSync(SHARES_PATH, 'utf-8')
-    return JSON.parse(raw) as ShareEntry[]
-  } catch {
-    return []
+async function initTable(): Promise<void> {
+  if (!initPromise) {
+    initPromise = (async () => {
+      const s = await getSql()
+      await s`
+        CREATE TABLE IF NOT EXISTS shares (
+          id TEXT PRIMARY KEY,
+          evaluation JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `
+      await s`CREATE INDEX IF NOT EXISTS idx_shares_created ON shares(created_at)`
+    })()
   }
-}
-
-function writeShares(data: ShareEntry[]) {
-  try {
-    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-    const tmp = `${SHARES_PATH}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`
-    writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8')
-    renameSync(tmp, SHARES_PATH)
-  } catch {
-    console.warn('[share-store] Failed to write shares file')
-  }
-}
-
-// Clean old shares (older than 30 days)
-function cleanOldShares() {
-  try {
-    const shares = readShares()
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const filtered = shares.filter(s => new Date(s.createdAt).getTime() > cutoff)
-    if (filtered.length !== shares.length) {
-      writeShares(filtered)
-    }
-  } catch {}
+  return initPromise
 }
 
 export async function createShare(evaluation: Evaluation): Promise<string> {
-  cleanOldShares()
+  await initTable()
+  const s = await getSql()
 
   const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
-  const entry: ShareEntry = {
-    id,
-    evaluation,
-    createdAt: new Date().toISOString(),
-  }
 
-  return withFileLock(SHARES_PATH, async () => {
-    const shares = readShares()
-    shares.push(entry)
-    writeShares(shares)
-    return id
-  })
+  await s`
+    INSERT INTO shares (id, evaluation, created_at)
+    VALUES (${id}, ${JSON.stringify(evaluation)}::jsonb, NOW())
+  `
+
+  return id
 }
 
 export async function getShare(id: string): Promise<Evaluation | null> {
-  return withFileLock(SHARES_PATH, async () => {
-    const shares = readShares()
-    const entry = shares.find(s => s.id === id)
-    return entry ? entry.evaluation : null
-  })
+  await initTable()
+  const s = await getSql()
+
+  const rows = await s`SELECT evaluation FROM shares WHERE id = ${id}`
+  if (!rows[0]) return null
+
+  return rows[0].evaluation as Evaluation
+}
+
+// Clean old shares (older than 30 days) — called periodically
+export async function cleanOldShares(): Promise<void> {
+  try {
+    await initTable()
+    const s = await getSql()
+    await s`DELETE FROM shares WHERE created_at < NOW() - INTERVAL '30 days'`
+  } catch (err) {
+    console.warn('[share-store] cleanOldShares failed:', err)
+  }
 }

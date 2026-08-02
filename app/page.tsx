@@ -64,6 +64,8 @@ function HomePageContent() {
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef = useRef(true)
   
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -82,6 +84,14 @@ function HomePageContent() {
   // Track page view
   useEffect(() => {
     trackEvent('page_view', { path: '/' })
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+    }
   }, [])
 
   // Auto-dismiss payment success banner
@@ -250,13 +260,17 @@ function HomePageContent() {
       let attempts = 0
       const maxAttempts = 15
       const poll = async () => {
+        if (!mountedRef.current) return
         const b = await fetchBalance(paidEmail)
+        if (!mountedRef.current) return
         if (b && b.credits > 0) {
           setCreditBalance(b)
           return
         }
         attempts++
-        if (attempts < maxAttempts) setTimeout(poll, 2000)
+        if (attempts < maxAttempts) {
+          pollTimerRef.current = setTimeout(poll, 2000)
+        }
       }
       poll()
       router.replace('/')

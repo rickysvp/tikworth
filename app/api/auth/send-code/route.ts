@@ -210,9 +210,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const storeUsed = (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'postgres' : 'file'
-    console.log(`[send-code] code=${code} store=${storeUsed} email=${email}`)
-
     // --- Email delivery ---
     let emailDelivered = false
     let devCode: string | null = null

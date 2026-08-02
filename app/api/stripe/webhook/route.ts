@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
         // Use order ID (or checkout ID) as paymentId for idempotency
         const paymentId = (order?.id as string) || (obj.id as string) || event.id
         await grantCredits(email.toLowerCase(), packageId, creditsNum, parseFloat(amount || '0'), paymentId)
-        console.log('[creem-webhook] granted credits to', email, packageId, credits)
         // Record purchase analytics event
         recordEvent({
           event_type: 'purchase',

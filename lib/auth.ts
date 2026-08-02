@@ -220,7 +220,6 @@ export async function verifyCode(
     }
     if (entry.code !== trimmedCode) {
       await pg`UPDATE verification_codes SET attempts = attempts + 1 WHERE email = ${key}`
-      console.log(`[auth] verifyCode WRONG for ${key}: stored='${entry.code}' input='${trimmedCode}'`)
       return { ok: false, reason: 'wrong' }
     }
     await pg`DELETE FROM verification_codes WHERE email = ${key}`
@@ -246,7 +245,6 @@ export async function verifyCode(
     entry.attempts += 1
     if (entry.code !== trimmedCode) {
       writeCodes(all)
-      console.log(`[auth] verifyCode WRONG for ${key}: stored='${entry.code}' input='${trimmedCode}'`)
       return { ok: false, reason: 'wrong' }
     }
     delete all[key]
