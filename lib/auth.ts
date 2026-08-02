@@ -1,15 +1,47 @@
 /**
- * Auth utilities: verification codes with file persistence, rate limiting,
- * and lightweight JWT session tokens (JWS HS256).
+ * Auth utilities: verification codes with Postgres (Vercel) or file (local) persistence,
+ * rate limiting, and lightweight JWT session tokens (JWS HS256).
  */
 
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import { SignJWT, jwtVerify } from 'jose'
+import type { NeonQueryFunction } from '@neondatabase/serverless'
 import { withFileLock, atomicWriteJson, dataDir as DATA_DIR } from '@/lib/file-lock'
 
 const CODES_FILE = path.join(DATA_DIR, 'verification_codes.json')
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL
+
+let sql: NeonQueryFunction<false, false> | null = null
+let pgReady = false
+
+async function ensurePg(): Promise<NeonQueryFunction<false, false> | null> {
+  if (pgReady) return sql
+  if (!DATABASE_URL) return null
+  try {
+    const { neon } = await import('@neondatabase/serverless')
+    sql = neon(DATABASE_URL)
+    await sql`
+      CREATE TABLE IF NOT EXISTS verification_codes (
+        email TEXT PRIMARY KEY,
+        code TEXT NOT NULL,
+        package_id TEXT NOT NULL,
+        credits INTEGER NOT NULL,
+        amount INTEGER NOT NULL,
+        expires_at BIGINT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at BIGINT NOT NULL,
+        send_count_24h INTEGER NOT NULL DEFAULT 0
+      )
+    `
+    pgReady = true
+    return sql
+  } catch (err) {
+    console.warn('[auth] Postgres init failed, falling back to file', err)
+    return null
+  }
+}
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-jwt-secret-min-32-bytes-long!' : '')
@@ -37,7 +69,7 @@ export interface AuthPayload {
   email: string
 }
 
-// ── File helpers ──
+// ── File helpers (local dev fallback) ──
 
 function readCodes(): Record<string, PendingCode> {
   try {
@@ -73,6 +105,35 @@ export async function storeCode(
   const code = generateCode()
   const now = Date.now()
 
+  const pg = await ensurePg()
+  if (pg) {
+    // Postgres path
+    const existing = await pg`SELECT send_count_24h, created_at FROM verification_codes WHERE email = ${key}`
+    const windowStart = now - RATE_LIMIT_WINDOW_MS
+    const prev = existing[0]
+    const previousSends = prev && Number(prev.created_at) > windowStart ? Number(prev.send_count_24h) : 0
+
+    if (previousSends >= MAX_SENDS_PER_24H) {
+      return { code, sendCount24h: previousSends, rateLimited: true }
+    }
+
+    await pg`
+      INSERT INTO verification_codes (email, code, package_id, credits, amount, expires_at, attempts, created_at, send_count_24h)
+      VALUES (${key}, ${code}, ${packageId}, ${credits}, ${amount}, ${now + CODE_TTL_MS}, 0, ${now}, ${previousSends + 1})
+      ON CONFLICT (email) DO UPDATE SET
+        code = EXCLUDED.code,
+        package_id = EXCLUDED.package_id,
+        credits = EXCLUDED.credits,
+        amount = EXCLUDED.amount,
+        expires_at = EXCLUDED.expires_at,
+        attempts = 0,
+        created_at = EXCLUDED.created_at,
+        send_count_24h = EXCLUDED.send_count_24h
+    `
+    return { code, sendCount24h: previousSends + 1, rateLimited: false }
+  }
+
+  // File fallback (local dev)
   return withFileLock(CODES_FILE, async () => {
     const all = readCodes()
     const existing = all[key]
@@ -101,6 +162,11 @@ export async function storeCode(
 
 export async function cleanupExpiredCodes(): Promise<void> {
   try {
+    const pg = await ensurePg()
+    if (pg) {
+      await pg`DELETE FROM verification_codes WHERE expires_at < ${Date.now()}`
+      return
+    }
     await withFileLock(CODES_FILE, async () => {
       const all = readCodes()
       const now = Date.now()
@@ -124,7 +190,44 @@ export async function verifyCode(
 ): Promise<{ ok: true; entry: PendingCode } | { ok: false; reason: 'expired' | 'wrong' | 'not_found' | 'too_many' }> {
   const key = email.toLowerCase().trim()
   const trimmedCode = code.trim()
+  const now = Date.now()
 
+  const pg = await ensurePg()
+  if (pg) {
+    const rows = await pg`SELECT * FROM verification_codes WHERE email = ${key}`
+    const row = rows[0] as Record<string, unknown> | undefined
+    if (!row) return { ok: false, reason: 'not_found' }
+
+    const entry: PendingCode = {
+      code: String(row.code),
+      email: String(row.email),
+      packageId: String(row.package_id),
+      credits: Number(row.credits),
+      amount: Number(row.amount),
+      expiresAt: Number(row.expires_at),
+      attempts: Number(row.attempts),
+      createdAt: Number(row.created_at),
+      sendCount24h: Number(row.send_count_24h),
+    }
+
+    if (now > entry.expiresAt) {
+      await pg`DELETE FROM verification_codes WHERE email = ${key}`
+      return { ok: false, reason: 'expired' }
+    }
+    if (entry.attempts >= MAX_ATTEMPTS) {
+      await pg`DELETE FROM verification_codes WHERE email = ${key}`
+      return { ok: false, reason: 'too_many' }
+    }
+    if (entry.code !== trimmedCode) {
+      await pg`UPDATE verification_codes SET attempts = attempts + 1 WHERE email = ${key}`
+      console.log(`[auth] verifyCode WRONG for ${key}: stored='${entry.code}' input='${trimmedCode}'`)
+      return { ok: false, reason: 'wrong' }
+    }
+    await pg`DELETE FROM verification_codes WHERE email = ${key}`
+    return { ok: true, entry }
+  }
+
+  // File fallback (local dev)
   return withFileLock(CODES_FILE, async () => {
     const all = readCodes()
     const entry = all[key]
