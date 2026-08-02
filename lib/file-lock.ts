@@ -6,7 +6,9 @@
 import fs from 'fs'
 import path from 'path'
 
-const dataDir = path.join(process.cwd(), 'data')
+const dataDir = process.env.VERCEL
+  ? '/tmp'
+  : path.join(process.cwd(), 'data')
 
 function ensureDataDir() {
   try {
