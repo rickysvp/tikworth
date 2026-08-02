@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       metadata: body.metadata,
       ip_hash: hashIp(ip),
       user_agent: req.headers.get('user-agent') || undefined,
+      referrer: body.referrer || undefined,
     })
     return NextResponse.json({ ok: true })
   } catch {

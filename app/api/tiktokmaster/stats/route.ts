@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStatsOverview, getFunnel, getRevenueByDay, getRevenueByPackage, getPVUV, getUsersList } from '@/lib/analytics'
+import { getStatsOverview, getFunnel, getRevenueByDay, getRevenueByPackage, getPVUV, getUsersList, getTrafficSources } from '@/lib/analytics'
 import { verifyAdminRequest } from '@/lib/admin-api-utils'
 
 export async function GET(req: NextRequest) {
@@ -10,13 +10,14 @@ export async function GET(req: NextRequest) {
   const days = period === 'today' ? 1 : period === '7d' ? 7 : 30
 
   try {
-    const [overview, funnel, byDay, byPackage, pvuv, users] = await Promise.all([
+    const [overview, funnel, byDay, byPackage, pvuv, users, sources] = await Promise.all([
       getStatsOverview(),
       getFunnel(days),
       getRevenueByDay(days),
       getRevenueByPackage(days),
       getPVUV(),
       getUsersList(),
+      getTrafficSources(days),
     ])
 
     return NextResponse.json({
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
       revenue: { byDay, byPackage },
       pvuv,
       users,
+      sources,
       operations: {
         apiCalls: 0,
         apiErrors: 0,

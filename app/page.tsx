@@ -39,7 +39,12 @@ function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
   fetch('/api/track', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event_type, metadata }),
+    body: JSON.stringify({
+      event_type,
+      path: typeof window !== 'undefined' ? window.location.pathname : '/',
+      metadata,
+      referrer: typeof window !== 'undefined' ? (document.referrer || '') : '',
+    }),
   }).catch(() => {})
 }
 

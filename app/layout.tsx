@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { I18nBody } from "./i18n-body";
 import { getServerDict } from "@/lib/i18n/server";
+import { PageViewTracker } from "@/components/PageViewTracker";
 
 const d = getServerDict();
 
@@ -55,6 +56,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a] text-neutral-100 min-h-screen`}
       >
         <I18nBody>
+          <PageViewTracker />
           {children}
         </I18nBody>
       </body>

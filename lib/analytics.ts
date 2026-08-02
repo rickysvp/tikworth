@@ -24,6 +24,7 @@ export interface AnalyticsEvent {
   metadata?: Record<string, unknown>
   ip_hash?: string
   user_agent?: string
+  referrer?: string
   created_at: string
 }
 
@@ -67,6 +68,7 @@ async function initDb(): Promise<boolean> {
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS metadata JSONB`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer TEXT`
       await sql`
         CREATE TABLE IF NOT EXISTS admin_audit_log (
           id SERIAL PRIMARY KEY,
@@ -107,10 +109,10 @@ export async function recordEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at
 
   if (useDb && sql) {
     await sql`
-      INSERT INTO analytics_events (event_type, path, username, email, metadata, ip_hash, user_agent)
+      INSERT INTO analytics_events (event_type, path, username, email, metadata, ip_hash, user_agent, referrer)
       VALUES (${event.event_type}, ${event.path || null}, ${event.username || null},
         ${event.email || null}, ${JSON.stringify(event.metadata || {})}::jsonb,
-        ${event.ip_hash || null}, ${event.user_agent || null})
+        ${event.ip_hash || null}, ${event.user_agent || null}, ${event.referrer || null})
     `
     return
   }
@@ -555,4 +557,70 @@ export async function getUsersList(): Promise<UserListItem[]> {
 
 export function hashIp(ip: string): string {
   return crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16)
+}
+
+// ── Query: Traffic Sources ──
+
+export interface TrafficSource {
+  source: string
+  visitors: number
+  pct: number
+}
+
+export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
+  const useDb = await initDb()
+  const since = new Date(Date.now() - days * 86400000).toISOString()
+
+  if (useDb && sql) {
+    try {
+      const rows = await sql`
+        SELECT
+          COALESCE(NULLIF(referrer, ''), '直接访问') as source,
+          COUNT(DISTINCT ip_hash) as visitors
+        FROM analytics_events
+        WHERE event_type = 'page_view'
+          AND created_at >= ${since}::timestamptz
+        GROUP BY source
+        ORDER BY visitors DESC
+        LIMIT 20
+      `
+      const total = rows.reduce((s: number, r: Record<string, unknown>) => s + Number(r.visitors), 0)
+      return rows.map((r: Record<string, unknown>) => ({
+        source: classifyReferrer(String(r.source)),
+        visitors: Number(r.visitors),
+        pct: total > 0 ? Math.round((Number(r.visitors) / total) * 1000) / 10 : 0,
+      }))
+    } catch (err) {
+      console.warn('[analytics] failed to query traffic sources:', err)
+      return []
+    }
+  }
+
+  return []
+}
+
+function classifyReferrer(ref: string): string {
+  if (!ref || ref === '直接访问') return '直接访问'
+  const lower = ref.toLowerCase()
+  if (lower.includes('google.')) return 'Google'
+  if (lower.includes('bing.com')) return 'Bing'
+  if (lower.includes('baidu.com')) return '百度'
+  if (lower.includes('twitter.com') || lower.includes('x.com')) return 'X/Twitter'
+  if (lower.includes('facebook.com') || lower.includes('fb.com')) return 'Facebook'
+  if (lower.includes('instagram.com')) return 'Instagram'
+  if (lower.includes('youtube.com')) return 'YouTube'
+  if (lower.includes('tiktok.com')) return 'TikTok'
+  if (lower.includes('reddit.com')) return 'Reddit'
+  if (lower.includes('linkedin.com')) return 'LinkedIn'
+  if (lower.includes('github.com')) return 'GitHub'
+  if (lower.includes('producthunt')) return 'Product Hunt'
+  if (lower.includes('duckduckgo.com')) return 'DuckDuckGo'
+  if (lower.includes('yandex')) return 'Yandex'
+  // 提取域名
+  try {
+    const url = new URL(ref)
+    return url.hostname.replace(/^www\./, '')
+  } catch {
+    return ref.slice(0, 40)
+  }
 }
