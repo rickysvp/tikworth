@@ -4,8 +4,7 @@ import { storeCode, cleanupExpiredCodes } from '@/lib/auth'
 import { getServerDict } from '@/lib/i18n/server'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
-const LOGO_URL = `${APP_URL}/tokvalue.png`
+const LOGO_URL = 'https://tokvalue.com/tokvalue.png'
 
 function buildEmailHtml(code: string, pkgLabel: string, pkgCredits: number, pkgPrice: number): string {
   const digits = code.split('')
@@ -96,6 +95,12 @@ function buildEmailHtml(code: string, pkgLabel: string, pkgCredits: number, pkgP
               </table>
               <p style="margin:16px 0 0 0;font-size:12px;color:#666666;line-height:1.5">
                 This code expires in <strong style="color:#FF0050">10 minutes</strong>
+              </p>
+              <div style="margin-top:12px;display:inline-block;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:6px 14px;cursor:pointer;user-select:all;font-family:'SF Mono','Fira Code',monospace;font-size:20px;font-weight:900;color:#00F2EA;letter-spacing:4px">
+                ${code}
+              </div>
+              <p style="margin:8px 0 0 0;font-size:11px;color:#555">
+                Click to select &amp; copy the code
               </p>
             </td>
           </tr>

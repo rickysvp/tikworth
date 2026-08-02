@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import {
   X, Mail, KeyRound, CheckCircle2, Loader2, Sparkles,
-  Zap, ArrowRight, Star, DollarSign, Shield, TrendingUp,
+  Zap, ArrowRight, Star, DollarSign, Shield, TrendingUp, Copy,
 } from 'lucide-react'
 import { useI18n, t } from '@/lib/i18n'
 import type { CreditBalance, CreditPackage } from '@/lib/credits'
@@ -34,6 +34,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
   const [email, setEmail] = useState('')
   const [code, setCode] = useState<string[]>(['', '', '', '', '', ''])
   const [devCode, setDevCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
@@ -200,6 +201,16 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
       setCode(pasted.split(''))
       setTimeout(() => handleVerify(pasted), 100)
     }
+  }
+
+  function handleCopyCode() {
+    if (!devCode) return
+    navigator.clipboard.writeText(devCode).then(() => {
+      setCopied(true)
+      setCode(devCode.split(''))
+      setTimeout(() => handleVerify(devCode), 200)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
   }
 
   function handleOverlayClick(e: React.MouseEvent) {
@@ -473,7 +484,13 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
 
               {devCode && (
                 <div className="mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-[11px] text-yellow-300 text-center">
-                  <span className="font-semibold">{dict.verifyEmail.devCodeLabel}</span> Code <code className="font-mono font-bold bg-yellow-500/20 px-1.5 py-0.5 rounded ml-1">{devCode}</code>
+                  <span className="font-semibold">{dict.verifyEmail.devCodeLabel}</span>
+                  <button
+                    onClick={handleCopyCode}
+                    className="inline-flex items-center gap-1 ml-2 font-mono font-bold bg-yellow-500/20 px-2 py-1 rounded cursor-pointer hover:bg-yellow-500/30 transition-colors"
+                  >
+                    {devCode} {copied ? <CheckCircle2 className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+                  </button>
                 </div>
               )}
 
