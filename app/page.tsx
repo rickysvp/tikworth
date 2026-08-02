@@ -797,70 +797,54 @@ function HomePageContent() {
 
           {/* Footer */}
           <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
-            <div className="mx-auto max-w-5xl px-4 py-12">
-              {/* Disclaimer Banner */}
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 mb-10">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 h-5 w-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="h-3 w-3 text-amber-400" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">{dict.home.footer.disclaimer.title}</h4>
-                    <p className="text-xs text-neutral-500 leading-relaxed">
-                      {dict.home.footer.disclaimer.text}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-8 sm:grid-cols-4">
+            <div className="mx-auto max-w-5xl px-4 py-14">
+              <div className="grid gap-10 sm:grid-cols-3">
                 {/* Brand */}
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <Image src="/tokvalue.png" alt="TokValue" width={140} height={36} className="h-9 w-auto object-contain" />
                   </div>
-                  <p className="text-xs text-neutral-500 leading-relaxed mb-3">
+                  <p className="text-sm text-neutral-500 leading-relaxed mb-4">
                     {dict.home.footer.tagline}
                   </p>
-                  <a href="mailto:connect@tokvalue.com" className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">
-                    <Mail className="h-3 w-3" />
+                  <a href="mailto:connect@tokvalue.com" className="inline-flex items-center gap-2 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">
+                    <Mail className="h-3.5 w-3.5" />
                     connect@tokvalue.com
                   </a>
                 </div>
 
                 {/* Product */}
                 <div>
-                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.product}</h4>
-                  <ul className="space-y-2">
-                    <li><a href="#capabilities" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
-                    <li><a href="#pricing" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
-                    <li><Link href="/tracker" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
-                    <li><Link href="/history" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
-                    <li><Link href="/blog" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.blog}</Link></li>
-                  </ul>
-                </div>
-
-                {/* Data & Methodology */}
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.dataMethodology}</h4>
-                  <ul className="space-y-2">
-                    {dict.home.footer.methodologyItems.map((item, i) => (
-                      <li key={i}><span className="text-xs text-neutral-500">{item}</span></li>
-                    ))}
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.product}</h4>
+                  <ul className="space-y-3">
+                    <li><a href="#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
+                    <li><a href="#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
+                    <li><Link href="/tracker" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
+                    <li><Link href="/history" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
                   </ul>
                 </div>
 
                 {/* Legal */}
                 <div>
-                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.legal}</h4>
-                  <ul className="space-y-2">
-                    <li><Link href="/privacy" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
-                    <li><Link href="/terms" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
-                    {dict.home.footer.legalItems.map((item, i) => (
-                      <li key={i}><span className="text-xs text-neutral-600">{item}</span></li>
-                    ))}
-                    <li><span className="text-xs text-neutral-600">{t('© {year} TokValue. All rights reserved.', { year: new Date().getFullYear() })}</span></li>
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.legal}</h4>
+                  <ul className="space-y-3">
+                    <li><Link href="/privacy" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
+                    <li><Link href="/terms" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
                   </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="border-t border-neutral-800">
+              <div className="mx-auto max-w-5xl px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs text-neutral-600">
+                  {t('© {year} TokValue. All rights reserved.', { year: new Date().getFullYear() })}
+                </p>
+                <div className="flex items-center gap-x-4 gap-y-1 flex-wrap justify-center">
+                  <span className="text-xs text-neutral-600">{dict.home.footer.legalItems[0]}</span>
+                  <span className="text-neutral-800">·</span>
+                  <span className="text-xs text-neutral-600">{dict.home.footer.legalItems[3]}</span>
                 </div>
               </div>
             </div>
