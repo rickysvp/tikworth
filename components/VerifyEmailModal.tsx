@@ -497,7 +497,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
               {error && <div className="mt-3 text-center text-xs text-red-400">{error}</div>}
 
               <button
-                onClick={handleVerify}
+                onClick={() => handleVerify()}
                 disabled={loading || code.some(c => !c)}
                 className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF0050] py-3 text-sm font-bold text-white hover:bg-[#e60049] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >

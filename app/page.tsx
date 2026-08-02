@@ -24,7 +24,6 @@ import { DeepAnalysisSection } from '@/components/DeepAnalysisSection'
 import { SectionHeader } from '@/components/SectionHeader'
 import { saveToTracker, getTrackedByUsername } from '@/lib/tracker'
 import { downloadPdf } from '@/lib/export-pdf'
-import { APP_VERSION } from '@/lib/version'
 import { formatNumber } from '@/lib/format'
 import { useToast, ToastContainer } from '@/components/Toast'
 import type { CreditBalance } from '@/lib/credits'
@@ -428,19 +427,31 @@ function HomePageContent() {
       {!result && !loading && !needPurchase && (
         <>
           {/* Social Proof */}
-          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
+          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-16">
             <div className="mx-auto max-w-5xl px-4">
-              <div className="grid grid-cols-3 gap-8 text-center">
-                {[
-                  { value: '12,847+', label: dict.home.socialProof.accountsEvaluated },
-                  { value: '$2.4B+', label: dict.home.socialProof.totalValueAssessed },
-                  { value: '98.2%', label: dict.home.socialProof.satisfactionRate },
-                ].map((stat, i) => (
-                  <div key={i}>
-                    <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
-                    <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
-                  </div>
-                ))}
+              <div className="grid gap-8 lg:grid-cols-2 items-center">
+                <div className="relative rounded-2xl overflow-hidden border border-neutral-800">
+                  <Image
+                    src="/images/social-proof.jpg"
+                    alt="TokValue Analytics Dashboard"
+                    width={640}
+                    height={360}
+                    className="w-full h-auto object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/80 via-transparent to-transparent lg:bg-gradient-to-r lg:from-[#0a0a0a]/60 lg:via-transparent lg:to-transparent" />
+                </div>
+                <div className="grid grid-cols-3 gap-8 text-center">
+                  {[
+                    { value: '12,847+', label: dict.home.socialProof.accountsEvaluated },
+                    { value: '$2.4B+', label: dict.home.socialProof.totalValueAssessed },
+                    { value: '98.2%', label: dict.home.socialProof.satisfactionRate },
+                  ].map((stat, i) => (
+                    <div key={i}>
+                      <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
+                      <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -456,31 +467,46 @@ function HomePageContent() {
                     desc: dict.home.useCases.brands.desc,
                     cta: dict.home.useCases.brands.cta,
                     action: () => document.querySelector('input')?.focus(),
+                    image: '/images/role-brands.jpg',
                   },
                   {
                     icon: User, title: dict.home.useCases.creators.title,
                     desc: dict.home.useCases.creators.desc,
                     cta: dict.home.useCases.creators.cta,
                     action: () => { setUsername(''); document.querySelector('input')?.focus() },
+                    image: '/images/role-creators.jpg',
                   },
                   {
                     icon: Users, title: dict.home.useCases.agencies.title,
                     desc: dict.home.useCases.agencies.desc,
                     cta: dict.home.useCases.agencies.cta,
                     action: () => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }),
+                    image: '/images/role-agencies.jpg',
                   },
                 ].map((item, i) => {
                   const Icon = item.icon
                   return (
-                    <div key={i} className="group rounded-2xl border border-neutral-800 bg-[#141414] p-6 hover:border-[#00F2EA]/30 transition-all hover:-translate-y-1">
-                      <div className="w-11 h-11 rounded-xl bg-[#00F2EA]/10 flex items-center justify-center mb-4">
-                        <Icon className="h-5 w-5 text-[#00F2EA]" />
+                    <div key={i} className="group rounded-2xl border border-neutral-800 bg-[#141414] overflow-hidden hover:border-[#00F2EA]/30 transition-all hover:-translate-y-1">
+                      <div className="relative h-40 overflow-hidden">
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          width={400}
+                          height={200}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                      <p className="text-sm text-neutral-400 leading-relaxed mb-4">{item.desc}</p>
-                      <button onClick={item.action} className="text-sm font-medium text-[#FF0050] hover:text-[#ff2d6a] transition-colors">
-                        {item.cta} →
-                      </button>
+                      <div className="p-6 pt-0 -mt-8 relative z-10">
+                        <div className="w-11 h-11 rounded-xl bg-[#00F2EA]/10 flex items-center justify-center mb-4">
+                          <Icon className="h-5 w-5 text-[#00F2EA]" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                        <p className="text-sm text-neutral-400 leading-relaxed mb-4">{item.desc}</p>
+                        <button onClick={item.action} className="text-sm font-medium text-[#FF0050] hover:text-[#ff2d6a] transition-colors">
+                          {item.cta} →
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -502,6 +528,15 @@ function HomePageContent() {
                 <p className="text-neutral-500 text-sm max-w-2xl mx-auto leading-relaxed">
                   {dict.home.capabilities.description}
                 </p>
+                <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 max-w-3xl mx-auto">
+                  <Image
+                    src="/images/capabilities.jpg"
+                    alt="TokValue Capabilities Overview"
+                    width={960}
+                    height={400}
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
               </div>
 
               {/* 1. BUSINESS VALUATION — Wide Card */}
@@ -669,7 +704,16 @@ function HomePageContent() {
           <section id="pricing" className="border-b border-neutral-800 py-16">
             <div className="mx-auto max-w-3xl px-4">
               <h2 className="text-2xl font-bold text-center mb-2">{dict.home.pricing.title}</h2>
-              <p className="text-neutral-500 text-center mb-10 text-sm">{dict.home.pricing.subtitle}</p>
+              <p className="text-neutral-500 text-center mb-8 text-sm">{dict.home.pricing.subtitle}</p>
+              <div className="mb-8 rounded-2xl overflow-hidden border border-neutral-800">
+                <Image
+                  src="/images/pricing.jpg"
+                  alt="TokValue Pricing Plans"
+                  width={800}
+                  height={300}
+                  className="w-full h-auto object-cover"
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {CREDIT_PACKAGES.map(pkg => (
                   <div key={pkg.id} className={`relative rounded-2xl border-2 p-5 text-center transition-all ${
