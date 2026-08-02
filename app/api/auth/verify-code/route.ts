@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { grantCredits } from '@/lib/credits-server'
+import { grantCredits, storePendingPurchase } from '@/lib/credits-server'
 import { verifyCode, createSessionToken } from '@/lib/auth'
 import { getServerDict, t as serverT } from '@/lib/i18n/server'
 
@@ -101,6 +101,18 @@ export async function POST(req: NextRequest) {
       }
 
       const session = await creemRes.json()
+      const checkoutId = session.id || ''
+      // Store pending purchase so success page can claim credits without webhook
+      if (checkoutId) {
+        await storePendingPurchase({
+          email,
+          packageId: entry.packageId,
+          credits: entry.credits,
+          amount: entry.amount,
+          checkoutId,
+          createdAt: Date.now(),
+        })
+      }
       return NextResponse.json({
         ok: true,
         requiresPayment: true,

@@ -104,6 +104,84 @@ export async function grantCredits(
   return getBalance(key) as Promise<CreditBalance>
 }
 
+// ── Pending Purchase (for payment callback fallback) ──
+
+export interface PendingPurchase {
+  email: string
+  packageId: string
+  credits: number
+  amount: number
+  checkoutId: string
+  createdAt: number
+}
+
+async function initPendingTable(): Promise<void> {
+  const s = await getSql()
+  await s`
+    CREATE TABLE IF NOT EXISTS pending_purchases (
+      email TEXT PRIMARY KEY,
+      package_id TEXT NOT NULL,
+      credits INTEGER NOT NULL,
+      amount NUMERIC NOT NULL,
+      checkout_id TEXT NOT NULL,
+      created_at BIGINT NOT NULL
+    )
+  `
+}
+
+export async function storePendingPurchase(purchase: PendingPurchase): Promise<void> {
+  await initTable()
+  await initPendingTable()
+  const s = await getSql()
+  const key = purchase.email.toLowerCase().trim()
+  await s`
+    INSERT INTO pending_purchases (email, package_id, credits, amount, checkout_id, created_at)
+    VALUES (${key}, ${purchase.packageId}, ${purchase.credits}, ${purchase.amount}, ${purchase.checkoutId}, ${purchase.createdAt})
+    ON CONFLICT (email) DO UPDATE SET
+      package_id = ${purchase.packageId},
+      credits = ${purchase.credits},
+      amount = ${purchase.amount},
+      checkout_id = ${purchase.checkoutId},
+      created_at = ${purchase.createdAt}
+  `
+}
+
+export async function claimPendingPurchase(email: string): Promise<CreditBalance | null> {
+  const key = email.toLowerCase().trim()
+  if (!key) return null
+
+  await initTable()
+  await initPendingTable()
+  const s = await getSql()
+
+  // Look up pending purchase
+  const rows = await s`SELECT * FROM pending_purchases WHERE email = ${key}`
+  if (!rows[0]) return null
+
+  const pending = rows[0] as Record<string, unknown>
+  const createdAt = Number(pending.created_at)
+  const now = Date.now()
+
+  // Expire after 30 minutes
+  if (now - createdAt > 30 * 60 * 1000) {
+    await s`DELETE FROM pending_purchases WHERE email = ${key}`
+    return null
+  }
+
+  const credits = Number(pending.credits)
+  const packageId = String(pending.package_id)
+  const amount = Number(pending.amount)
+  const checkoutId = String(pending.checkout_id)
+
+  // Grant credits (idempotent via checkoutId)
+  const balance = await grantCredits(key, packageId, credits, amount, checkoutId)
+
+  // Delete pending purchase
+  await s`DELETE FROM pending_purchases WHERE email = ${key}`
+
+  return balance
+}
+
 export async function consumeCredit(email: string): Promise<{ ok: boolean; balance?: CreditBalance; reason?: string }> {
   const key = email.toLowerCase().trim()
   if (!key) return { ok: false, reason: 'NOT_FOUND' }

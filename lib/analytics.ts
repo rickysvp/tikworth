@@ -59,6 +59,14 @@ async function initDb(): Promise<boolean> {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `
+      // Migration: add event_type column if table was created with older schema
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS event_type TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS path TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS username TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS email TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS metadata JSONB`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
       await sql`
         CREATE TABLE IF NOT EXISTS admin_audit_log (
           id SERIAL PRIMARY KEY,

@@ -30,7 +30,7 @@ import type { CreditBalance } from '@/lib/credits'
 
 import { useI18n, t } from '@/lib/i18n'
 import { CREDIT_PACKAGES } from '@/lib/credits'
-import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken } from '@/lib/credits-client'
+import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCreditsApi } from '@/lib/credits-client'
 import { ParticleBackground } from '@/components/ParticleBackground'
 import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 
@@ -256,23 +256,41 @@ function HomePageContent() {
       paidHandled.current = true
       setActiveEmail(paidEmail)
       setPaymentSuccess(true)
-      // Poll balance until webhook grants credits (up to 30s, every 2s)
-      let attempts = 0
-      const maxAttempts = 15
-      const poll = async () => {
+
+      // Try to claim pending purchase first (direct claim, no webhook needed)
+      const tryClaim = async () => {
         if (!mountedRef.current) return
-        const b = await fetchBalance(paidEmail)
+        const result = await claimCreditsApi()
         if (!mountedRef.current) return
-        if (b && b.credits > 0) {
-          setCreditBalance(b)
+        if (result && result.claimed) {
+          setCreditBalance({
+            email: paidEmail,
+            credits: result.credits,
+            totalPurchased: result.credits,
+            purchases: [],
+            verifiedAt: Date.now(),
+          })
           return
         }
-        attempts++
-        if (attempts < maxAttempts) {
-          pollTimerRef.current = setTimeout(poll, 2000)
+        // Fallback: poll balance (webhook may still deliver)
+        let attempts = 0
+        const maxAttempts = 15
+        const poll = async () => {
+          if (!mountedRef.current) return
+          const b = await fetchBalance(paidEmail)
+          if (!mountedRef.current) return
+          if (b && b.credits > 0) {
+            setCreditBalance(b)
+            return
+          }
+          attempts++
+          if (attempts < maxAttempts) {
+            pollTimerRef.current = setTimeout(poll, 2000)
+          }
         }
+        poll()
       }
-      poll()
+      tryClaim()
       router.replace('/')
       return
     }

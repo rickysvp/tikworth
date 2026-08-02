@@ -75,6 +75,20 @@ export async function consumeCreditApi(): Promise<{ ok: boolean; balance?: Credi
   } catch { return { ok: false, error: 'NETWORK_ERROR' } }
 }
 
+// Claim pending purchase after payment redirect
+export async function claimCreditsApi(): Promise<{ claimed: boolean; credits: number; email: string } | null> {
+  try {
+    if (!getSessionToken()) return null
+    const res = await fetch('/api/credits/claim', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({}),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch { return null }
+}
+
 // Client-side tracking of pending verification state
 export function setPendingEmail(email: string, packageId: string) {
   if (typeof window === 'undefined') return
