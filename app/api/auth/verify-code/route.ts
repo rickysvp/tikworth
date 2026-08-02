@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: getServerDict().api.auth.INVALID_CODE, code: 'INVALID_CODE' }, { status: 400 })
     }
 
+    const storeUsed = (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'postgres' : 'file'
+    console.log(`[verify-code] store=${storeUsed} email=${email} code=${code}`)
+
     const result = await verifyCode(email, code)
     if (!result.ok) {
       const messages: Record<string, { msg: string; status: number }> = {
