@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: getServerDict().api.balance.SESSION_EXPIRED, code: 'UNAUTHORIZED' }, { status: 401 })
     }
 
-    const balance = getBalance(payload.email)
+    const balance = await getBalance(payload.email)
     if (!balance) {
       return NextResponse.json({
         email: payload.email,

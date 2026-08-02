@@ -70,6 +70,15 @@ async function initDb(): Promise<boolean> {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `
+      await sql`
+        CREATE TABLE IF NOT EXISTS credit_balances (
+          email TEXT PRIMARY KEY,
+          credits INTEGER NOT NULL DEFAULT 0,
+          total_purchased INTEGER NOT NULL DEFAULT 0,
+          purchases JSONB NOT NULL DEFAULT '[]'::jsonb,
+          verified_at BIGINT NOT NULL DEFAULT 0
+        )
+      `
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
       dbReady = true
@@ -185,14 +194,11 @@ export async function getStatsOverview(): Promise<StatsOverview> {
 
     let remainingCredits = 0
     try {
-      const balancesFile = path.join(DATA_DIR, 'credit_balances.json')
-      if (fs.existsSync(balancesFile)) {
-        const balances = JSON.parse(fs.readFileSync(balancesFile, 'utf-8'))
-        for (const bal of Object.values(balances) as Array<{ credits: number }>) {
-          remainingCredits += bal.credits || 0
-        }
-      }
-    } catch {}
+      const creditRows = await sql`SELECT COALESCE(SUM(credits), 0) as total FROM credit_balances`
+      remainingCredits = Number(creditRows[0]?.total) || 0
+    } catch (err) {
+      console.warn('[analytics] failed to query credit_balances:', err)
+    }
 
     const row = (r: Record<string, unknown>, key: string) => Number(r[key]) || 0
 
@@ -217,16 +223,8 @@ export async function getStatsOverview(): Promise<StatsOverview> {
   const filterEvents = (type: EventType, since: number) =>
     events.filter(e => e.event_type === type && new Date(e.created_at).getTime() >= since)
 
-  let remainingCredits = 0
-  try {
-    const balancesFile = path.join(DATA_DIR, 'credit_balances.json')
-    if (fs.existsSync(balancesFile)) {
-      const balances = JSON.parse(fs.readFileSync(balancesFile, 'utf-8'))
-      for (const bal of Object.values(balances) as Array<{ credits: number }>) {
-        remainingCredits += bal.credits || 0
-      }
-    }
-  } catch {}
+  // File fallback: remainingCredits not available without DB
+  const remainingCredits = 0
 
   const purchases = events.filter(e => e.event_type === 'purchase')
   const purchasesToday = filterEvents('purchase', new Date(todayStart).getTime())
@@ -490,35 +488,59 @@ export interface UserListItem {
 }
 
 export async function getUsersList(): Promise<UserListItem[]> {
-  const balancesFile = path.join(DATA_DIR, 'credit_balances.json')
-  let balances: Record<string, CreditBalance> = {}
+  const useDb = await initDb()
 
+  if (useDb && sql) {
+    try {
+      const rows = await sql`
+        SELECT email, credits, total_purchased, purchases, verified_at
+        FROM credit_balances
+        ORDER BY total_purchased DESC, credits DESC
+      `
+      return rows.map((r: Record<string, unknown>) => {
+        const purchases = Array.isArray(r.purchases) ? r.purchases as Array<{ purchasedAt: number }> : []
+        const lastPurchase = purchases.length > 0 ? purchases[0] : null
+        return {
+          email: String(r.email),
+          hasPaid: Number(r.total_purchased) > 0,
+          remainingCredits: Number(r.credits),
+          totalPurchased: Number(r.total_purchased),
+          verifiedAt: new Date(Number(r.verified_at)).toISOString(),
+          lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
+        }
+      })
+    } catch (err) {
+      console.warn('[analytics] failed to query credit_balances for users list:', err)
+      return []
+    }
+  }
+
+  // File fallback: try reading from file
+  const balancesFile = path.join(DATA_DIR, 'credit_balances.json')
   try {
     if (fs.existsSync(balancesFile)) {
-      balances = JSON.parse(fs.readFileSync(balancesFile, 'utf-8'))
+      const balances = JSON.parse(fs.readFileSync(balancesFile, 'utf-8'))
+      const users: UserListItem[] = []
+      for (const [email, bal] of Object.entries(balances) as Array<[string, CreditBalance]>) {
+        const lastPurchase = bal.purchases.length > 0 ? bal.purchases[0] : null
+        users.push({
+          email,
+          hasPaid: bal.totalPurchased > 0,
+          remainingCredits: bal.credits,
+          totalPurchased: bal.totalPurchased,
+          verifiedAt: new Date(bal.verifiedAt).toISOString(),
+          lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
+        })
+      }
+      users.sort((a, b) => {
+        if (a.hasPaid !== b.hasPaid) return a.hasPaid ? -1 : 1
+        return b.remainingCredits - a.remainingCredits
+      })
+      return users
     }
   } catch {}
 
-  const users: UserListItem[] = []
-  for (const [email, bal] of Object.entries(balances)) {
-    const lastPurchase = bal.purchases.length > 0 ? bal.purchases[0] : null
-    users.push({
-      email,
-      hasPaid: bal.totalPurchased > 0,
-      remainingCredits: bal.credits,
-      totalPurchased: bal.totalPurchased,
-      verifiedAt: new Date(bal.verifiedAt).toISOString(),
-      lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
-    })
-  }
-
-  // Sort: paid users first, then by remaining credits desc
-  users.sort((a, b) => {
-    if (a.hasPaid !== b.hasPaid) return a.hasPaid ? -1 : 1
-    return b.remainingCredits - a.remainingCredits
-  })
-
-  return users
+  return []
 }
 
 // ── Hash IP ──
