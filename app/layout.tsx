@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   title: d.seo.title,
   description: d.seo.description,
   icons: {
-    icon: '/w.png',
-    shortcut: '/w.png',
-    apple: '/w.png',
+    icon: '/w.png?v=2',
+    shortcut: '/w.png?v=2',
+    apple: '/w.png?v=2',
   },
   openGraph: {
     title: d.seo.title,
