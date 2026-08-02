@@ -854,8 +854,10 @@ function HomePageContent() {
                 <div>
                   <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.legal}</h4>
                   <ul className="space-y-2">
+                    <li><Link href="/privacy" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
+                    <li><Link href="/terms" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
                     {dict.home.footer.legalItems.map((item, i) => (
-                      <li key={i}><span className="text-xs text-neutral-500">{item}</span></li>
+                      <li key={i}><span className="text-xs text-neutral-600">{item}</span></li>
                     ))}
                     <li><span className="text-xs text-neutral-600">{t('© {year} TokValue. All rights reserved.', { year: new Date().getFullYear() })}</span></li>
                   </ul>
@@ -1100,7 +1102,7 @@ function HomePageContent() {
                 <div className="flex items-center gap-2 rounded-xl border border-[#00F2EA]/20 bg-[#00F2EA]/5 px-3 py-2.5">
                   <TrendingUp className="h-4 w-4 shrink-0 text-[#00F2EA]" />
                   <span className="text-xs text-neutral-400">
-                    {t(dict.resultLabels.peerComparison, { pct: result.metrics.engagementRate, pct2: result.peerBenchmark ? Math.round((1 - result.peerBenchmark.percentile / 100) * 100) : '--' })}
+                    {t(dict.resultLabels.peerComparison, { pct: result.metrics.engagementRate.toFixed(2), pct2: result.peerBenchmark ? Math.round((1 - result.peerBenchmark.percentile / 100) * 100) : '--' })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 rounded-xl border border-[#FF0050]/20 bg-[#FF0050]/5 px-3 py-2.5">

@@ -11,10 +11,10 @@ export function EngagementQualitySection({ quality }: { quality: EngagementQuali
     <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6">
       <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-6">{dict.evaluation.engagementQuality.title}</h3>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Metric icon={<MessageCircle className="h-5 w-5" />} label={dict.evaluation.engagementQuality.conversationDepth} value={`${quality.conversationDepth}`} />
-        <Metric icon={<Share2 className="h-5 w-5" />} label={dict.evaluation.engagementQuality.shareRate} value={`${quality.shareRatio}%`} />
-        <Metric icon={<Bookmark className="h-5 w-5" />} label={dict.evaluation.engagementQuality.commentToLikeRatio} value={`${quality.commentLikeRatio}%`} />
-        <Metric icon={<Zap className="h-5 w-5" />} label={dict.evaluation.engagementQuality.viralCoefficient} value={`${quality.viralCoefficient}x`} />
+        <Metric icon={<MessageCircle className="h-5 w-5" />} label={dict.evaluation.engagementQuality.conversationDepth} value={`${quality.conversationDepth.toFixed(2)}`} />
+        <Metric icon={<Share2 className="h-5 w-5" />} label={dict.evaluation.engagementQuality.shareRate} value={`${quality.shareRatio.toFixed(2)}%`} />
+        <Metric icon={<Bookmark className="h-5 w-5" />} label={dict.evaluation.engagementQuality.commentToLikeRatio} value={`${quality.commentLikeRatio.toFixed(2)}%`} />
+        <Metric icon={<Zap className="h-5 w-5" />} label={dict.evaluation.engagementQuality.viralCoefficient} value={`${quality.viralCoefficient.toFixed(2)}x`} />
       </div>
 
       <p className="text-sm text-neutral-300 mb-4">{quality.qualityReasoning}</p>

@@ -352,6 +352,8 @@ const en = {
       blog: 'Blog',
       dataMethodology: 'How It Works',
       legal: 'Legal',
+      privacyPolicy: 'Privacy Policy',
+      termsOfService: 'Terms of Service',
       methodologyItems: [
         '10-dimension scoring model',
         'Influencer Marketing Hub CPM benchmarks',

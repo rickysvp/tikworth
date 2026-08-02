@@ -29,9 +29,9 @@ export function PeerBenchmarkSection({ benchmark }: { benchmark: PeerBenchmark }
           {benchmark.benchmarks.map((b, i) => (
             <div key={i} className="grid grid-cols-4 gap-2 text-sm rounded-xl border border-neutral-800 bg-[#141414] px-3 py-2">
               <span className="text-neutral-400">{b.metric}</span>
-              <span className={b.status === 'above' ? 'text-green-400' : b.status === 'below' ? 'text-red-400' : 'text-amber-400'}>{b.userValue}</span>
-              <span className="text-neutral-500">{dict.evaluation.peerBenchmark.avg} {b.peerAvg}</span>
-              <span className="text-neutral-500">{dict.evaluation.peerBenchmark.top10} {b.peerTop10}</span>
+              <span className={b.status === 'above' ? 'text-green-400' : b.status === 'below' ? 'text-red-400' : 'text-amber-400'}>{b.userValue.toFixed(2)}</span>
+              <span className="text-neutral-500">{dict.evaluation.peerBenchmark.avg} {b.peerAvg.toFixed(2)}</span>
+              <span className="text-neutral-500">{dict.evaluation.peerBenchmark.top10} {b.peerTop10.toFixed(2)}</span>
             </div>
           ))}
         </div>

@@ -131,7 +131,7 @@ export function TrendAnalysisSection({ trendAnalysis }: Props) {
                 <div className="text-sm font-bold text-[#00F2EA] tabular-nums">
                   {String(slot.hour).padStart(2, '0')}:00
                 </div>
-                <div className="text-[10px] text-neutral-600">{slot.score}{dict.evaluation.trendAnalysis.points}</div>
+                <div className="text-[10px] text-neutral-600">{slot.score.toFixed(2)}{dict.evaluation.trendAnalysis.points}</div>
               </div>
             )
           })}

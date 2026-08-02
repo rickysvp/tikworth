@@ -61,14 +61,14 @@ export function DeepAnalysisSection({ result }: DeepAnalysisSectionProps) {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-4">{dict.evaluation.deepAnalysis.keyMetrics}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <MetricCard icon={<Activity className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.engagementRate} value={`${result.metrics.engagementRate}%`} />
+              <MetricCard icon={<Activity className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.engagementRate} value={`${result.metrics.engagementRate.toFixed(2)}%`} />
               <MetricCard icon={<Eye className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgPlays} value={formatNumber(result.metrics.avgPlays)} />
               <MetricCard icon={<Heart className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgLikes} value={formatNumber(result.metrics.avgLikes)} />
               <MetricCard icon={<MessageCircle className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgComments} value={formatNumber(result.metrics.avgComments)} />
               <MetricCard icon={<Share2 className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.avgShares} value={formatNumber(result.metrics.avgShares)} />
-              <MetricCard icon={<Users className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.followerRatio} value={`${result.metrics.followerFollowingRatio}x`} />
-              <MetricCard icon={<TrendingUp className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.playGrowth} value={`${result.metrics.playGrowth > 0 ? '+' : ''}${result.metrics.playGrowth}%`} highlight={result.metrics.playGrowth > 0 ? 'positive' : result.metrics.playGrowth < -15 ? 'negative' : undefined} />
-              <MetricCard icon={<Activity className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.playVolatility} value={`CV ${result.metrics.cvPlays}`} highlight={result.metrics.cvPlays > 0.5 ? 'negative' : 'positive'} />
+              <MetricCard icon={<Users className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.followerRatio} value={`${result.metrics.followerFollowingRatio.toFixed(2)}x`} />
+              <MetricCard icon={<TrendingUp className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.playGrowth} value={`${result.metrics.playGrowth > 0 ? '+' : ''}${result.metrics.playGrowth.toFixed(2)}%`} highlight={result.metrics.playGrowth > 0 ? 'positive' : result.metrics.playGrowth < -15 ? 'negative' : undefined} />
+              <MetricCard icon={<Activity className="h-5 w-5" />} label={dict.evaluation.deepAnalysis.playVolatility} value={`CV ${result.metrics.cvPlays.toFixed(2)}`} highlight={result.metrics.cvPlays > 0.5 ? 'negative' : 'positive'} />
             </div>
           </div>
 

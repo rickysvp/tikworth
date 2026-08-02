@@ -653,12 +653,12 @@ function DeepAnalysisSection({ result }: { result: Evaluation }) {
         <View style={S.flex1}>
           <Text style={S.label}>Play Growth</Text>
           <Text style={[S.value, { color: m.playGrowth >= 0 ? C.green : C.red }]}>
-            {m.playGrowth > 0 ? '+' : ''}{m.playGrowth}%
+            {m.playGrowth > 0 ? '+' : ''}{m.playGrowth.toFixed(2)}%
           </Text>
         </View>
         <View style={S.flex1}>
           <Text style={S.label}>Follower Ratio</Text>
-          <Text style={S.value}>{m.followerFollowingRatio.toFixed(1)}</Text>
+          <Text style={S.value}>{m.followerFollowingRatio.toFixed(2)}</Text>
         </View>
         <View style={S.flex1}>
           <Text style={S.label}>Days Since Last Post</Text>

@@ -37,7 +37,7 @@ export function IncomeBreakdownSection({ estimate }: { estimate: IncomeEstimate 
         <div className="flex items-center gap-2 text-xs text-neutral-500">
           <span>{estimate.categoryLabel} · {estimate.regionLabel}</span>
           <span className="text-neutral-700">|</span>
-          <span>CPM ${estimate.categoryCpm} · RPM ${estimate.categoryRpm}</span>
+          <span>CPM ${estimate.categoryCpm} · RPM ${estimate.categoryRpm.toFixed(2)}</span>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export function IncomeBreakdownSection({ estimate }: { estimate: IncomeEstimate 
           <div className="hidden sm:flex items-center gap-2 rounded-full border border-neutral-700 px-4 py-2">
             <TrendingUp className="h-4 w-4 text-[#00F2EA]" />
             <span className="text-sm text-neutral-400">
-              {dict.evaluation.income.regionMultiplier} {estimate.regionMultiplier}x
+              {dict.evaluation.income.regionMultiplier} {estimate.regionMultiplier.toFixed(2)}x
             </span>
           </div>
         </div>

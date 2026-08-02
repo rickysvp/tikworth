@@ -255,7 +255,13 @@ function buildPeerBenchmark(profile: RawProfile, metrics: Metrics): PeerBenchmar
     peerGroupSize: peerGroupFromFollowers(profile.followerCount),
     benchmarks: benchmarks.map(b => {
       const status: 'above' | 'average' | 'below' = b.userValue >= b.peerTop10 ? 'above' : b.userValue >= b.peerAvg ? 'average' : 'below'
-      return { ...b, status }
+      return {
+        metric: b.metric,
+        userValue: Number(b.userValue.toFixed(2)),
+        peerAvg: Number(b.peerAvg.toFixed(2)),
+        peerTop10: Number(b.peerTop10.toFixed(2)),
+        status,
+      }
     }),
     similarCreators: [],
   }
