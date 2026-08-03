@@ -5,7 +5,13 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Evaluation } from '@/types'
-import { Loader2, TrendingUp, BarChart3, DollarSign, ExternalLink, Share2, Check, Copy } from 'lucide-react'
+import {
+  Loader2, TrendingUp, DollarSign, ExternalLink, Share2, Check, Copy,
+  Target, Zap, Award, Users, Heart, Video, BarChart3, ArrowRight,
+  Sparkles, Trophy, Flame, ShoppingBag, Gift,
+} from 'lucide-react'
+
+// ── Helpers ──
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -23,6 +29,62 @@ function fmtUsdRange(low: number, high: number): string {
   return `${fmtUsd(low)} – ${fmtUsd(high)}`
 }
 
+// ── Tier mapping: S/A/B → Premium, C/D → Growth, E/F → Developing ──
+
+function getValueTier(tier: string) {
+  if (tier === 'S' || tier === 'A' || tier === 'B') {
+    return {
+      label: 'Premium Value',
+      desc: 'Exceptional commercial potential',
+      color: '#00F2EA',
+      bgColor: 'rgba(0, 242, 234, 0.1)',
+      borderColor: 'rgba(0, 242, 234, 0.3)',
+      icon: Trophy,
+    }
+  }
+  if (tier === 'C' || tier === 'D') {
+    return {
+      label: 'Growth Value',
+      desc: 'Strong monetization trajectory',
+      color: '#FF0050',
+      bgColor: 'rgba(255, 0, 80, 0.1)',
+      borderColor: 'rgba(255, 0, 80, 0.3)',
+      icon: TrendingUp,
+    }
+  }
+  return {
+    label: 'Developing Value',
+    desc: 'Solid foundation with upside',
+    color: '#a855f7',
+    bgColor: 'rgba(168, 85, 247, 0.1)',
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+    icon: Sparkles,
+  }
+}
+
+const DIMENSION_LABELS: { key: string; label: string }[] = [
+  { key: 'reach', label: 'Reach' },
+  { key: 'engagement', label: 'Engagement' },
+  { key: 'content', label: 'Content Virality' },
+  { key: 'authenticity', label: 'Authenticity' },
+  { key: 'momentum', label: 'Momentum' },
+  { key: 'stability', label: 'Stability' },
+  { key: 'commerce', label: 'Commerce Fit' },
+  { key: 'monetization', label: 'Monetization' },
+  { key: 'health', label: 'Health' },
+  { key: 'influence', label: 'Influence' },
+]
+
+const INCOME_ICONS: Record<string, typeof DollarSign> = {
+  brand_deals: ShoppingBag,
+  creator_program: Award,
+  subscriptions: Users,
+  tiktok_shop: ShoppingBag,
+  live_gifts: Gift,
+}
+
+// ── Component ──
+
 export default function SharePage() {
   const params = useParams()
   const id = params.id as string
@@ -30,6 +92,7 @@ export default function SharePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [showStickyCta, setShowStickyCta] = useState(false)
 
   useEffect(() => {
     fetch(`/api/share?id=${id}`)
@@ -41,6 +104,14 @@ export default function SharePage() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    function handleScroll() {
+      setShowStickyCta(window.scrollY > 400)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href)
@@ -75,11 +146,13 @@ export default function SharePage() {
     )
   }
 
+  const valueTier = getValueTier(result.tier)
+  const TierIcon = valueTier.icon
   const { businessValue } = result
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Top Bar */}
+      {/* ── Top Bar ── */}
       <header className="border-b border-neutral-800 bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -92,7 +165,7 @@ export default function SharePage() {
               priority
             />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
               className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:border-[#00F2EA] hover:text-[#00F2EA] transition-colors"
@@ -111,175 +184,394 @@ export default function SharePage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 text-[#00F2EA] text-xs font-medium mb-4">
-            <Share2 className="h-3 w-3" />
-            Shared Report
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-            {result.nickname}&apos;s TikTok Account Value
-          </h1>
-          <p className="text-neutral-400">
-            @{result.username} · Powered by <Link href="/" className="text-[#00F2EA] hover:underline">TokValue.com</Link>
-          </p>
-        </div>
+      <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+        {/* ═══════════════════════════════════════
+            HERO — Shareable Card
+        ═══════════════════════════════════════ */}
+        <div className="relative rounded-3xl overflow-hidden mb-6">
+          {/* Glow background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00F2EA]/10 via-[#0a0a0a] to-[#FF0050]/10" />
+          <div className="absolute top-0 left-1/4 w-72 h-72 bg-[#00F2EA]/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#FF0050]/5 rounded-full blur-3xl" />
 
-        {/* Account Card */}
-        <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6 mb-6">
-          <div className="flex items-center gap-4">
-            {result.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={result.avatar} alt={result.nickname} className="w-16 h-16 rounded-full border-2 border-neutral-700" />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold text-neutral-400">
-                {result.nickname.charAt(0)}
-              </div>
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white">{result.nickname}</h2>
-                {result.verified && <span className="text-[#00F2EA] text-sm">✓</span>}
-              </div>
-              <p className="text-neutral-400 text-sm">@{result.username}</p>
-              <div className="flex items-center gap-4 mt-2 text-sm text-neutral-300">
-                <span><strong>{fmt(result.followerCount)}</strong> followers</span>
-                <span><strong>{fmt(result.totalLikes)}</strong> likes</span>
-                <span><strong>{result.videoCount}</strong> videos</span>
+          <div className="relative p-6 sm:p-8">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 text-[#00F2EA] text-xs font-medium mb-6">
+              <Share2 className="h-3 w-3" />
+              Shared Report
+            </div>
+
+            {/* Account info */}
+            <div className="flex items-center gap-4 mb-6">
+              {result.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={result.avatar} alt={result.nickname} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-neutral-700" />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold text-neutral-400">
+                  {result.nickname.charAt(0)}
+                </div>
+              )}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-white">{result.nickname}</h1>
+                  {result.verified && <span className="text-[#00F2EA] text-base">✓</span>}
+                </div>
+                <p className="text-neutral-400 text-sm">@{result.username}</p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-neutral-300">
+                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followerCount)}</span>
+                  <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.totalLikes)}</span>
+                  <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5 text-neutral-500" /> {result.videoCount}</span>
+                </div>
               </div>
             </div>
+
+            {/* Value display */}
+            <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a]/60 backdrop-blur-sm p-6 mb-4">
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Estimated Account Value</p>
+              <div className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-[#00F2EA] to-[#FF0050] bg-clip-text text-transparent mb-4">
+                {fmtUsdRange(businessValue.totalValue.low, businessValue.totalValue.high)}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  style={{ backgroundColor: valueTier.bgColor, color: valueTier.color, borderColor: valueTier.borderColor, border: '1px solid' }}
+                >
+                  <TierIcon className="h-3.5 w-3.5" />
+                  {valueTier.label}
+                </div>
+                {result.peerRanking && (
+                  <div className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold bg-[#FF0050]/10 text-[#FF0050] border border-[#FF0050]/30">
+                    <Flame className="h-3.5 w-3.5" />
+                    Top {100 - result.peerRanking.overallPercentile}% in {result.peerRanking.tierLabel || 'category'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Watermark */}
+            <p className="text-xs text-neutral-600 text-right">
+              Powered by{' '}
+              <Link href="/" className="text-[#00F2EA] hover:underline font-medium">TokValue.com</Link>
+            </p>
           </div>
         </div>
 
-        {/* Business Valuation Card */}
-        <div className="rounded-2xl border border-[#00F2EA]/20 bg-[#00F2EA]/5 p-6 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="h-5 w-5 text-[#00F2EA]" />
-            <span className="text-xs font-semibold text-[#00F2EA] uppercase tracking-wider">Business Valuation</span>
-          </div>
-          <div className="text-4xl md:text-5xl font-bold text-[#00F2EA] mb-4">
-            {fmtUsdRange(businessValue.totalValue.low, businessValue.totalValue.high)}
-          </div>
-          <p className="text-neutral-400 text-sm mb-6">Estimated total account value</p>
+        {/* ═══ Soft CTA #1 ═══ */}
+        <div className="flex items-center justify-center gap-2 py-3 mb-6">
+          <p className="text-sm text-neutral-500">Wondering what <span className="text-[#00F2EA] font-medium">your</span> TikTok is worth?</p>
+          <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-[#00F2EA] hover:underline whitespace-nowrap">
+            Check now <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
 
-          {/* Value Components */}
-          <div className="grid grid-cols-5 gap-2">
+        {/* ═══════════════════════════════════════
+            Business Value Breakdown
+        ═══════════════════════════════════════ */}
+        <section className="mb-6">
+          <SectionHeader icon={DollarSign} title="Value Breakdown" color="#00F2EA" />
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {businessValue.components.map((comp, i) => {
               const colors = ['#FF0050', '#00F2EA', '#f59e0b', '#22c55e', '#a855f7']
               return (
-                <div key={i} className="rounded-xl bg-[#0a0a0a] border border-neutral-800 p-3 text-center">
-                  <div className="text-xs text-neutral-500 mb-1">{comp.label}</div>
-                  <div className="text-sm font-bold text-white mb-1">
+                <div key={i} className="rounded-xl border border-neutral-800 bg-[#0f0f0f] p-4 hover:border-neutral-700 transition-colors">
+                  <div className="text-xs text-neutral-500 mb-2 leading-tight">{comp.label}</div>
+                  <div className="text-sm font-bold text-white mb-2">
                     {fmtUsd(comp.amount.low)}–{fmtUsd(comp.amount.high)}
                   </div>
-                  <div className="h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-neutral-800 overflow-hidden mb-1">
                     <div
-                      className="h-full rounded-full"
+                      className="h-full rounded-full transition-all"
                       style={{ width: `${comp.percentage}%`, backgroundColor: colors[i] || colors[0] }}
                     />
                   </div>
-                  <div className="text-[10px] text-neutral-600 mt-1">{Math.round(comp.percentage)}%</div>
+                  <div className="text-[10px] text-neutral-600">{Math.round(comp.percentage)}%</div>
                 </div>
               )
             })}
           </div>
-        </div>
+        </section>
 
-        {/* Assessment Conclusion */}
-        <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="h-5 w-5 text-[#FF0050]" />
-            <span className="text-xs font-semibold text-[#FF0050] uppercase tracking-wider">Assessment Conclusion</span>
-          </div>
-          <h3 className="text-xl font-bold text-white mb-4">{result.summary.headline}</h3>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-sm font-semibold text-green-400 mb-3">Strengths</h4>
-              <ul className="space-y-2">
-                {result.summary.strengths.map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 shrink-0" />
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-amber-400 mb-3">Weaknesses</h4>
-              <ul className="space-y-2">
-                {result.summary.weaknesses.map((w, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
-                    {w}
-                  </li>
-                ))}
-              </ul>
+        {/* ═══════════════════════════════════════
+            10-Dimension Scores
+        ═══════════════════════════════════════ */}
+        <section className="mb-6">
+          <SectionHeader icon={Target} title="10-Dimension Assessment" color="#FF0050" />
+          <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-5 sm:p-6">
+            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+              {DIMENSION_LABELS.map(({ key, label }) => {
+                const score = result.dimensions[key as keyof typeof result.dimensions] ?? 0
+                const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444'
+                return (
+                  <div key={key}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-neutral-300">{label}</span>
+                      <span className="font-bold text-white">{Math.round(score)}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(score, 100)}%`, backgroundColor: color }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
+        </section>
 
-          <div className="mt-6 p-4 rounded-xl bg-[#00F2EA]/10 border border-[#00F2EA]/20">
-            <p className="text-sm font-semibold text-[#00F2EA]">{result.verdict}</p>
-            <p className="text-sm text-neutral-300 mt-1">{result.advice}</p>
+        {/* ═══════════════════════════════════════
+            Assessment Conclusion
+        ═══════════════════════════════════════ */}
+        <section className="mb-6">
+          <SectionHeader icon={TrendingUp} title="Assessment Conclusion" color="#00F2EA" />
+          <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-5 sm:p-6">
+            <h3 className="text-lg font-bold text-white mb-5">{result.summary.headline}</h3>
+
+            <div className="grid sm:grid-cols-2 gap-6 mb-5">
+              <div>
+                <h4 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> Strengths
+                </h4>
+                <ul className="space-y-2">
+                  {result.summary.strengths.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 shrink-0" />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Weaknesses
+                </h4>
+                <ul className="space-y-2">
+                  {result.summary.weaknesses.map((w, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-gradient-to-r from-[#00F2EA]/10 to-[#FF0050]/10 border border-[#00F2EA]/20">
+              <p className="text-sm font-semibold text-white">{result.verdict}</p>
+              <p className="text-sm text-neutral-300 mt-1">{result.advice}</p>
+            </div>
           </div>
+        </section>
+
+        {/* ═══ Soft CTA #2 ═══ */}
+        <div className="flex items-center justify-center gap-2 py-3 mb-6">
+          <p className="text-sm text-neutral-500">How does <span className="text-[#FF0050] font-medium">your account</span> compare?</p>
+          <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-[#00F2EA] hover:underline whitespace-nowrap">
+            Get your report <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
 
-        {/* Income Estimate */}
-        <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-6 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="h-5 w-5 text-green-400" />
-            <span className="text-xs font-semibold text-green-400 uppercase tracking-wider">Income & Growth</span>
-          </div>
-          <div className="text-3xl font-bold text-white mb-4">
-            {fmtUsdRange(result.incomeEstimate.monthlyTotal.low, result.incomeEstimate.monthlyTotal.high)}
-            <span className="text-sm font-normal text-neutral-500 ml-2">/ month</span>
-          </div>
+        {/* ═══════════════════════════════════════
+            Income & Growth
+        ═══════════════════════════════════════ */}
+        <section className="mb-6">
+          <SectionHeader icon={DollarSign} title="Income Estimate" color="#22c55e" />
+          <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-5 sm:p-6">
+            <div className="flex items-baseline gap-2 mb-5">
+              <span className="text-3xl sm:text-4xl font-bold text-white">
+                {fmtUsdRange(result.incomeEstimate.monthlyTotal.low, result.incomeEstimate.monthlyTotal.high)}
+              </span>
+              <span className="text-sm text-neutral-500">/ month</span>
+            </div>
 
-          <div className="space-y-3">
-            {result.incomeEstimate.breakdown.map((src, i) => (
-              <div key={i}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-neutral-300">{src.label}</span>
-                  <span className="text-white font-semibold">{fmtUsdRange(src.monthlyAmount.low, src.monthlyAmount.high)}</span>
+            <div className="space-y-4">
+              {result.incomeEstimate.breakdown.map((src, i) => {
+                const Icon = INCOME_ICONS[src.source] || DollarSign
+                const barColor = src.confidence === 'high' ? '#22c55e' : src.confidence === 'medium' ? '#f59e0b' : '#525252'
+                return (
+                  <div key={i}>
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="flex items-center gap-2 text-neutral-300">
+                        <Icon className="h-3.5 w-3.5 text-neutral-500" />
+                        {src.label}
+                      </span>
+                      <span className="text-white font-semibold">{fmtUsdRange(src.monthlyAmount.low, src.monthlyAmount.high)}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${src.percentage}%`, backgroundColor: barColor }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="text-xs text-neutral-600 mt-4 leading-relaxed">
+              Based on {result.incomeEstimate.categoryLabel} category CPM of ${result.incomeEstimate.categoryCpm.toFixed(2)} and {result.incomeEstimate.regionLabel} market multiplier.
+            </p>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════
+            Growth Plan
+        ═══════════════════════════════════════ */}
+        {result.growthPlan?.items?.length > 0 && (
+          <section className="mb-6">
+            <SectionHeader icon={Zap} title="Growth Action Plan" color="#f59e0b" />
+            <div className="space-y-3">
+              {result.growthPlan.items.slice(0, 4).map((item, i) => (
+                <div key={i} className="rounded-xl border border-neutral-800 bg-[#0f0f0f] p-4 flex items-start gap-3">
+                  <div className={`shrink-0 mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                    item.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                    item.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-neutral-700 text-neutral-400'
+                  }`}>
+                    {item.priority}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white">{item.area}</p>
+                    <p className="text-sm text-neutral-400 mt-0.5">{item.action}</p>
+                    <p className="text-xs text-[#00F2EA] mt-1">{item.expectedImpact}</p>
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${src.percentage}%`,
-                      backgroundColor: src.confidence === 'high' ? '#22c55e' : src.confidence === 'medium' ? '#f59e0b' : '#525252',
-                    }}
-                  />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════
+            Brand Matching
+        ═══════════════════════════════════════ */}
+        {result.brandMatching?.matches?.length > 0 && (
+          <section className="mb-6">
+            <SectionHeader icon={Award} title="Brand Match" color="#a855f7" />
+            <div className="grid sm:grid-cols-2 gap-3">
+              {result.brandMatching.matches.slice(0, 4).map((match, i) => (
+                <div key={i} className="rounded-xl border border-neutral-800 bg-[#0f0f0f] p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-white">{match.category}</span>
+                    <span className="text-xs font-bold text-[#a855f7]">{match.fitScore}%</span>
+                  </div>
+                  <p className="text-xs text-neutral-500 mb-2">{match.collaborationType}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {match.exampleBrands.slice(0, 3).map((brand, j) => (
+                      <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">{brand}</span>
+                    ))}
+                  </div>
+                  <div className="text-xs text-neutral-400 mt-2">
+                    Est. {fmtUsdRange(match.estimatedDealRange.low, match.estimatedDealRange.high)} per deal
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════
+            Peer Ranking
+        ═══════════════════════════════════════ */}
+        {result.peerRanking && (
+          <section className="mb-6">
+            <SectionHeader icon={BarChart3} title="Peer Ranking" color="#00F2EA" />
+            <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-5 sm:p-6">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="shrink-0 w-20 h-20 rounded-full border-4 border-[#00F2EA]/30 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-[#00F2EA]">{result.peerRanking.overallPercentile}%</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{result.peerRanking.tierLabel}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{result.peerRanking.peerGroupDescription}</p>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {result.peerRanking.rankingBreakdown?.length > 0 && (
+                <div className="space-y-2.5">
+                  {result.peerRanking.rankingBreakdown.slice(0, 5).map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-neutral-400 w-24 shrink-0">{item.metric}</span>
+                      <div className="flex-1 h-2 rounded-full bg-neutral-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${item.percentile}%`, backgroundColor: item.barColor || '#00F2EA' }}
+                        />
+                      </div>
+                      <span className="text-xs text-white font-medium w-16 text-right">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {result.peerRanking.insight && (
+                <p className="text-xs text-neutral-500 mt-4 leading-relaxed border-t border-neutral-800 pt-3">
+                  {result.peerRanking.insight}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ═══ Soft CTA #3 ═══ */}
+        <div className="flex items-center justify-center gap-2 py-3 mb-6">
+          <p className="text-sm text-neutral-500">Ready to monetize your account?</p>
+          <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-[#00F2EA] hover:underline whitespace-nowrap">
+            Get your full report <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
 
-        {/* CTA */}
-        <div className="rounded-2xl border border-neutral-800 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] p-8 text-center">
-          <h2 className="text-2xl font-bold text-white mb-3">
-            What&apos;s Your TikTok Account Worth?
-          </h2>
-          <p className="text-neutral-400 mb-6 max-w-lg mx-auto">
-            Get a full 10-dimension analysis, brand matching, revenue forecast, and growth strategy for your TikTok account.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#00F2EA] px-8 py-3 text-sm font-semibold text-black hover:bg-[#00d4cc] transition-colors"
-          >
-            <BarChart3 className="h-4 w-4" />
-            Evaluate Your Account Now
-          </Link>
-          <p className="text-xs text-neutral-600 mt-4">
-            Powered by <Link href="/" className="text-[#00F2EA] hover:underline">TokValue.com</Link> — TikTok Account Value Calculator
-          </p>
+        {/* ═══════════════════════════════════════
+            Final CTA
+        ═══════════════════════════════════════ */}
+        <div className="relative rounded-3xl overflow-hidden mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00F2EA]/15 via-[#0f0f0f] to-[#FF0050]/15" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#00F2EA]/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#FF0050]/5 rounded-full blur-3xl" />
+
+          <div className="relative p-8 sm:p-10 text-center">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+              What&apos;s YOUR TikTok Account Worth?
+            </h2>
+            <p className="text-neutral-400 mb-6 max-w-lg mx-auto">
+              Get a full 10-dimension analysis, brand matching, revenue forecast, and growth strategy — in seconds.
+            </p>
+
+            {/* Value points */}
+            <div className="grid grid-cols-3 gap-4 mb-7 max-w-md mx-auto">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#00F2EA]/10 border border-[#00F2EA]/20 mb-2">
+                  <Target className="h-4 w-4 text-[#00F2EA]" />
+                </div>
+                <p className="text-xs text-neutral-400">10-Dimension<br />Analysis</p>
+              </div>
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#FF0050]/10 border border-[#FF0050]/20 mb-2">
+                  <DollarSign className="h-4 w-4 text-[#FF0050]" />
+                </div>
+                <p className="text-xs text-neutral-400">Revenue<br />Forecast</p>
+              </div>
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#a855f7]/10 border border-[#a855f7]/20 mb-2">
+                  <Zap className="h-4 w-4 text-[#a855f7]" />
+                </div>
+                <p className="text-xs text-neutral-400">Growth<br />Strategy</p>
+              </div>
+            </div>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#00F2EA] to-[#00d4cc] px-8 py-3.5 text-sm font-bold text-black hover:shadow-lg hover:shadow-[#00F2EA]/20 transition-all"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Evaluate Your Account Now
+            </Link>
+            <p className="text-xs text-neutral-600 mt-4">
+              Powered by <Link href="/" className="text-[#00F2EA] hover:underline font-medium">TokValue.com</Link>
+            </p>
+          </div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-800 py-6 mt-12">
+      {/* ── Footer ── */}
+      <footer className="border-t border-neutral-800 py-6">
         <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -295,6 +587,35 @@ export default function SharePage() {
           </p>
         </div>
       </footer>
+
+      {/* ── Sticky Side CTA (Desktop) ── */}
+      {showStickyCta && (
+        <div className="hidden sm:flex fixed bottom-6 right-6 z-40 animate-fade-in">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#00F2EA] to-[#00d4cc] px-5 py-3 text-sm font-bold text-black shadow-lg shadow-[#00F2EA]/20 hover:shadow-xl hover:shadow-[#00F2EA]/30 transition-all"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Evaluate Yours
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Section Header Component ──
+
+function SectionHeader({ icon: Icon, title, color }: { icon: typeof DollarSign; title: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div
+        className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
+        style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30` }}
+      >
+        <Icon className="h-4 w-4" style={{ color }} />
+      </div>
+      <h2 className="text-base font-bold text-white">{title}</h2>
     </div>
   )
 }

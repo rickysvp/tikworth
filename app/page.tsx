@@ -71,6 +71,7 @@ function HomePageContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [stats, setStats] = useState({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
   
@@ -91,6 +92,13 @@ function HomePageContent() {
   // Track page view
   useEffect(() => {
     trackEvent('page_view', { path: '/' })
+  }, [])
+
+  // Fetch real stats
+  useEffect(() => {
+    fetch('/api/stats').then(r => r.json()).then(data => {
+      if (data) setStats(data)
+    }).catch(() => {})
   }, [])
 
   // Cleanup on unmount
@@ -493,9 +501,9 @@ function HomePageContent() {
             <div className="mx-auto max-w-5xl px-4">
               <div className="grid grid-cols-3 gap-8 text-center">
                 {[
-                  { value: '12,847+', label: dict.home.socialProof.accountsEvaluated },
-                  { value: '$2.4B+', label: dict.home.socialProof.totalValueAssessed },
-                  { value: '98.2%', label: dict.home.socialProof.satisfactionRate },
+                  { value: stats.accountsEvaluated > 0 ? `${stats.accountsEvaluated.toLocaleString()}+` : '--', label: dict.home.socialProof.accountsEvaluated },
+                  { value: stats.totalValueAssessed > 0 ? `$${stats.totalValueAssessed >= 1_000_000_000 ? (stats.totalValueAssessed / 1_000_000_000).toFixed(1) + 'B+' : stats.totalValueAssessed >= 1_000_000 ? (stats.totalValueAssessed / 1_000_000).toFixed(1) + 'M+' : stats.totalValueAssessed.toLocaleString() + '+'}` : '--', label: dict.home.socialProof.totalValueAssessed },
+                  { value: stats.uniqueVisitors > 0 ? `${stats.uniqueVisitors.toLocaleString()}+` : '--', label: dict.home.socialProof.uniqueVisitors },
                 ].map((stat, i) => (
                   <div key={i}>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>

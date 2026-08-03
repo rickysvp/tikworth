@@ -105,7 +105,7 @@ const en = {
     socialProof: {
       accountsEvaluated: 'Accounts Evaluated',
       totalValueAssessed: 'Total Value Assessed',
-      satisfactionRate: 'Satisfaction Rate',
+      uniqueVisitors: 'Users',
     },
     useCases: {
       title: 'Who Uses TokValue?',
