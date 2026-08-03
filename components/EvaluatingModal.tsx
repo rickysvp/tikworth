@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Download, FileSearch, BarChart3, DollarSign, Sparkles, Check, Loader2, AlertCircle, XCircle } from 'lucide-react'
+import { Download, FileSearch, BarChart3, DollarSign, Sparkles, Check, Loader2, XCircle } from 'lucide-react'
 
 export type EvaluatingStatus = 'evaluating' | 'completing' | 'error'
 
