@@ -58,6 +58,7 @@ interface StatsData {
     hasPaid: boolean
     remainingCredits: number
     totalPurchased: number
+    usedCredits: number
     verifiedAt: string
     lastPurchaseAt: string | null
     disabled: boolean
@@ -736,6 +737,7 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3 font-medium">状态</th>
                       <th className="px-6 py-3 font-medium text-right">剩余评估</th>
                       <th className="px-6 py-3 font-medium text-right">累计购买</th>
+                      <th className="px-6 py-3 font-medium text-right">已使用</th>
                       <th className="px-6 py-3 font-medium">注册时间</th>
                       <th className="px-6 py-3 font-medium">最近购买</th>
                       <th className="px-6 py-3 font-medium text-right">操作</th>
@@ -768,6 +770,11 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-3.5 text-right tabular-nums text-neutral-400">{u.totalPurchased}</td>
+                        <td className="px-6 py-3.5 text-right tabular-nums">
+                          <span className={u.usedCredits > 0 ? 'text-[#FF0050] font-semibold' : 'text-neutral-600'}>
+                            {u.usedCredits}
+                          </span>
+                        </td>
                         <td className="px-6 py-3.5 text-neutral-500 text-xs">{fmtDate(u.verifiedAt)}</td>
                         <td className="px-6 py-3.5 text-neutral-500 text-xs">{u.lastPurchaseAt ? fmtDate(u.lastPurchaseAt) : '—'}</td>
                         <td className="px-6 py-3.5">
@@ -806,7 +813,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {filteredUsers.length === 0 && (
-                      <tr><td colSpan={7} className="py-12 text-center text-neutral-600">暂无用户数据</td></tr>
+                      <tr><td colSpan={8} className="py-12 text-center text-neutral-600">暂无用户数据</td></tr>
                     )}
                   </tbody>
                 </table>

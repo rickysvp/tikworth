@@ -670,11 +670,37 @@ export async function getPVUV(): Promise<PVUVData> {
 
 // ── Query: Users List ──
 
+/** 批量查询用户已使用评估次数（基于 evaluations.evaluated_by 分组） */
+export async function getEvaluationCountsByUser(emails: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>()
+  if (!emails.length) return result
+  const useDb = await initDb()
+  if (!useDb || !sql) return result
+
+  try {
+    const rows = await sql`
+      SELECT evaluated_by AS email, COUNT(*)::int AS used
+      FROM evaluations
+      WHERE evaluated_by IS NOT NULL AND evaluated_by <> ''
+      GROUP BY evaluated_by
+    `
+    for (const r of rows as Array<Record<string, unknown>>) {
+      const email = String(r.email).toLowerCase().trim()
+      const used = Number(r.used)
+      if (email) result.set(email, used)
+    }
+  } catch (err) {
+    console.warn('[analytics] failed to query evaluation counts by user:', err)
+  }
+  return result
+}
+
 export interface UserListItem {
   email: string
   hasPaid: boolean
   remainingCredits: number
   totalPurchased: number
+  usedCredits: number
   verifiedAt: string
   lastPurchaseAt: string | null
   disabled: boolean
@@ -690,14 +716,18 @@ export async function getUsersList(): Promise<UserListItem[]> {
       FROM credit_balances
       ORDER BY total_purchased DESC, credits DESC
     `
+    const emails = rows.map((r: Record<string, unknown>) => String(r.email))
+    const usageMap = await getEvaluationCountsByUser(emails)
     return rows.map((r: Record<string, unknown>) => {
       const purchases = Array.isArray(r.purchases) ? r.purchases as Array<{ purchasedAt: number }> : []
       const lastPurchase = purchases.length > 0 ? purchases[0] : null
+      const email = String(r.email)
       return {
-        email: String(r.email),
+        email,
         hasPaid: Number(r.total_purchased) > 0,
         remainingCredits: Number(r.credits),
         totalPurchased: Number(r.total_purchased),
+        usedCredits: usageMap.get(email) ?? 0,
         verifiedAt: new Date(Number(r.verified_at)).toISOString(),
         lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
         disabled: r.disabled === true,

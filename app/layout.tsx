@@ -33,11 +33,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'TokValue',
+    url: 'https://tokvalue.com/',
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'TokValue — TikTok Account Value Calculator',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: d.seo.title,
     description: d.seo.shortDescription,
+    images: ['/og.png'],
   },
   robots: {
     index: true,
