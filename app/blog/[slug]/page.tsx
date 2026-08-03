@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { Calendar, Clock, ArrowLeft } from 'lucide-react'
 import { getPostBySlug, getAllPosts, getRelatedPosts } from '@/lib/blog'
 import { extractTOC } from '@/lib/blog'
+import { SiteHeader } from '@/components/SiteHeader'
+import { SiteFooter } from '@/components/SiteFooter'
 import { TableOfContents } from './TableOfContents'
 import { ReadingProgress } from './ReadingProgress'
 import { BlogPostJsonLd } from './BlogPostJsonLd'
@@ -54,7 +56,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const postUrl = `https://tokvalue.com/blog/${slug}`
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-black text-white">
+      <SiteHeader />
+
       <BlogPostJsonLd
         title={post.title}
         description={post.description}
@@ -67,7 +71,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
       <ReadingProgress />
 
-      <main className="min-h-screen bg-black text-white">
+      <main className="flex-1">
         <article className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="lg:grid lg:grid-cols-[1fr_220px] lg:gap-12">
             {/* Main content */}
@@ -195,6 +199,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           </div>
         </article>
       </main>
-    </>
+
+      <SiteFooter />
+    </div>
   )
 }
