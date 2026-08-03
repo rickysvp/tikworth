@@ -173,6 +173,26 @@ export default function SharePage() {
     )
   }
 
+  // Defensive check: ensure critical fields exist to prevent render crashes
+  if (!result.dimensions || !result.summary || !result.businessValue || !result.incomeEstimate) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 px-4">
+        <div className="text-6xl">⚠️</div>
+        <h1 className="text-2xl font-bold text-white">Report Data Incomplete</h1>
+        <p className="text-neutral-400 text-center max-w-md">
+          This share link&apos;s data is incomplete. Please evaluate the account again to generate a full report.
+        </p>
+        <Link
+          href={`/?u=${encodeURIComponent(result.username || '')}`}
+          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#00F2EA] px-6 py-3 text-sm font-semibold text-black hover:bg-[#00d4cc] transition-colors"
+        >
+          Evaluate This Account
+          <ExternalLink className="h-4 w-4" />
+        </Link>
+      </div>
+    )
+  }
+
   const valueTier = getValueTier(result.tier)
   const TierIcon = valueTier.icon
   const { businessValue } = result
