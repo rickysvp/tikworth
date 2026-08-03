@@ -8,19 +8,19 @@ const dict = getServerDict()
 export function SiteFooter() {
   return (
     <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
-      <div className="mx-auto max-w-5xl px-4 py-14">
-        <div className="grid gap-10 sm:grid-cols-3">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+        <div className="grid gap-8 sm:grid-cols-[1.4fr_1fr_1fr]">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Image src="/tokvalue.png" alt="TokValue" width={140} height={36} className="h-9 w-auto object-contain" />
+            <div className="flex items-center gap-2 mb-3">
+              <Image src="/tokvalue.png" alt="TokValue" width={140} height={36} className="h-8 w-auto object-contain" />
             </div>
-            <p className="text-sm text-neutral-500 leading-relaxed mb-4">
+            <p className="text-sm text-neutral-500 leading-relaxed mb-3 max-w-xs">
               {dict.home.footer.tagline}
             </p>
             <a
               href="mailto:connect@tokvalue.com"
-              className="inline-flex items-center gap-2 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors"
             >
               <Mail className="h-3.5 w-3.5" />
               connect@tokvalue.com
@@ -29,8 +29,8 @@ export function SiteFooter() {
 
           {/* Product */}
           <div>
-            <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.product}</h4>
-            <ul className="space-y-3">
+            <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.product}</h4>
+            <ul className="space-y-2">
               <li><Link href="/#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</Link></li>
               <li><Link href="/#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</Link></li>
               <li><Link href="/blog" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.blog}</Link></li>
@@ -39,8 +39,8 @@ export function SiteFooter() {
 
           {/* Legal */}
           <div>
-            <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{dict.home.footer.legal}</h4>
-            <ul className="space-y-3">
+            <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.legal}</h4>
+            <ul className="space-y-2">
               <li><Link href="/privacy" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
               <li><Link href="/terms" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
             </ul>
@@ -50,14 +50,12 @@ export function SiteFooter() {
 
       {/* Bottom Bar */}
       <div className="border-t border-neutral-800">
-        <div className="mx-auto max-w-5xl px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-neutral-600">
-            © {new Date().getFullYear()} TokValue. All rights reserved.
-          </p>
-          <div className="flex items-center gap-x-4 gap-y-1 flex-wrap justify-center">
-            <span className="text-xs text-neutral-600">No auto-renewal</span>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-neutral-600">
+          <p>© {new Date().getFullYear()} TokValue. All rights reserved.</p>
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <span>TikTok® is a registered trademark of ByteDance Ltd.</span>
             <span className="text-neutral-800">·</span>
-            <span className="text-xs text-neutral-600">Cross-device access</span>
+            <span>Data sourced from public third-party APIs</span>
           </div>
         </div>
       </div>
