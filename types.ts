@@ -89,6 +89,12 @@ export interface Evaluation {
   growthPlan: GrowthPlan
   incomeEstimate: IncomeEstimate
   businessValue: BusinessValue
+  brandDealPerVideo?: {
+    low: number
+    mid: number
+    high: number
+    monthlyBrandPosts: number
+  }
   accountProfile: AccountProfile
   revenueRoadmap: RevenueRoadmap
   contentStrategy: ContentStrategy

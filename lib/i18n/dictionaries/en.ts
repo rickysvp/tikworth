@@ -569,6 +569,23 @@ const en = {
       monetization: 'Monetization',
       ipPremium: 'IP Premium',
       cpm: 'CPM',
+      perVideoRate: 'Per-Sponsored-Video Rate',
+      perVideoRange: 'range',
+      perVideoMonthlyPosts: 'Estimated {n} sponsored posts/month',
+    },
+    // Evaluating modal
+    evaluating: {
+      title: 'Evaluating',
+      subtitle: 'Analyzing account data',
+      stages: {
+        fetch: 'Fetching TikTok Profile',
+        analyze: 'Analyzing Content & Engagement',
+        score: 'Scoring 10 Dimensions',
+        value: 'Estimating Business Value',
+        report: 'Generating AI Report',
+      },
+      completing: 'Evaluation Complete',
+      error: 'Evaluation Failed',
     },
     // Assessment Conclusion
     conclusion: {

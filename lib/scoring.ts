@@ -429,6 +429,12 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
     peerBenchmark: peerBench, brandPotential, monetizationPath: buildMonetizationPath(profile, metrics, income),
     growthPlan: buildGrowthPlan(risks, metrics, cadence, dims, profile.followerCount),
     incomeEstimate: income, businessValue: business,
+    brandDealPerVideo: {
+      low: brand.perVideoLow,
+      mid: brand.perVideoMid,
+      high: brand.perVideoHigh,
+      monthlyBrandPosts: brand.monthlyBrandPosts,
+    },
     accountProfile: buildAccountProfile(profile, metrics, categories, cadence),
     revenueRoadmap: roadmap,
     contentStrategy: buildContentStrategy({ categories, cadence, followerTier }),

@@ -14,7 +14,7 @@ import {
   CONTENT_CPM_RATIO_BY_TIER, DISCOUNT_FACTOR_BY_TIER,
   FOLLOWER_BASE_RATE, FOLLOWER_POWER_LAW_EXPONENT,
   VALUATION_PERIOD_BY_TIER, CHANNEL_WEIGHTS,
-  TIER_IP_RATE, CATEGORY_IP_MULTIPLIER, MARKET_ANCHORS, MARKET_ANCHOR_CLAMP,
+  TIER_IP_MULTIPLE, MARKET_ANCHORS, MARKET_ANCHOR_CLAMP,
   MOMENTUM_PARAMS, GROWTH_MULTIPLIER_PARAMS, RISK_DISCOUNT, VERIFIED_MULTIPLIER,
   ENGAGEMENT_FACTOR, BRANDING_SIGNAL_KEYWORDS, BRANDING_SIGNAL_BONUS,
   // 保留旧配置（SUBSCRIPTION/SHOP/LIVE 用）
@@ -208,38 +208,28 @@ export function detectBrandingSignals(bio: string, posts: Post[], verified?: boo
   return 1.0 + Math.min(bonus, BRANDING_SIGNAL_BONUS.max)
 }
 
-/** IP/品牌资产价值（仅 macro/mega） */
+/** IP/品牌资产价值（仅 macro/mega，基于品牌年收入的倍数模型） */
 export function calcIpBrandValue(
-  followers: number,
-  engagementRate: number,
-  categories: string[],
+  brandDealAnnual: number,
   tier: FollowerTier,
   bio: string,
   posts: Post[],
-  verified?: boolean
+  verified: boolean | undefined,
+  risks: RiskFlag[]
 ): { value: number; detail: string } {
   if (tier !== 'macro' && tier !== 'mega') {
     return { value: 0, detail: 'IP asset value only applies to macro/mega tier accounts' }
   }
 
-  const tierIpRate = TIER_IP_RATE[tier] ?? 0
-  if (tierIpRate <= 0) return { value: 0, detail: 'No IP asset at current tier' }
-
-  let categoryIpMult = 1.0
-  for (const cat of categories) {
-    const key = cat.toLowerCase()
-    const m = CATEGORY_IP_MULTIPLIER[key] ?? CATEGORY_IP_MULTIPLIER[cat]
-    if (m && m > categoryIpMult) categoryIpMult = m
+  const tierMultiple = TIER_IP_MULTIPLE[tier] ?? 0
+  if (tierMultiple <= 0 || brandDealAnnual <= 0) {
+    return { value: 0, detail: 'No IP asset (insufficient brand deal income or tier)' }
   }
 
   const brandingBonus = detectBrandingSignals(bio, posts, verified)
-  const erDecimal = Math.max(engagementRate, 0) / 100
-
-  // IP 基础价值 = 粉丝量 × 互动率 × 品类IP系数 × 层级IP率 × 品牌信号加成
-  const ipBase = followers * erDecimal * categoryIpMult * tierIpRate * brandingBonus
-  const value = Math.round(ipBase * 1000) // 转为美元
-
-  const detail = `${followers.toLocaleString()} followers × ${(erDecimal * 100).toFixed(1)}% engagement × IP coefficient ${categoryIpMult} × ${tier} IP rate ${tierIpRate} × Branding signals ${brandingBonus.toFixed(2)}x`
+  const riskDiscount = calcRiskDiscount(risks)
+  const value = Math.round(brandDealAnnual * tierMultiple * brandingBonus * riskDiscount)
+  const detail = `Brand Deal Annual $${Math.round(brandDealAnnual).toLocaleString()} × ${tier} IP multiple ${tierMultiple}x × Branding signals ${brandingBonus.toFixed(2)}x × Risk discount ${riskDiscount.toFixed(2)}x`
 
   return { value, detail }
 }
@@ -643,15 +633,19 @@ export interface FollowerAssetInput {
   engagementRate: number
   categories: string[]
   risks: RiskFlag[]
+  bio: string
+  posts: Post[]
+  verified?: boolean
 }
 
 /**
  * 粉丝资产价值（幂律定价模型）
- * value = baseRate × realFollowers^0.85 × categoryMult × engagementFactor × riskDiscount
+ * value = baseRate × realFollowers^0.85 × categoryMult × engagementFactor × riskDiscount × commercialProximityMult
  * 幂律公式避免线性低估头部账号（1 亿粉线性计价 ≈ $5M，幂律计价 ≈ $30M+）
+ * commercialProximityMult：无商业信号 → 0.6（折损），有信号 → 1.0-1.5（加成）
  */
 export function calcFollowerAssetValue(input: FollowerAssetInput): FollowerAssetResult {
-  const { followers, authenticityScore, engagementRate, categories, risks } = input
+  const { followers, authenticityScore, engagementRate, categories, risks, bio, posts, verified } = input
   const tier = getFollowerTier(followers)
   const realFollowers = followers * (authenticityScore / 100)
   const engagementFactor = calcEngagementFactor(engagementRate, tier)
@@ -664,13 +658,17 @@ export function calcFollowerAssetValue(input: FollowerAssetInput): FollowerAsset
     if (m && m > categoryMult) categoryMult = m
   }
 
+  const brandingBonus = detectBrandingSignals(bio, posts, verified)
+  // 商业接近度调整：无商业信号 → 0.6（折损），有信号 → 1.0-1.5（加成）
+  const commercialProximityMult = brandingBonus <= 1.0 ? 0.6 : brandingBonus
+
   const baseRate = getFollowerBaseRate(tier)
-  // 幂律定价：value = base × realFollowers^0.85 × mult × factor × discount
-  const value = baseRate * Math.pow(realFollowers, FOLLOWER_POWER_LAW_EXPONENT) * categoryMult * engagementFactor * riskDiscount
+  // 幂律定价：value = base × realFollowers^0.85 × mult × factor × discount × commercialProximity
+  const value = baseRate * Math.pow(realFollowers, FOLLOWER_POWER_LAW_EXPONENT) * categoryMult * engagementFactor * riskDiscount * commercialProximityMult
 
   return {
     value: Math.round(value),
-    detail: `${Math.round(realFollowers).toLocaleString()} real followers × $${baseRate.toFixed(3)}/fan × ^${FOLLOWER_POWER_LAW_EXPONENT} power law × Category Multiplier ${categoryMult.toFixed(1)}x × Engagement Factor ${engagementFactor.toFixed(2)} × Risk Discount ${riskDiscount.toFixed(2)}`,
+    detail: `${Math.round(realFollowers).toLocaleString()} real followers × $${baseRate.toFixed(3)}/fan × ^${FOLLOWER_POWER_LAW_EXPONENT} power law × Category ${categoryMult.toFixed(1)}x × Engagement ${engagementFactor.toFixed(2)} × Risk ${riskDiscount.toFixed(2)} × Commercial Proximity ${commercialProximityMult.toFixed(2)}x`,
   }
 }
 
@@ -874,6 +872,9 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
     engagementRate: metrics.engagementRate,
     categories,
     risks,
+    bio: profile.bio || '',
+    posts: profile.posts,
+    verified: profile.verified,
   })
   // monCap 排除 brand_deals 渠道，避免与品牌合作年价值重复计价
   const nonBrandChannels = income.breakdown.filter(b => b.source !== 'brand_deals' && b.monthlyAmount.mid > 0).map(b => b.source)
@@ -885,15 +886,14 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
     playGrowth: metrics.playGrowth,
     risks,
   })
-  // IP/品牌资产价值（仅 macro/mega 计入）
+  // IP/品牌资产价值（仅 macro/mega 计入，基于品牌年收入倍数）
   const ipBrand = calcIpBrandValue(
-    profile.followerCount,
-    metrics.engagementRate,
-    categories,
+    brandDealValue,
     tier,
     profile.bio || '',
     profile.posts,
-    profile.verified
+    profile.verified,
+    risks
   )
 
   const components: BusinessValueComponent[] = [
@@ -933,9 +933,18 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
     },
   ]
 
-  const totalMid = components.reduce((s, c) => s + c.amount.mid, 0)
+  let totalMid = components.reduce((s, c) => s + c.amount.mid, 0)
+  // 百分比基于 cap 前的原始组件占比（cap 仅影响显示的总估值，不改变相对比例）
   if (totalMid > 0) {
     for (const c of components) c.percentage = Math.round((c.amount.mid / totalMid) * 100)
+  }
+  // 全局 cap：总估值不超过品牌年收入的 30 倍（防止任何组件失控）
+  const GLOBAL_CAP_MULTIPLE = 30
+  if (brandDealValue > 0) {
+    const globalCap = brandDealValue * GLOBAL_CAP_MULTIPLE
+    if (totalMid > globalCap) {
+      totalMid = globalCap
+    }
   }
 
   const totalLow = components.reduce((s, c) => s + c.amount.low, 0)

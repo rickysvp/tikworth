@@ -251,13 +251,13 @@ export const CHANNEL_WEIGHTS: Record<string, number> = {
   creator_program: 0.3,
 }
 
-/** IP/品牌资产层级率（仅 macro/mega 计入） */
-export const TIER_IP_RATE: Record<string, number> = {
+/** IP/品牌资产倍数（IP = brandDealAnnual × multiple，仅 macro/mega 计入） */
+export const TIER_IP_MULTIPLE: Record<string, number> = {
   nano: 0,
   micro: 0,
   mid: 0,
-  macro: 0.10,
-  mega: 0.40,
+  macro: 2,
+  mega: 5,
 }
 
 /** 品类 IP 系数（金融/科技 IP 价值高，搞笑低） */
@@ -294,7 +294,8 @@ export const MARKET_ANCHORS: Record<string, Record<string, number>> = {
     'Gaming': 100000, 'gaming': 100000, 'games': 100000,
     'Music & Dance': 100000, 'music': 100000, 'dance': 100000,
     'Comedy': 50000, 'comedy': 50000, 'funny': 50000,
-    'General Entertainment': 2500000, 'entertainment': 2500000,
+    'Lifestyle': 120000, 'lifestyle': 120000,
+    'General Entertainment': 200000, 'entertainment': 200000,
     'default': 150000,
   },
   macro: {
@@ -308,6 +309,7 @@ export const MARKET_ANCHORS: Record<string, Record<string, number>> = {
     'Gaming': 20000, 'gaming': 20000, 'games': 20000,
     'Music & Dance': 20000, 'music': 20000, 'dance': 20000,
     'Comedy': 12000, 'comedy': 12000, 'funny': 12000,
+    'Lifestyle': 22000, 'lifestyle': 22000,
     'General Entertainment': 30000, 'entertainment': 30000,
     'default': 25000,
   },
@@ -414,7 +416,7 @@ export const CATEGORY_FAN_VALUE_MULT: Record<string, number> = {
   'Fitness & Sports': 1.2, 'fitness': 1.2, 'Combat Sports': 1.2,
   'Food & Cooking': 1.0, 'food': 1.0, 'cooking': 1.0,
   'Travel': 1.0, 'travel': 1.0,
-  'Lifestyle': 0.9, 'lifestyle': 0.9,
+  'Lifestyle': 1.1, 'lifestyle': 1.1,
   'Pets & Animals': 0.9, 'pets': 0.9,
   'Gaming': 0.9, 'gaming': 0.9, 'games': 0.9,
   'Music & Dance': 0.9, 'music': 0.9, 'dance': 0.9,

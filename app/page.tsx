@@ -21,6 +21,7 @@ import { TrendAnalysisSection } from '@/components/sections/TrendAnalysisSection
 import { CommercializationSection } from '@/components/sections/CommercializationSection'
 import { CommerceReadinessSection } from '@/components/sections/CommerceReadinessSection'
 import { PaidWallModal } from '@/components/PaidWallModal'
+import { EvaluatingModal, type EvaluatingStatus } from '@/components/EvaluatingModal'
 import { DeepAnalysisSection } from '@/components/DeepAnalysisSection'
 import { SectionHeader } from '@/components/SectionHeader'
 import { saveToTracker, getTrackedByUsername } from '@/lib/tracker'
@@ -81,6 +82,12 @@ function HomePageContent() {
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [showPaidWallModal, setShowPaidWallModal] = useState(false)
+  const [evaluatingModal, setEvaluatingModal] = useState<{
+    open: boolean
+    status: EvaluatingStatus
+    currentStage: number
+    errorMessage?: string
+  }>({ open: false, status: 'evaluating', currentStage: 0 })
   const [stats, setStats] = useState({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
@@ -223,6 +230,9 @@ function HomePageContent() {
     setError('')
     setResult(null)
     setNeedPurchase(false)
+    pendingUsername.current = target
+    // 开启评估弹窗
+    setEvaluatingModal({ open: true, status: 'evaluating', currentStage: 0 })
 
     // Track search event
     trackEvent('search', { username: target })
@@ -246,27 +256,52 @@ function HomePageContent() {
       const data = await res.json()
       if (!res.ok) {
         if (res.status === 402) {
-          // 额度不足或未购买：弹出付费墙 Modal，记住待评估的用户名
-          pendingUsername.current = target
+          // 额度不足或未购买：弹窗收尾后弹出付费墙
+          setEvaluatingModal(prev => ({ ...prev, status: 'completing' }))
           setNeedPurchase(true)
           setShowPaidWallModal(true)
         } else {
+          // 业务错误：弹窗显示错误状态
+          setEvaluatingModal(prev => ({
+            ...prev,
+            status: 'error',
+            errorMessage: data.error || dict.errors.evaluationFailed,
+          }))
           setError(data.error || dict.errors.evaluationFailed)
         }
       } else {
+        // 成功：弹窗收尾 → 关闭后页面渲染结果
+        setEvaluatingModal(prev => ({ ...prev, status: 'completing' }))
         setResult(data)
         refreshStats()
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        setError(dict.errors.requestTimeout)
-      } else {
-        setError(dict.errors.networkError)
-      }
+      const errMsg = err instanceof DOMException && err.name === 'AbortError'
+        ? dict.errors.requestTimeout : dict.errors.networkError
+      setEvaluatingModal(prev => ({ ...prev, status: 'error', errorMessage: errMsg }))
+      setError(errMsg)
     } finally {
       setLoading(false)
     }
   }, [username, dict.errors.networkError, dict.errors.requestTimeout, dict.errors.evaluationFailed, refreshStats])
+
+  // 评估弹窗：阶段推进（每 2.5s 推进一个，阶段 4 停留等待 API）
+  useEffect(() => {
+    if (!evaluatingModal.open || evaluatingModal.status !== 'evaluating') return
+    if (evaluatingModal.currentStage >= 4) return
+    const timer = setTimeout(() => {
+      setEvaluatingModal(prev => {
+        if (prev.status !== 'evaluating' || prev.currentStage >= 4) return prev
+        return { ...prev, currentStage: prev.currentStage + 1 }
+      })
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [evaluatingModal.open, evaluatingModal.status, evaluatingModal.currentStage])
+
+  // 评估弹窗：收尾回调
+  const handleEvaluatingComplete = useCallback(() => {
+    setEvaluatingModal({ open: false, status: 'evaluating', currentStage: 0 })
+  }, [])
 
   // Handle URL params: ?paid=success (Creem callback) and ?u=username (client navigation)
   useEffect(() => {
@@ -940,6 +975,29 @@ function HomePageContent() {
         username={pendingUsername.current || undefined}
       />
 
+      {/* Evaluating Modal — 评估中动态进度弹窗 */}
+      <EvaluatingModal
+        open={evaluatingModal.open}
+        username={pendingUsername.current || username}
+        status={evaluatingModal.status}
+        currentStage={evaluatingModal.currentStage}
+        errorMessage={evaluatingModal.errorMessage}
+        onComplete={handleEvaluatingComplete}
+        labels={{
+          title: dict.evaluation.evaluating.title,
+          subtitle: dict.evaluation.evaluating.subtitle,
+          stages: [
+            dict.evaluation.evaluating.stages.fetch,
+            dict.evaluation.evaluating.stages.analyze,
+            dict.evaluation.evaluating.stages.score,
+            dict.evaluation.evaluating.stages.value,
+            dict.evaluation.evaluating.stages.report,
+          ],
+          completing: dict.evaluation.evaluating.completing,
+          error: dict.evaluation.evaluating.error,
+        }}
+      />
+
       {/* Result */}
       {result && (
         <section className="mx-auto max-w-5xl px-4 py-10">
@@ -1018,6 +1076,29 @@ function HomePageContent() {
                   <span className="text-5xl sm:text-6xl font-black tracking-tight text-[#00F2EA]">
                     ${formatNumber(result.businessValue.totalValue.low)} - ${formatNumber(result.businessValue.totalValue.high)}
                   </span>
+
+                  {/* Per-Video Brand Deal Rate — 单条品牌视频报价 */}
+                  {result.brandDealPerVideo && (
+                    <div className="mt-4 mb-2 rounded-xl border border-[#FF0050]/20 bg-[#FF0050]/[0.04] px-5 py-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className="h-4 w-4 text-[#FF0050]" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[#FF0050]">
+                          {dict.evaluation.valuation.perVideoRate}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-3xl font-black text-white tabular-nums">
+                          ${formatNumber(result.brandDealPerVideo.mid)}
+                        </span>
+                        <span className="text-sm text-neutral-500">
+                          {dict.evaluation.valuation.perVideoRange} ${formatNumber(result.brandDealPerVideo.low)} – ${formatNumber(result.brandDealPerVideo.high)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        {dict.evaluation.valuation.perVideoMonthlyPosts.replace('{n}', String(result.brandDealPerVideo.monthlyBrandPosts))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Value Breakdown */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
