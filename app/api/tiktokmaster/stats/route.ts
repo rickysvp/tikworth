@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
       sources,
     }, { headers: noStore })
   } catch (err) {
-    console.error('[stats] error:', err)
-    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500, headers: noStore })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[stats] error:', msg, err)
+    return NextResponse.json({ error: 'Failed to fetch stats', detail: msg }, { status: 500, headers: noStore })
   }
 }

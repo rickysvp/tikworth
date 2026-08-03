@@ -207,8 +207,26 @@ export default function AdminDashboard() {
       const res = await fetch('/api/tiktokmaster/stats', { headers: { Authorization: `Bearer ${token}` } })
       if (res.status === 401) { localStorage.removeItem('admin_token'); router.push('/tiktokmaster'); return }
       const data = await res.json()
-      setStats(data)
-      setLastRefresh(new Date())
+      if (!res.ok || data.error) {
+        setError(data.detail ? `数据加载失败: ${data.detail}` : '数据加载失败')
+        console.error('[stats] API error:', data.error, data.detail)
+      } else {
+        // 防御性兜底：确保所有字段存在，避免渲染崩溃
+        setStats({
+          overview: data.overview || {
+            totalRevenue: 0, revenueToday: 0, revenueWeek: 0, revenueMonth: 0,
+            totalPayers: 0, payersToday: 0, payersWeek: 0, payersMonth: 0,
+            evaluationsToday: 0, evaluationsWeek: 0, evaluationsMonth: 0,
+            remainingCredits: 0,
+          },
+          funnel: data.funnel || { pageViews: 0, searches: 0, evaluateStarts: 0, paywallViews: 0, paywallClicks: 0, purchases: 0 },
+          revenue: data.revenue || { byDay: [], byPackage: [] },
+          pvuv: data.pvuv || { totalPV: 0, totalUV: 0, pvToday: 0, uvToday: 0, pvWeek: 0, uvWeek: 0, pvMonth: 0, uvMonth: 0 },
+          users: Array.isArray(data.users) ? data.users : [],
+          sources: Array.isArray(data.sources) ? data.sources : [],
+        })
+        setLastRefresh(new Date())
+      }
     } catch (err) {
       setError('数据加载失败')
       console.error(err)

@@ -20,7 +20,7 @@ import { MonetizationChecklist } from '@/components/sections/MonetizationCheckli
 import { TrendAnalysisSection } from '@/components/sections/TrendAnalysisSection'
 import { CommercializationSection } from '@/components/sections/CommercializationSection'
 import { CommerceReadinessSection } from '@/components/sections/CommerceReadinessSection'
-import { PaidWall } from '@/components/PaidWall'
+import { PaidWallModal } from '@/components/PaidWallModal'
 import { DeepAnalysisSection } from '@/components/DeepAnalysisSection'
 import { SectionHeader } from '@/components/SectionHeader'
 import { saveToTracker, getTrackedByUsername } from '@/lib/tracker'
@@ -80,6 +80,7 @@ function HomePageContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showPaidWallModal, setShowPaidWallModal] = useState(false)
   const [stats, setStats] = useState({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
@@ -169,6 +170,7 @@ function HomePageContent() {
       }
       // 关闭付费墙，用新额度重新评估
       setNeedPurchase(false)
+      setShowPaidWallModal(false)
       const target = pendingUsername.current || username
       if (target) {
         await handleEvaluate(target)
@@ -240,9 +242,10 @@ function HomePageContent() {
       const data = await res.json()
       if (!res.ok) {
         if (res.status === 402) {
-          // 额度不足或未购买：显示付费墙，记住待评估的用户名
+          // 额度不足或未购买：弹出付费墙 Modal，记住待评估的用户名
           pendingUsername.current = target
           setNeedPurchase(true)
+          setShowPaidWallModal(true)
         } else {
           setError(data.error || dict.errors.evaluationFailed)
         }
@@ -530,6 +533,7 @@ function HomePageContent() {
             setUsername(name)
             pendingUsername.current = name
             setNeedPurchase(true)
+            setShowPaidWallModal(true)
           }} />
 
           {/* Use Cases */}
@@ -834,18 +838,17 @@ function HomePageContent() {
       )}
 
       {/* Purchase required: needs credits to evaluate */}
-      {needPurchase && !result && (
-        <section className="mx-auto max-w-3xl px-4 py-10">
-          <div className="rounded-2xl border border-[#FF0050]/30 bg-[#FF0050]/5 p-4 mb-6 text-center">
-            <p className="text-sm text-neutral-300">
-              {dict.evaluation.purchaseRequired.usesCredit}
-              <br />
-              <span className="text-xs text-neutral-500">{dict.evaluation.purchaseRequired.purchaseToView}</span>
-            </p>
-          </div>
-          <PaidWall onUnlock={handleUnlock} result={null} existingBalance={creditBalance} isUnlocking={isUnlocking} balanceLoading={balanceLoading} />
-        </section>
-      )}
+      {/* PaidWall Modal（弹窗形式） */}
+      <PaidWallModal
+        open={showPaidWallModal && needPurchase && !result}
+        onClose={() => { setShowPaidWallModal(false); setNeedPurchase(false) }}
+        onUnlock={handleUnlock}
+        result={null}
+        existingBalance={creditBalance}
+        isUnlocking={isUnlocking}
+        balanceLoading={balanceLoading}
+        username={pendingUsername.current || undefined}
+      />
 
       {/* Result */}
       {result && (
