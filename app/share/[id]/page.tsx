@@ -17,6 +17,7 @@ import {
   Loader2, TrendingUp, DollarSign, ExternalLink, Share2, Check, Copy,
   Target, Zap, Award, Users, Heart, Video, BarChart3, ArrowRight,
   Sparkles, Trophy, Flame, ShoppingBag, Gift, Info, X,
+  MapPin, UserCheck, BadgeCheck, Tag, Clock, Globe, Film,
 } from 'lucide-react'
 
 // ── Helpers ──
@@ -204,7 +205,7 @@ export default function SharePage() {
           <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#FF0050]/5 rounded-full blur-3xl" />
 
           <div className="relative p-6 sm:p-8">
-            {/* Top row: Shared Report badge (left) + Value Tier badge (right) */}
+            {/* Top row: Shared Report badge (left) + Tier grade (right) */}
             <div className="flex items-center justify-between mb-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 text-[#00F2EA] text-xs font-medium">
                 <Share2 className="h-3 w-3" />
@@ -215,33 +216,73 @@ export default function SharePage() {
                 style={{ backgroundColor: valueTier.bgColor, color: valueTier.color, border: `1px solid ${valueTier.borderColor}` }}
               >
                 <TierIcon className="h-3.5 w-3.5" />
-                {valueTier.label}
+                {result.tier} Tier
               </div>
             </div>
 
             {/* Account info */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-start gap-4 mb-5">
               {result.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={result.avatar} alt={result.nickname} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-neutral-700" />
+                <img src={result.avatar} alt={result.nickname} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-neutral-700 shrink-0" />
               ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold text-neutral-400">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold text-neutral-400 shrink-0">
                   {result.nickname.charAt(0)}
                 </div>
               )}
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-bold text-white">{result.nickname}</h1>
                   {result.verified && <span className="text-[#00F2EA] text-base">✓</span>}
+                  {result.region && (
+                    <span className="inline-flex items-center gap-1 text-xs text-neutral-400">
+                      <MapPin className="h-3 w-3" /> {result.region}
+                    </span>
+                  )}
                 </div>
                 <p className="text-neutral-400 text-sm">@{result.username}</p>
-                <div className="flex items-center gap-4 mt-2 text-sm text-neutral-300">
-                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followerCount)}</span>
-                  <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.totalLikes)}</span>
-                  <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5 text-neutral-500" /> {result.videoCount}</span>
+                {result.bio && (
+                  <p className="text-neutral-300 text-sm mt-1.5 line-clamp-2">{result.bio}</p>
+                )}
+                <div className="flex items-center gap-4 mt-2 text-sm text-neutral-300 flex-wrap">
+                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followerCount)} followers</span>
+                  <span className="flex items-center gap-1"><UserCheck className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followingCount)} following</span>
+                  <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.totalLikes)} likes</span>
+                  <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5 text-neutral-500" /> {result.videoCount} videos</span>
                 </div>
               </div>
             </div>
+
+            {/* Account Profile tags — personaType / categories / postingRhythm / contentStyle / audienceRegion */}
+            {result.accountProfile && (
+              <div className="flex flex-wrap gap-1.5 mb-5">
+                {result.accountProfile.personaType && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-[#00F2EA]/10 text-[#00F2EA] border border-[#00F2EA]/20 font-medium">
+                    <BadgeCheck className="h-3 w-3" /> {result.accountProfile.personaType}
+                  </span>
+                )}
+                {result.accountProfile.categories?.map((cat, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700">
+                    <Tag className="h-3 w-3" /> {cat}
+                  </span>
+                ))}
+                {result.accountProfile.contentStyle && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-[#FF0050]/10 text-[#FF0050] border border-[#FF0050]/20 font-medium">
+                    <Film className="h-3 w-3" /> {result.accountProfile.contentStyle}
+                  </span>
+                )}
+                {result.accountProfile.postingRhythm && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700">
+                    <Clock className="h-3 w-3" /> {result.accountProfile.postingRhythm}
+                  </span>
+                )}
+                {result.accountProfile.audienceRegion && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700">
+                    <Globe className="h-3 w-3" /> {result.accountProfile.audienceRegion}
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Value display */}
             <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a]/60 backdrop-blur-sm p-6 mb-4">
@@ -330,15 +371,55 @@ export default function SharePage() {
                 <div className="w-48 h-48 bg-[#FF0050]/5 rounded-full blur-3xl" />
               </div>
               <ResponsiveContainer width="100%" height="100%">
-                <ReRadarChart data={DIMENSION_LABELS.map(({ key, label }) => ({
-                  dimension: label,
-                  score: Math.round(result.dimensions[key as keyof typeof result.dimensions] ?? 0),
-                  fullMark: 100,
-                }))} outerRadius="68%">
+                <ReRadarChart
+                  data={DIMENSION_LABELS.map(({ key, label }) => ({
+                    dimension: label,
+                    score: Math.round(result.dimensions[key as keyof typeof result.dimensions] ?? 0),
+                    fullMark: 100,
+                  }))}
+                  outerRadius="62%"
+                >
                   <PolarGrid stroke="#27272a" strokeWidth={0.5} />
                   <PolarAngleAxis
                     dataKey="dimension"
-                    tick={{ fill: '#a3a3a3', fontSize: 11, fontWeight: 600 }}
+                    tick={(props: unknown) => {
+                      const p = props as { x: number; y: number; cx: number; cy: number; payload: { value?: string }; index: number }
+                      const x = Number(p.x)
+                      const y = Number(p.y)
+                      const cx = Number(p.cx)
+                      const cy = Number(p.cy)
+                      const idx = p.index
+                      const score = Math.round(result.dimensions[DIMENSION_LABELS[idx].key as keyof typeof result.dimensions] ?? 0)
+                      const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444'
+                      const nearCenterX = x >= cx - 2 && x <= cx + 2
+                      const nearCenterY = y >= cy - 2 && y <= cy + 2
+                      return (
+                        <g>
+                          <text
+                            x={x}
+                            y={y}
+                            textAnchor={nearCenterX ? 'middle' : x > cx ? 'start' : 'end'}
+                            dominantBaseline={nearCenterY ? 'middle' : y > cy ? 'hanging' : 'auto'}
+                            fill="#a3a3a3"
+                            fontSize={11}
+                            fontWeight={600}
+                          >
+                            {p.payload?.value}
+                          </text>
+                          <text
+                            x={x}
+                            y={y + (y > cy ? 14 : -14)}
+                            textAnchor={nearCenterX ? 'middle' : x > cx ? 'start' : 'end'}
+                            dominantBaseline={y > cy ? 'hanging' : 'auto'}
+                            fill={color}
+                            fontSize={12}
+                            fontWeight={700}
+                          >
+                            {score}
+                          </text>
+                        </g>
+                      )
+                    }}
                   />
                   <PolarRadiusAxis
                     angle={90}
