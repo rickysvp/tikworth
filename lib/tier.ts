@@ -1,13 +1,13 @@
 import { getServerDict } from '@/lib/i18n/server'
 
 export const TIER_COLORS: Record<string, string> = {
-  S: '#00F2EA',
-  A: '#00F2EA',
-  B: '#22c55e',
-  C: '#f59e0b',
+  S: '#FF0050',
+  A: '#FF0050',
+  B: '#00F2EA',
+  C: '#00F2EA',
   D: '#f97316',
-  E: '#ef4444',
-  F: '#dc2626',
+  E: '#f97316',
+  F: '#ffffff',
 }
 
 export function tierLabel(tier: string): string {
