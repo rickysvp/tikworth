@@ -31,7 +31,7 @@ import type { CreditBalance } from '@/lib/credits'
 
 import { useI18n, t } from '@/lib/i18n'
 import { CREDIT_PACKAGES } from '@/lib/credits'
-import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCreditsApi } from '@/lib/credits-client'
+import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCreditsApi, setSessionToken } from '@/lib/credits-client'
 import { ParticleBackground } from '@/components/ParticleBackground'
 import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 import { ShareModal } from '@/components/ShareModal'
@@ -84,16 +84,19 @@ function HomePageContent() {
   const [stats, setStats] = useState({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
-  
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const paidHandled = useRef(false)
   const lastEvaluatedU = useRef<string | null>(null)
 
-  // Load credit balance on mount
+  // Load credit balance on mount + 判断登录状态
   useEffect(() => {
     const email = getActiveEmail()
-    if (email) {
+    const token = getSessionToken()
+    if (email && token) {
+      setIsLoggedIn(true)
       setBalanceLoading(true)
       fetchBalance(email).then(b => { if (b) setCreditBalance(b) }).finally(() => setBalanceLoading(false))
     }
@@ -156,6 +159,7 @@ function HomePageContent() {
 
   // Handle unlock: 购买成功后自动重新评估
   async function handleUnlock() {
+    setIsLoggedIn(true)
     setIsUnlocking(true)
 
     // Track paywall_click
@@ -271,6 +275,7 @@ function HomePageContent() {
     if (paid === 'success' && paidEmail && !paidHandled.current) {
       paidHandled.current = true
       setActiveEmail(paidEmail)
+      setIsLoggedIn(true)
       setPaymentSuccess(true)
 
       // Try to claim pending purchase first (direct claim, no webhook needed)
@@ -369,11 +374,13 @@ function HomePageContent() {
             <Image src="/tokvalue.png" alt="TokValue" width={160} height={40} className="h-10 w-auto object-contain" />
           </Link>
 
-          {/* Navigation */}
+          {/* Navigation — tracker / history 仅在登录后可见 */}
           <nav className="hidden md:flex items-center justify-center gap-1 flex-1">
             {[
-              { label: dict.nav.tracker, href: '/tracker', icon: BarChart3 },
-              { label: dict.nav.history, href: '/history', icon: Clock },
+              ...(isLoggedIn ? [
+                { label: dict.nav.tracker, href: '/tracker', icon: BarChart3 },
+                { label: dict.nav.history, href: '/history', icon: Clock },
+              ] : []),
               { label: dict.nav.pricing, href: '#pricing', icon: Zap },
               { label: dict.nav.howItWorks, href: '#capabilities', icon: Lightbulb },
             ].map(item => (
@@ -424,7 +431,7 @@ function HomePageContent() {
                     {creditBalance.email}
                   </span>
                   <button
-                    onClick={() => { setCreditBalance(null); setActiveEmail(null) }}
+                    onClick={() => { setCreditBalance(null); setActiveEmail(null); setSessionToken(null); setIsLoggedIn(false) }}
                     className="ml-0.5 text-neutral-600 hover:text-neutral-300 transition-colors shrink-0"
                     aria-label={dict.common.switchAccount}
                   >
@@ -1229,6 +1236,8 @@ function HomePageContent() {
                 </div>
               )}
             </div>
+            {isLoggedIn && (
+              <>
             <button
               onClick={handleSaveToTracker}
               disabled={isSaved}
@@ -1248,6 +1257,8 @@ function HomePageContent() {
               <History className="h-4 w-4" />
               {dict.nav.history}
             </Link>
+              </>
+            )}
           </div>
         </section>
       )}
@@ -1278,8 +1289,8 @@ function HomePageContent() {
               <ul className="space-y-3">
                 <li><a href="#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
                 <li><a href="#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
-                <li><Link href="/tracker" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>
-                <li><Link href="/history" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>
+                {isLoggedIn && <li><Link href="/tracker" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>}
+                {isLoggedIn && <li><Link href="/history" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>}
               </ul>
             </div>
 

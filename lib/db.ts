@@ -72,6 +72,9 @@ async function initStore(): Promise<Store> {
       `
       // Migration: add commerce_readiness column for existing deployments
       await getSql()`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS commerce_readiness JSONB`
+      // Migration: add evaluated_by column for per-user history
+      await getSql()`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS evaluated_by TEXT`
+      await getSql()`CREATE INDEX IF NOT EXISTS idx_evaluations_evaluated_by ON evaluations(evaluated_by)`
       storeType = 'postgres'
       return storeType
     } catch (err) {
@@ -138,7 +141,7 @@ export async function findRecentEvaluations(limit = 50): Promise<Evaluation[]> {
   return [...store].sort((a, b) => +new Date(b.computedAt) - +new Date(a.computedAt)).slice(0, limit).map(normalizeEvaluation)
 }
 
-export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation> {
+export async function saveEvaluation(evaluation: Evaluation, evaluatedBy?: string): Promise<Evaluation> {
   const type = await initStore()
   if (type === 'postgres') {
     await getSql()`
@@ -147,7 +150,7 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
          account_health, content_cadence, engagement_quality, peer_benchmark, brand_potential, monetization_path, growth_plan,
          income_estimate, business_value, revenue_roadmap, content_strategy, peer_ranking, brand_matching,
          trend_analysis, commercialization_advice, commerce_readiness, formula_version, calculation_metadata,
-         computed_at, avatar, bio, follower_count, following_count, total_likes, video_count, verified, region, posts, account_profile)
+         computed_at, avatar, bio, follower_count, following_count, total_likes, video_count, verified, region, posts, account_profile, evaluated_by)
       VALUES
         (${evaluation.username}, ${evaluation.nickname}, ${evaluation.score}, ${evaluation.tier},
          ${JSON.stringify(evaluation.dimensions)}::jsonb, ${JSON.stringify(evaluation.summary)}::jsonb,
@@ -172,7 +175,8 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
          ${evaluation.computedAt}, ${evaluation.avatar || null}, ${evaluation.bio || null},
          ${evaluation.followerCount}, ${evaluation.followingCount}, ${evaluation.totalLikes}, ${evaluation.videoCount},
          ${evaluation.verified ?? null}, ${evaluation.region || null}, ${JSON.stringify(evaluation.posts || [])}::jsonb,
-         ${JSON.stringify(evaluation.accountProfile)}::jsonb)
+         ${JSON.stringify(evaluation.accountProfile)}::jsonb,
+         ${evaluatedBy || null})
       ON CONFLICT (username) DO UPDATE SET
         nickname = EXCLUDED.nickname,
         score = EXCLUDED.score,

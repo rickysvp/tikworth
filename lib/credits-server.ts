@@ -232,3 +232,21 @@ export async function consumeCredit(email: string): Promise<{ ok: boolean; balan
   const balance = await getBalance(key)
   return { ok: true, balance: balance! }
 }
+
+/**
+ * 退款 1 次额度。
+ * 仅用于内部回滚（evaluate 流程中 fetchProfile 失败时退还已扣额度）。
+ */
+export async function refundCredit(email: string): Promise<void> {
+  const key = email.toLowerCase().trim()
+  if (!key) return
+
+  await initTable()
+  const s = await getSql()
+
+  await s`
+    UPDATE credit_balances
+    SET credits = credits + 1
+    WHERE email = ${key}
+  `
+}

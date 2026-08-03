@@ -4,7 +4,7 @@ import { scoreProfile } from '@/lib/scoring'
 import { findEvaluation, saveEvaluation, isCacheValid } from '@/lib/db'
 import { generateTrendAnalysis, generateCommercializationAdvice, generateContentStrategy } from '@/lib/deepseek'
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
-import { consumeCredit } from '@/lib/credits-server'
+import { consumeCredit, refundCredit } from '@/lib/credits-server'
 import { getServerDict } from '@/lib/i18n/server'
 import { recordEventFromRequest } from '@/lib/analytics'
 import { ApiErrorResponse, Evaluation } from '@/types'
@@ -92,6 +92,7 @@ const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
 }
 
 export async function POST(req: NextRequest) {
+  let userEmail = ''
   try {
     const body = await req.json().catch(() => ({}))
     const username = String(body.username || '').trim()
@@ -125,9 +126,10 @@ export async function POST(req: NextRequest) {
     if (!payload) {
       return NextResponse.json({ error: getServerDict().api.errors.SESSION_EXPIRED, code: 'NO_CREDITS' }, { status: 402 })
     }
+    userEmail = payload.email
 
     // 扣减 1 次额度
-    const consumeResult = await consumeCredit(payload.email)
+    const consumeResult = await consumeCredit(userEmail)
     if (!consumeResult.ok) {
       const msgs: Record<string, { msg: string; status: number }> = {
         NOT_FOUND:  { msg: getServerDict().api.errors.NO_CREDITS, status: 402 },
@@ -149,7 +151,7 @@ export async function POST(req: NextRequest) {
     let evaluation = scoreProfile(profile)
     evaluation = await enrichWithAI(evaluation)
 
-    await saveEvaluation(evaluation)
+    await saveEvaluation(evaluation, userEmail)
 
     // Record evaluate_done event
     recordEventFromRequest(req, {
@@ -160,6 +162,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(evaluation)
   } catch (err) {
+    // ── 额度回滚：fetchProfile/评分/保存失败时退还已扣额度 ──
+    if (userEmail) {
+      refundCredit(userEmail).catch(e =>
+        console.error('[evaluate] refund failed:', e instanceof Error ? e.message : String(e))
+      )
+    }
+
     const code: ApiCode = (err && typeof err === 'object' && 'code' in err)
       ? (err as { code: ApiCode }).code
       : 'API_ERROR'

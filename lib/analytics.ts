@@ -33,7 +33,12 @@ const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || ''
 const TIMEZONE = 'Asia/Shanghai'
 
 // ip_hash HMAC 密钥（防止 sha256 截断被彩虹表反查）
-const IP_HMAC_KEY = process.env.IP_HASH_SECRET || 'tikworth-ip-hmac-v1'
+const IP_HMAC_KEY = process.env.IP_HASH_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[analytics] ⚠️  IP_HASH_SECRET not set in production — IP hashes are reversible with default key. Set the IP_HASH_SECRET environment variable.')
+  }
+  return 'tikworth-ip-hmac-v1'
+})()
 
 // ── DB init ──
 
@@ -99,9 +104,13 @@ async function initDb(): Promise<boolean> {
       } catch { /* 表尚未创建时忽略 */ }
 
       dbReady = true
+      console.log('[analytics] Postgres init succeeded')
       return true
     } catch (err) {
+      // ── 关键修复：失败时清除缓存，允许下次请求重试 ──
       console.error('[analytics] Postgres init failed:', err instanceof Error ? err.message : String(err))
+      sql = null
+      dbInitPromise = null
       return false
     }
   })()

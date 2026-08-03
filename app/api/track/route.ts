@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.warn('[track] error:', err instanceof Error ? err.message : String(err))
-    // 埋点失败不阻塞主流程
+    console.error('[track] recordEvent failed:', err instanceof Error ? err.message : String(err))
+    // 埋点失败不阻塞主流程，但需要记 error 级别日志方便排查
     return NextResponse.json({ ok: true })
   }
 }

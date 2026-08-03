@@ -443,3 +443,21 @@ export interface ApiErrorResponse {
   code: ApiErrorCode
   detail?: string
 }
+
+// Shared type for /api/recent-evaluations and components/RecentEvaluations
+export interface RecentEvaluation {
+  username: string
+  nickname: string
+  avatar: string | null
+  tier: string
+  score: number
+  followerCount: number
+  totalLikes: number
+  videoCount: number
+  region: string | null
+  verified: boolean
+  categories: string[]
+  personaType: string | null
+  businessValueHigh: number
+  computedAt: string
+}

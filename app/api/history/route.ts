@@ -1,17 +1,30 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
-import type { RecentEvaluation } from '@/types'
+import { verifySessionToken, getBearerToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 60
 
 /**
- * GET /api/recent-evaluations
- *
- * 公开端点：着陆页社会证明卡片。仅返回最近 12 条评估的脱敏摘要数据。
- * 不包含用户身份信息，只展示公开的 TikTok 账号数据。
+ * GET /api/history — 用户个人评估历史，必须鉴权。
+ * 仅返回当前登录用户评估过的记录。
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = getBearerToken(req)
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Authentication required', code: 'UNAUTHORIZED' },
+      { status: 401, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
+  }
+
+  const auth = await verifySessionToken(token)
+  if (!auth) {
+    return NextResponse.json(
+      { error: 'Invalid or expired token', code: 'UNAUTHORIZED' },
+      { status: 401, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
+  }
+
   try {
     const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
     if (!DATABASE_URL) {
@@ -22,31 +35,19 @@ export async function GET() {
 
     const rows = await sql`
       SELECT
-        username,
-        nickname,
-        avatar,
-        tier,
-        score,
-        follower_count,
-        total_likes,
-        video_count,
-        region,
-        verified,
+        username, nickname, avatar, tier, score,
+        follower_count, total_likes, video_count, region, verified,
         account_profile,
         business_value->'totalValue'->>'high' as bv_high,
         computed_at
       FROM evaluations
-      WHERE username IS NOT NULL
-        AND follower_count > 1000
+      WHERE evaluated_by = ${auth.email}
       ORDER BY created_at DESC
-      LIMIT 12
+      LIMIT 50
     `
 
-    const evaluations: RecentEvaluation[] = rows.map((r: Record<string, unknown>) => {
-      const profile = (r.account_profile || {}) as {
-        categories?: string[]
-        personaType?: string
-      }
+    const evaluations = rows.map((r: Record<string, unknown>) => {
+      const profile = (r.account_profile || {}) as { categories?: string[]; personaType?: string }
       return {
         username: String(r.username || ''),
         nickname: String(r.nickname || r.username || ''),
@@ -66,11 +67,11 @@ export async function GET() {
     })
 
     return NextResponse.json(
-      { evaluations },
-      { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=60' } }
+      { evaluations, email: auth.email },
+      { headers: { 'Cache-Control': 'private, no-store, max-age=0' } }
     )
   } catch (err) {
-    console.error('[recent-evaluations] error:', err)
+    console.error('[history] error:', err)
     return NextResponse.json(
       { evaluations: [] },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }

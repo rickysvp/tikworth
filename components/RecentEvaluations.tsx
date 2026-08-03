@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { TIER_COLORS } from '@/lib/tier'
 import { Users, Heart, MapPin, BadgeCheck, Sparkles, ArrowRight, Lock, TrendingUp } from 'lucide-react'
-import type { RecentEvaluation } from '@/app/api/recent-evaluations/route'
+import type { RecentEvaluation } from '@/types'
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -88,7 +87,7 @@ export function RecentEvaluations({ onSelect }: Props) {
             <Sparkles className="h-5 w-5 text-[#00F2EA]" />
             <h2 className="text-xl sm:text-2xl font-bold text-white">Recently Evaluated</h2>
           </div>
-          <span className="text-xs text-neutral-500">{items.length} accounts</span>
+          <span className="text-xs text-neutral-500">{items.length} accounts indexed</span>
         </div>
 
         {/* Cards Grid */}
@@ -192,13 +191,21 @@ export function RecentEvaluations({ onSelect }: Props) {
           })}
         </div>
 
-        {/* 底部说明 */}
-        <p className="text-center text-xs text-neutral-600 mt-6">
-          Click a card to unlock the full report ·{' '}
-          <Link href="/history" className="text-[#00F2EA] hover:underline inline-flex items-center gap-0.5">
-            View history <ArrowRight className="h-3 w-3" />
-          </Link>
-        </p>
+        {/* ═══ 底部 CTA：引导用户评估自己的账号，而非看别人的 ═══ */}
+        <div className="text-center mt-8 pt-6 border-t border-neutral-800/60">
+          <p className="text-sm text-neutral-400 mb-3 leading-relaxed">
+            Want to know <span className="text-[#FF0050] font-semibold">your</span> TikTok account&apos;s true business value?
+          </p>
+          <button
+            onClick={() => {
+              const input = document.querySelector<HTMLInputElement>('input[aria-label*="username"], input[placeholder*="username"]')
+              if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#FF0050] to-[#e60049] px-5 py-2.5 text-sm font-semibold text-white hover:from-[#e60049] hover:to-[#cc0040] transition-all shadow-lg shadow-[#FF0050]/25"
+          >
+            Evaluate Your Account <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </section>
   )
