@@ -6,9 +6,17 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Evaluation } from '@/types'
 import {
+  Radar,
+  RadarChart as ReRadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+} from 'recharts'
+import {
   Loader2, TrendingUp, DollarSign, ExternalLink, Share2, Check, Copy,
   Target, Zap, Award, Users, Heart, Video, BarChart3, ArrowRight,
-  Sparkles, Trophy, Flame, ShoppingBag, Gift,
+  Sparkles, Trophy, Flame, ShoppingBag, Gift, Info, X,
 } from 'lucide-react'
 
 // ── Helpers ──
@@ -62,17 +70,17 @@ function getValueTier(tier: string) {
   }
 }
 
-const DIMENSION_LABELS: { key: string; label: string }[] = [
-  { key: 'reach', label: 'Reach' },
-  { key: 'engagement', label: 'Engagement' },
-  { key: 'content', label: 'Content Virality' },
-  { key: 'authenticity', label: 'Authenticity' },
-  { key: 'momentum', label: 'Momentum' },
-  { key: 'stability', label: 'Stability' },
-  { key: 'commerce', label: 'Commerce Fit' },
-  { key: 'monetization', label: 'Monetization' },
-  { key: 'health', label: 'Health' },
-  { key: 'influence', label: 'Influence' },
+const DIMENSION_LABELS: { key: string; label: string; desc: string }[] = [
+  { key: 'reach', label: 'Reach', desc: 'How many people your content can touch. Driven by follower count, average plays, and algorithmic distribution reach.' },
+  { key: 'engagement', label: 'Engagement', desc: 'How actively your audience interacts. Measures like-to-comment ratios, share rates, and save behavior relative to peers.' },
+  { key: 'content', label: 'Content Virality', desc: 'How often your posts break out beyond your follower base. Weighted by the share of high-play videos in your recent catalog.' },
+  { key: 'authenticity', label: 'Authenticity', desc: 'How genuine your audience looks. Evaluates follower growth velocity, engagement consistency, and signals of fake followers or bots.' },
+  { key: 'momentum', label: 'Momentum', desc: 'Are you trending up or cooling down? Compares recent-period growth against your historical baseline.' },
+  { key: 'stability', label: 'Stability', desc: 'How predictable your performance is. Low variance in plays and engagement over time scores higher — brands love consistency.' },
+  { key: 'commerce', label: 'Commerce Fit', desc: 'How well your niche matches buyer-ready audiences. Considers category, audience demographics, and purchase-intent signals.' },
+  { key: 'monetization', label: 'Monetization', desc: 'Current earning power across brand deals, creator rewards, TikTok Shop, live gifts, and subscriptions — benchmarked to your tier.' },
+  { key: 'health', label: 'Health', desc: 'Overall account standing. Factors in posting cadence, community guideline risk, shadowban signals, and content freshness.' },
+  { key: 'influence', label: 'Influence', desc: 'Your authority within your niche. Weighted by verified status, follower-to-engagement ratio, and cross-platform recognition.' },
 ]
 
 const INCOME_ICONS: Record<string, typeof DollarSign> = {
@@ -93,6 +101,7 @@ export default function SharePage() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const [showStickyCta, setShowStickyCta] = useState(false)
+  const [showDimensionInfo, setShowDimensionInfo] = useState(false)
 
   useEffect(() => {
     fetch(`/api/share?id=${id}`)
@@ -195,10 +204,19 @@ export default function SharePage() {
           <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#FF0050]/5 rounded-full blur-3xl" />
 
           <div className="relative p-6 sm:p-8">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 text-[#00F2EA] text-xs font-medium mb-6">
-              <Share2 className="h-3 w-3" />
-              Shared Report
+            {/* Top row: Shared Report badge (left) + Value Tier badge (right) */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 text-[#00F2EA] text-xs font-medium">
+                <Share2 className="h-3 w-3" />
+                Shared Report
+              </div>
+              <div
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+                style={{ backgroundColor: valueTier.bgColor, color: valueTier.color, border: `1px solid ${valueTier.borderColor}` }}
+              >
+                <TierIcon className="h-3.5 w-3.5" />
+                {valueTier.label}
+              </div>
             </div>
 
             {/* Account info */}
@@ -231,21 +249,12 @@ export default function SharePage() {
               <div className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-[#00F2EA] to-[#FF0050] bg-clip-text text-transparent mb-4">
                 {fmtUsdRange(businessValue.totalValue.low, businessValue.totalValue.high)}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                  style={{ backgroundColor: valueTier.bgColor, color: valueTier.color, borderColor: valueTier.borderColor, border: '1px solid' }}
-                >
-                  <TierIcon className="h-3.5 w-3.5" />
-                  {valueTier.label}
+              {result.peerRanking && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold bg-[#FF0050]/10 text-[#FF0050] border border-[#FF0050]/30">
+                  <Flame className="h-3.5 w-3.5" />
+                  Top {100 - result.peerRanking.overallPercentile}% in {result.peerRanking.tierLabel || 'category'}
                 </div>
-                {result.peerRanking && (
-                  <div className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold bg-[#FF0050]/10 text-[#FF0050] border border-[#FF0050]/30">
-                    <Flame className="h-3.5 w-3.5" />
-                    Top {100 - result.peerRanking.overallPercentile}% in {result.peerRanking.tierLabel || 'category'}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Watermark */}
@@ -292,30 +301,103 @@ export default function SharePage() {
         </section>
 
         {/* ═══════════════════════════════════════
-            10-Dimension Scores
+            10-Dimension Scores — Radar Shape
         ═══════════════════════════════════════ */}
         <section className="mb-6">
-          <SectionHeader icon={Target} title="10-Dimension Assessment" color="#FF0050" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
+                style={{ backgroundColor: '#FF005015', border: '1px solid #FF005030' }}
+              >
+                <Target className="h-4 w-4" style={{ color: '#FF0050' }} />
+              </div>
+              <h2 className="text-base font-bold text-white">10-Dimension Assessment</h2>
+            </div>
+            <button
+              onClick={() => setShowDimensionInfo(true)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-[#00F2EA] transition-colors"
+              aria-label="What do these dimensions mean?"
+            >
+              <Info className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">What does this mean?</span>
+            </button>
+          </div>
           <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-5 sm:p-6">
-            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-              {DIMENSION_LABELS.map(({ key, label }) => {
-                const score = result.dimensions[key as keyof typeof result.dimensions] ?? 0
-                const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444'
+            {/* Radar Chart */}
+            <div className="relative w-full h-[360px] sm:h-[420px]" role="img" aria-label="10-dimension radar chart">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-48 h-48 bg-[#FF0050]/5 rounded-full blur-3xl" />
+              </div>
+              <ResponsiveContainer width="100%" height="100%">
+                <ReRadarChart data={DIMENSION_LABELS.map(({ key, label }) => ({
+                  dimension: label,
+                  score: Math.round(result.dimensions[key as keyof typeof result.dimensions] ?? 0),
+                  fullMark: 100,
+                }))} outerRadius="68%">
+                  <PolarGrid stroke="#27272a" strokeWidth={0.5} />
+                  <PolarAngleAxis
+                    dataKey="dimension"
+                    tick={{ fill: '#a3a3a3', fontSize: 11, fontWeight: 600 }}
+                  />
+                  <PolarRadiusAxis
+                    angle={90}
+                    domain={[0, 100]}
+                    tick={false}
+                    axisLine={false}
+                  />
+                  <Radar
+                    name="Score"
+                    dataKey="score"
+                    stroke="#FF0050"
+                    fill="#FF0050"
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#00F2EA', stroke: '#FF0050', strokeWidth: 1.5 }}
+                    activeDot={{ r: 5, fill: '#00F2EA', stroke: '#0a0a0a', strokeWidth: 2 }}
+                  />
+                </ReRadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 形状解读：强项 vs 短板 */}
+            <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-neutral-800">
+              {(() => {
+                const entries = DIMENSION_LABELS.map(({ key, label }) => ({
+                  label,
+                  score: result.dimensions[key as keyof typeof result.dimensions] ?? 0,
+                })).sort((a, b) => b.score - a.score)
+                const top = entries.slice(0, 3)
+                const bottom = entries.slice(-3).reverse()
                 return (
-                  <div key={key}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-neutral-300">{label}</span>
-                      <span className="font-bold text-white">{Math.round(score)}</span>
+                  <>
+                    <div>
+                      <p className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> Core Strengths
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {top.map((e, i) => (
+                          <span key={i} className="text-xs px-2 py-1 rounded-md bg-green-500/10 text-green-400 border border-green-500/20">
+                            {e.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${Math.min(score, 100)}%`, backgroundColor: color }}
-                      />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-400 mb-2 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Growth Areas
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {bottom.map((e, i) => (
+                          <span key={i} className="text-xs px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {e.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )
-              })}
+              })()}
             </div>
           </div>
         </section>
@@ -598,6 +680,67 @@ export default function SharePage() {
             <BarChart3 className="h-4 w-4" />
             Evaluate Yours
           </Link>
+        </div>
+      )}
+
+      {/* ── Dimension Info Modal ── */}
+      {showDimensionInfo && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowDimensionInfo(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-neutral-800 bg-[#0f0f0f] shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-neutral-800 bg-[#0f0f0f]">
+              <div className="flex items-center gap-2">
+                <div
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
+                  style={{ backgroundColor: '#FF005015', border: '1px solid #FF005030' }}
+                >
+                  <Target className="h-4 w-4" style={{ color: '#FF0050' }} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">The 10-Dimension Model</h3>
+                  <p className="text-xs text-neutral-500">What each dimension measures</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDimensionInfo(false)}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-3">
+              {DIMENSION_LABELS.map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  className="flex items-start gap-3 p-3 rounded-xl border border-neutral-800 bg-[#0a0a0a]/50 hover:border-neutral-700 transition-colors"
+                >
+                  <div className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-[#FF0050]/10 border border-[#FF0050]/20 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-[#FF0050]">{DIMENSION_LABELS.findIndex(d => d.key === key) + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white">{label}</p>
+                    <p className="text-xs text-neutral-400 mt-1 leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 p-4 border-t border-neutral-800 bg-[#0f0f0f]">
+              <p className="text-xs text-neutral-500 text-center">
+                Each dimension is scored 0–100 and weighted by account tier. The radar shape reveals your account&apos;s true profile — not a single number.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
