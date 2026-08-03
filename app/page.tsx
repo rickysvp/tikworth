@@ -526,7 +526,11 @@ function HomePageContent() {
           </section>
 
           {/* Recently Evaluated Accounts */}
-          <RecentEvaluations onSelect={(name) => { setUsername(name); handleEvaluate(name) }} />
+          <RecentEvaluations onSelect={(name) => {
+            setUsername(name)
+            pendingUsername.current = name
+            setNeedPurchase(true)
+          }} />
 
           {/* Use Cases */}
           <section className="border-b border-neutral-800 py-16">
