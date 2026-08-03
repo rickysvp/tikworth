@@ -1,14 +1,35 @@
 import { RawProfile, Post, SearchUserResult } from '@/types'
 
 const RAPIDAPI_HOST = 'tiktok-api6.p.rapidapi.com'
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || ''
 
-function apiHeaders() {
+/** 重试配置 */
+const MAX_RETRIES = 2          // 每个 key 最多重试 2 次（共 3 次尝试）
+const RETRY_DELAYS = [600, 1500]  // 退避延迟（ms），指数增长
+
+/**
+ * 动态读取 API key 列表（每次调用时读取，支持 env 热更新）
+ * 优先级：RAPIDAPI_KEYS (逗号分隔多 key) > RAPIDAPI_KEY (单 key)
+ */
+function getApiKeys(): string[] {
+  const multi = process.env.RAPIDAPI_KEYS
+  if (multi) {
+    const keys = multi.split(',').map(k => k.trim()).filter(Boolean)
+    if (keys.length) return keys
+  }
+  const single = process.env.RAPIDAPI_KEY
+  return single ? [single] : []
+}
+
+function apiHeaders(apiKey: string) {
   return {
-    'x-rapidapi-key': RAPIDAPI_KEY,
+    'x-rapidapi-key': apiKey,
     'x-rapidapi-host': RAPIDAPI_HOST,
     'Content-Type': 'application/json',
   }
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function normalizeUsername(input: string): string {
@@ -240,85 +261,125 @@ function inferRegionFromContent(bio: string, nickname: string, posts: Post[]): s
 }
 
 // 新 API 统一用 POST + JSON body
+// 支持：多 key 轮转 + 指数退避重试 + 限流自动切换 key
 async function apiPost<T = unknown>(
   path: string,
   body: Record<string, unknown>,
   label: string,
   options: { timeoutMs?: number; throwOnError?: boolean } = {}
 ): Promise<T> {
-  if (!RAPIDAPI_KEY) {
+  const { timeoutMs = 15000, throwOnError = true } = options
+  const apiKeys = getApiKeys()
+
+  if (apiKeys.length === 0) {
     throw new TikTokApiError('RAPIDAPI_KEY not configured', 'MISSING_API_KEY', 503)
   }
 
-  const { timeoutMs = 15000, throwOnError = true } = options
   const url = `https://${RAPIDAPI_HOST}${path}`
-  let res: Response
-  const start = Date.now()
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: apiHeaders(),
-      body: JSON.stringify(body),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(timeoutMs),
-    })
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
-      throw new TikTokApiError('Request timed out', 'NETWORK_ERROR', 502)
+  let lastError: unknown = null
+
+  // 遍历所有 key，每个 key 重试 MAX_RETRIES 次
+  for (let keyIdx = 0; keyIdx < apiKeys.length; keyIdx++) {
+    const apiKey = apiKeys[keyIdx]
+    const keyTag = apiKeys.length > 1 ? `key#${keyIdx + 1}` : ''
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const start = Date.now()
+      let res: Response
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers: apiHeaders(apiKey),
+          body: JSON.stringify(body),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(timeoutMs),
+        })
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
+        const isNetwork = isTimeout || msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.includes('EAI_AGAIN') || msg.includes('EPIPE')
+
+        if (isNetwork) {
+          const code = isTimeout ? 'Request timed out' : `Network error: ${msg}`
+          lastError = new TikTokApiError(code, 'NETWORK_ERROR', 502)
+          console.warn(`[tiktok] ${label} ${keyTag} attempt#${attempt + 1} network error: ${msg}`)
+          if (attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAYS[attempt])
+            continue
+          }
+          break  // 同 key 重试耗尽，切到下一个 key
+        }
+        throw err  // 未知异常不重试
+      }
+
+      // 限流/配额：切下一个 key，不重试当前 key
+      if (res.status === 429 || res.status === 403) {
+        console.warn(`[tiktok] ${label} ${keyTag} attempt#${attempt + 1} HTTP ${res.status} (rate/quota), switching key...`)
+        lastError = new TikTokApiError('Rate limited', 'RATE_LIMIT', 429)
+        break
+      }
+
+      const text = await res.text()
+      const duration = Date.now() - start
+
+      if (!res.ok) {
+        console.error(`[tiktok] ${label} ${keyTag} HTTP ${res.status} (${duration}ms):`, text.slice(0, 300))
+        lastError = new TikTokApiError(`API HTTP ${res.status}`, 'API_ERROR', 500)
+        // 5xx 服务端错误可重试
+        if (res.status >= 500 && attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAYS[attempt])
+          continue
+        }
+        if (!throwOnError) return undefined as T
+        break
+      }
+
+      let json: unknown
+      try {
+        json = JSON.parse(text)
+      } catch {
+        console.error(`[tiktok] ${label} ${keyTag} invalid JSON (${duration}ms):`, text.slice(0, 200))
+        lastError = new TikTokApiError('Invalid API response', 'API_ERROR', 500)
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAYS[attempt])
+          continue
+        }
+        if (!throwOnError) return undefined as T
+        break
+      }
+
+      const root = json as Record<string, unknown>
+
+      // 错误格式：{ detail: "User xxx does not exist" } 或 { message: "..." }
+      const detailMsg = typeof root.detail === 'string' ? root.detail : ''
+      const errMsg = typeof root.message === 'string' ? root.message : detailMsg
+
+      if (errMsg) {
+        if (/does not exist|not found|no user|user not found|invalid/i.test(errMsg)) {
+          if (!throwOnError) return undefined as T
+          throw new TikTokApiError(errMsg, 'USER_NOT_FOUND', 404)
+        }
+        if (/rate limit|quota|too many/i.test(errMsg)) {
+          console.warn(`[tiktok] ${label} ${keyTag} response rate limit, switching key...`)
+          lastError = new TikTokApiError(errMsg, 'RATE_LIMIT', 429)
+          break  // 切下一个 key
+        }
+        if (/endpoint.*does not exist/i.test(errMsg)) {
+          console.error(`[tiktok] ${label} ${keyTag} endpoint error:`, errMsg)
+          lastError = new TikTokApiError(errMsg, 'API_ERROR', 500)
+          if (!throwOnError) return undefined as T
+          break
+        }
+      }
+
+      console.log(`[tiktok] ${label} ${keyTag} OK (${duration}ms)`)
+      return root as T
     }
-    if (msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND')) {
-      throw new TikTokApiError(`Network error: ${msg}`, 'NETWORK_ERROR', 502)
-    }
-    throw err
   }
 
-  if (res.status === 429) throw new TikTokApiError('Rate limited', 'RATE_LIMIT', 429)
-  if (res.status === 403) throw new TikTokApiError('Invalid API key or quota exceeded', 'RATE_LIMIT', 429)
-
-  const text = await res.text()
-  const duration = Date.now() - start
-
-  if (!res.ok) {
-    console.error(`[tiktok] ${label} HTTP ${res.status} (${duration}ms):`, text.slice(0, 300))
-    if (!throwOnError) return undefined as T
-    throw new TikTokApiError(`API HTTP ${res.status}`, 'API_ERROR', 500)
-  }
-
-  let json: unknown
-  try {
-    json = JSON.parse(text)
-  } catch {
-    console.error(`[tiktok] ${label} invalid JSON (${duration}ms):`, text.slice(0, 200))
-    if (!throwOnError) return undefined as T
-    throw new TikTokApiError('Invalid API response', 'API_ERROR', 500)
-  }
-
-  const root = json as Record<string, unknown>
-
-  // 新 API 错误格式：{ detail: "User xxx does not exist" } 或 { message: "..." }
-  const detailMsg = typeof root.detail === 'string' ? root.detail : ''
-  const errMsg = typeof root.message === 'string' ? root.message : detailMsg
-
-  if (errMsg) {
-    if (/does not exist|not found|no user|user not found|invalid/i.test(errMsg)) {
-      if (!throwOnError) return undefined as T
-      throw new TikTokApiError(errMsg, 'USER_NOT_FOUND', 404)
-    }
-    if (/rate limit|quota|too many/i.test(errMsg)) {
-      if (!throwOnError) return undefined as T
-      throw new TikTokApiError(errMsg, 'RATE_LIMIT', 429)
-    }
-    // endpoint 不存在等错误
-    if (/endpoint.*does not exist/i.test(errMsg)) {
-      console.error(`[tiktok] ${label} endpoint error:`, errMsg)
-      if (!throwOnError) return undefined as T
-      throw new TikTokApiError(errMsg, 'API_ERROR', 500)
-    }
-  }
-
-  console.log(`[tiktok] ${label} OK (${duration}ms)`)
-  return root as T
+  // 所有 key 都失败
+  if (!throwOnError) return undefined as T
+  throw lastError || new TikTokApiError('All API keys exhausted', 'API_ERROR', 500)
 }
 
 export async function fetchProfile(inputUsername: string): Promise<RawProfile> {
