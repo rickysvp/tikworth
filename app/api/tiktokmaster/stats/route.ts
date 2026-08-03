@@ -9,7 +9,7 @@ import {
   getPayersByDay,
   getPvuvByDay,
 } from '@/lib/analytics'
-import { getEvaluationStats, getEvaluationsByDay } from '@/lib/db'
+import { getEvaluationsByDay } from '@/lib/db'
 import { verifyAdminRequest } from '@/lib/admin-api-utils'
 
 export const dynamic = 'force-dynamic'
