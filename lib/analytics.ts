@@ -85,6 +85,10 @@ async function initDb(): Promise<boolean> {
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer TEXT`
+      // 修复旧表 event_name NOT NULL 约束导致新代码 INSERT 失败
+      try { await sql`ALTER TABLE analytics_events ALTER COLUMN event_name DROP NOT NULL` } catch { /* 迁移已执行或列不存在 */ }
+      // 回填 event_name ← event_type（迁移后补齐旧列）
+      await sql`UPDATE analytics_events SET event_name = event_type WHERE event_name IS NULL`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
 
