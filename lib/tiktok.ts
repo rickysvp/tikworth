@@ -1,29 +1,58 @@
 import { RawProfile, Post, SearchUserResult } from '@/types'
 
-const RAPIDAPI_HOST = 'tiktok-api6.p.rapidapi.com'
-
 /** 重试配置 */
 const MAX_RETRIES = 2          // 每个 key 最多重试 2 次（共 3 次尝试）
 const RETRY_DELAYS = [600, 1500]  // 退避延迟（ms），指数增长
 
+// ========== Provider 抽象层 ==========
+
 /**
- * 动态读取 API key 列表（每次调用时读取，支持 env 热更新）
- * 优先级：RAPIDAPI_KEYS (逗号分隔多 key) > RAPIDAPI_KEY (单 key)
+ * Provider 配置：一个 host + 对应的 API key
+ * 环境变量格式：TIKTOK_PROVIDERS="host1:key1,host2:key2"
+ * 向后兼容：若未配置 TIKTOK_PROVIDERS，回退到 RAPIDAPI_KEYS/RAPIDAPI_KEY + 默认 host
  */
-function getApiKeys(): string[] {
-  const multi = process.env.RAPIDAPI_KEYS
-  if (multi) {
-    const keys = multi.split(',').map(k => k.trim()).filter(Boolean)
-    if (keys.length) return keys
-  }
-  const single = process.env.RAPIDAPI_KEY
-  return single ? [single] : []
+export interface ProviderConfig {
+  host: string
+  apiKey: string
 }
 
-function apiHeaders(apiKey: string) {
+const DEFAULT_HOST = 'tiktok-api6.p.rapidapi.com'
+
+/**
+ * 动态读取 provider 列表（每次调用时读取，支持 env 热更新）
+ * 优先级：TIKTOK_PROVIDERS > RAPIDAPI_KEYS > RAPIDAPI_KEY
+ */
+function getProviders(): ProviderConfig[] {
+  // 优先：多 host 多 key 配置 "host1:key1,host2:key2"
+  const multi = process.env.TIKTOK_PROVIDERS
+  if (multi) {
+    const providers = multi.split(',')
+      .map(entry => entry.trim())
+      .filter(Boolean)
+      .map(entry => {
+        const [host, key] = entry.split(':').map(s => s.trim())
+        return host && key ? { host, apiKey: key } : null
+      })
+      .filter((p): p is ProviderConfig => p !== null)
+    if (providers.length) return providers
+  }
+
+  // 回退 1：多 key + 默认 host
+  const multiKey = process.env.RAPIDAPI_KEYS
+  if (multiKey) {
+    const keys = multiKey.split(',').map(k => k.trim()).filter(Boolean)
+    if (keys.length) return keys.map(key => ({ host: DEFAULT_HOST, apiKey: key }))
+  }
+
+  // 回退 2：单 key + 默认 host
+  const single = process.env.RAPIDAPI_KEY
+  return single ? [{ host: DEFAULT_HOST, apiKey: single }] : []
+}
+
+function apiHeaders(host: string, apiKey: string) {
   return {
     'x-rapidapi-key': apiKey,
-    'x-rapidapi-host': RAPIDAPI_HOST,
+    'x-rapidapi-host': host,
     'Content-Type': 'application/json',
   }
 }
@@ -261,7 +290,7 @@ function inferRegionFromContent(bio: string, nickname: string, posts: Post[]): s
 }
 
 // 新 API 统一用 POST + JSON body
-// 支持：多 key 轮转 + 指数退避重试 + 限流自动切换 key
+// 支持：多 provider 轮转 + 指数退避重试 + 限流自动切换 provider
 async function apiPost<T = unknown>(
   path: string,
   body: Record<string, unknown>,
@@ -269,19 +298,19 @@ async function apiPost<T = unknown>(
   options: { timeoutMs?: number; throwOnError?: boolean } = {}
 ): Promise<T> {
   const { timeoutMs = 15000, throwOnError = true } = options
-  const apiKeys = getApiKeys()
+  const providers = getProviders()
 
-  if (apiKeys.length === 0) {
+  if (providers.length === 0) {
     throw new TikTokApiError('RAPIDAPI_KEY not configured', 'MISSING_API_KEY', 503)
   }
 
-  const url = `https://${RAPIDAPI_HOST}${path}`
   let lastError: unknown = null
 
-  // 遍历所有 key，每个 key 重试 MAX_RETRIES 次
-  for (let keyIdx = 0; keyIdx < apiKeys.length; keyIdx++) {
-    const apiKey = apiKeys[keyIdx]
-    const keyTag = apiKeys.length > 1 ? `key#${keyIdx + 1}` : ''
+  // 遍历所有 provider（host+key 组合），每个 provider 重试 MAX_RETRIES 次
+  for (let pIdx = 0; pIdx < providers.length; pIdx++) {
+    const { host, apiKey } = providers[pIdx]
+    const url = `https://${host}${path}`
+    const providerTag = providers.length > 1 ? `provider#${pIdx + 1}(${host})` : ''
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const start = Date.now()
@@ -289,7 +318,7 @@ async function apiPost<T = unknown>(
       try {
         res = await fetch(url, {
           method: 'POST',
-          headers: apiHeaders(apiKey),
+          headers: apiHeaders(host, apiKey),
           body: JSON.stringify(body),
           cache: 'no-store',
           signal: AbortSignal.timeout(timeoutMs),
@@ -302,19 +331,19 @@ async function apiPost<T = unknown>(
         if (isNetwork) {
           const code = isTimeout ? 'Request timed out' : `Network error: ${msg}`
           lastError = new TikTokApiError(code, 'NETWORK_ERROR', 502)
-          console.warn(`[tiktok] ${label} ${keyTag} attempt#${attempt + 1} network error: ${msg}`)
+          console.warn(`[tiktok] ${label} ${providerTag} attempt#${attempt + 1} network error: ${msg}`)
           if (attempt < MAX_RETRIES) {
             await sleep(RETRY_DELAYS[attempt])
             continue
           }
-          break  // 同 key 重试耗尽，切到下一个 key
+          break  // 同 provider 重试耗尽，切到下一个 provider
         }
         throw err  // 未知异常不重试
       }
 
-      // 限流/配额：切下一个 key，不重试当前 key
+      // 限流/配额：切下一个 provider，不重试当前 provider
       if (res.status === 429 || res.status === 403) {
-        console.warn(`[tiktok] ${label} ${keyTag} attempt#${attempt + 1} HTTP ${res.status} (rate/quota), switching key...`)
+        console.warn(`[tiktok] ${label} ${providerTag} attempt#${attempt + 1} HTTP ${res.status} (rate/quota), switching provider...`)
         lastError = new TikTokApiError('Rate limited', 'RATE_LIMIT', 429)
         break
       }
@@ -323,7 +352,7 @@ async function apiPost<T = unknown>(
       const duration = Date.now() - start
 
       if (!res.ok) {
-        console.error(`[tiktok] ${label} ${keyTag} HTTP ${res.status} (${duration}ms):`, text.slice(0, 300))
+        console.error(`[tiktok] ${label} ${providerTag} HTTP ${res.status} (${duration}ms):`, text.slice(0, 300))
         lastError = new TikTokApiError(`API HTTP ${res.status}`, 'API_ERROR', 500)
         // 5xx 服务端错误可重试
         if (res.status >= 500 && attempt < MAX_RETRIES) {
@@ -338,7 +367,7 @@ async function apiPost<T = unknown>(
       try {
         json = JSON.parse(text)
       } catch {
-        console.error(`[tiktok] ${label} ${keyTag} invalid JSON (${duration}ms):`, text.slice(0, 200))
+        console.error(`[tiktok] ${label} ${providerTag} invalid JSON (${duration}ms):`, text.slice(0, 200))
         lastError = new TikTokApiError('Invalid API response', 'API_ERROR', 500)
         if (attempt < MAX_RETRIES) {
           await sleep(RETRY_DELAYS[attempt])
@@ -360,24 +389,24 @@ async function apiPost<T = unknown>(
           throw new TikTokApiError(errMsg, 'USER_NOT_FOUND', 404)
         }
         if (/rate limit|quota|too many/i.test(errMsg)) {
-          console.warn(`[tiktok] ${label} ${keyTag} response rate limit, switching key...`)
+          console.warn(`[tiktok] ${label} ${providerTag} response rate limit, switching provider...`)
           lastError = new TikTokApiError(errMsg, 'RATE_LIMIT', 429)
-          break  // 切下一个 key
+          break  // 切下一个 provider
         }
         if (/endpoint.*does not exist/i.test(errMsg)) {
-          console.error(`[tiktok] ${label} ${keyTag} endpoint error:`, errMsg)
+          console.error(`[tiktok] ${label} ${providerTag} endpoint error:`, errMsg)
           lastError = new TikTokApiError(errMsg, 'API_ERROR', 500)
           if (!throwOnError) return undefined as T
           break
         }
       }
 
-      console.log(`[tiktok] ${label} ${keyTag} OK (${duration}ms)`)
+      console.log(`[tiktok] ${label} ${providerTag} OK (${duration}ms)`)
       return root as T
     }
   }
 
-  // 所有 key 都失败
+  // 所有 provider 都失败
   if (!throwOnError) return undefined as T
   throw lastError || new TikTokApiError('All API keys exhausted', 'API_ERROR', 500)
 }
