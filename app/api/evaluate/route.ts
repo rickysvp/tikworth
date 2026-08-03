@@ -6,7 +6,7 @@ import { generateTrendAnalysis, generateCommercializationAdvice, generateContent
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
 import { consumeCredit } from '@/lib/credits-server'
 import { getServerDict } from '@/lib/i18n/server'
-import { recordEvent, recordEventFromRequest } from '@/lib/analytics'
+import { recordEventFromRequest } from '@/lib/analytics'
 import { ApiErrorResponse, Evaluation } from '@/types'
 
 function buildSnapshot(evaluation: Evaluation) {
