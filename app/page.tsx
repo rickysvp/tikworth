@@ -8,7 +8,7 @@ import { Evaluation } from '@/types'
 import { ScoreGauge } from '@/components/ScoreGauge'
 import { RadarChart } from '@/components/RadarChart'
 import { RiskList } from '@/components/RiskList'
-import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet, Share2 } from 'lucide-react'
+import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, BookOpen, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet, Share2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { GrowthPlanSection } from '@/components/sections/GrowthPlanSection'
 import { IncomeBreakdownSection } from '@/components/sections/IncomeBreakdownSection'
@@ -394,6 +394,15 @@ function HomePageContent() {
                 <span className="absolute inset-x-2 -bottom-0.5 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/60 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform" />
               </a>
             ))}
+            {/* Blog uses Link for client-side navigation */}
+            <Link
+              href="/blog"
+              className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              {dict.nav.blog}
+              <span className="absolute inset-x-2 -bottom-0.5 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/60 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform" />
+            </Link>
           </nav>
 
           {/* Right side */}
@@ -778,46 +787,172 @@ function HomePageContent() {
             </div>
           </section>
 
-          {/* Pricing Preview */}
-          <section id="pricing" className="border-b border-neutral-800 py-16">
-            <div className="mx-auto max-w-3xl px-4">
-              <h2 className="text-2xl font-bold text-center mb-2">{dict.home.pricing.title}</h2>
-              <p className="text-neutral-500 text-center mb-10 text-sm">{dict.home.pricing.subtitle}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {CREDIT_PACKAGES.map(pkg => (
-                  <div key={pkg.id} className={`relative rounded-2xl border-2 p-5 text-center transition-all ${
-                    pkg.highlight ? 'border-[#FF0050] bg-[#FF0050]/5' : 'border-neutral-800 bg-[#141414]'
-                  }`}>
-                    {pkg.badge && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#FF0050] px-2.5 py-0.5 text-[10px] font-bold text-white">
-                          <Star className="h-2.5 w-2.5" />{dict.creditPackages[pkg.id as keyof typeof dict.creditPackages]?.badge ?? pkg.badge}
-                        </span>
-                      </div>
-                    )}
-                    <div className="text-xs text-neutral-500 uppercase tracking-wider mb-2">{dict.creditPackages[pkg.id as keyof typeof dict.creditPackages]?.label ?? pkg.label}</div>
-                    <div className="flex items-baseline justify-center gap-0.5">
-                      <span className="text-neutral-400">$</span>
-                      <span className="text-4xl font-black text-white">{pkg.price}</span>
-                    </div>
-                    <div className="text-sm text-neutral-500 mt-1">{pkg.credits} evaluations</div>
-                    <div className="text-xs text-neutral-600 mt-0.5">{pkg.perUnit}</div>
-                    <button
-                      onClick={() => { setShowVerifyModal(true) }}
-                      className={`mt-4 w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${
+          {/* Pricing */}
+          <section id="pricing" className="border-b border-neutral-800 py-20">
+            <div className="mx-auto max-w-6xl px-4">
+              {/* Section header */}
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 px-4 py-1.5 text-xs font-medium text-[#00F2EA] mb-4">
+                  <Zap className="h-3.5 w-3.5" />
+                  Pricing
+                </div>
+                <h2 className="text-3xl font-bold sm:text-4xl">{dict.home.pricing.title}</h2>
+                <p className="mt-4 max-w-xl mx-auto text-neutral-400">{dict.home.pricing.subtitle}</p>
+              </div>
+
+              {/* Money-back guarantee */}
+              <div className="flex items-center justify-center gap-2 mb-12 text-sm">
+                <div className="flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/5 px-4 py-2">
+                  <Shield className="h-4 w-4 text-green-400" />
+                  <span className="text-green-300 font-medium">{dict.home.pricing.guarantee}</span>
+                  <span className="hidden sm:inline text-neutral-500">— {dict.home.pricing.guaranteeDesc}</span>
+                </div>
+              </div>
+
+              {/* Plans */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                {CREDIT_PACKAGES.map(pkg => {
+                  const plan = (dict.home.pricing.plans as unknown as Array<{
+                    id: string
+                    name: string
+                    desc: string
+                    highlight: boolean
+                    badge?: string
+                    includes: string[]
+                  }>).find(p => p.id === pkg.id)
+
+                  return (
+                    <div
+                      key={pkg.id}
+                      className={`relative rounded-2xl border-2 p-6 transition-all ${
                         pkg.highlight
-                          ? 'bg-[#FF0050] text-white hover:bg-[#e60049]'
-                          : 'border border-neutral-700 text-neutral-300 hover:border-[#FF0050] hover:text-[#FF0050]'
+                          ? 'border-[#FF0050] bg-gradient-to-b from-[#FF0050]/[0.06] to-transparent shadow-lg shadow-[#FF0050]/5'
+                          : 'border-neutral-800 bg-[#0a0a0a] hover:border-neutral-700'
                       }`}
                     >
-                      {dict.common.getStarted}
-                    </button>
-                  </div>
-                ))}
+                      {/* Badge */}
+                      {pkg.badge && (
+                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#FF0050] px-3 py-1 text-[11px] font-bold text-white shadow-lg shadow-[#FF0050]/25">
+                            <Star className="h-3 w-3" fill="currentColor" />
+                            {dict.creditPackages[pkg.id as keyof typeof dict.creditPackages]?.badge ?? pkg.badge}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Header */}
+                      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">
+                        {dict.creditPackages[pkg.id as keyof typeof dict.creditPackages]?.label ?? pkg.label}
+                      </p>
+                      <p className="text-sm text-neutral-400 mb-4">{plan?.desc}</p>
+
+                      {/* Price */}
+                      <div className="flex items-baseline gap-0.5 mb-1">
+                        <span className="text-neutral-500 text-lg">$</span>
+                        <span className="text-5xl font-black text-white tracking-tight">{pkg.price}</span>
+                      </div>
+                      <p className="text-sm text-neutral-500">
+                        <span className="text-white font-semibold">{pkg.credits}</span> evaluations
+                      </p>
+                      <p className="text-xs text-neutral-600 mt-0.5">{pkg.perUnit}</p>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => { setShowVerifyModal(true) }}
+                        className={`mt-5 w-full rounded-xl py-3 text-sm font-semibold transition-all ${
+                          pkg.highlight
+                            ? 'bg-[#FF0050] text-white hover:bg-[#e60049] shadow-lg shadow-[#FF0050]/20'
+                            : 'border border-neutral-700 text-neutral-300 hover:border-[#FF0050] hover:text-[#FF0050]'
+                        }`}
+                      >
+                        {dict.common.getStarted}
+                      </button>
+
+                      {/* Features */}
+                      {plan && (
+                        <ul className="mt-6 space-y-2.5">
+                          {plan.includes.map(f => (
+                            <li key={f} className="flex items-start gap-2.5 text-sm">
+                              <CheckCircle2 className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
+                              <span className="text-neutral-300">{dict.home.pricing.features[f as keyof typeof dict.home.pricing.features] ?? f}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-              <div className="mt-6 flex justify-center gap-5 text-[10px] text-neutral-600">
-                {dict.home.pricing.footer.map((text, i) => (
-                  <span key={i}>{text}</span>
+
+              {/* Comparison table */}
+              <div className="mb-12">
+                <h3 className="text-xl font-bold text-center mb-2">{dict.home.pricing.compareTitle}</h3>
+                <p className="text-neutral-500 text-center text-sm mb-8">{dict.home.pricing.compareSubtitle}</p>
+
+                <div className="overflow-x-auto rounded-xl border border-neutral-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-neutral-800">
+                        <th className="text-left px-5 py-3 font-medium text-neutral-400">Feature</th>
+                        <th className="text-center px-5 py-3 font-medium text-neutral-400">Starter</th>
+                        <th className="text-center px-5 py-3 font-medium text-[#FF0050] bg-[#FF0050]/[0.04]">Popular</th>
+                        <th className="text-center px-5 py-3 font-medium text-neutral-400">Pro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {([
+                        { feat: 'scoring', starter: true, popular: true, pro: true },
+                        { feat: 'brandDeal', starter: true, popular: true, pro: true },
+                        { feat: 'report', starter: true, popular: true, pro: true },
+                        { feat: 'history', starter: true, popular: true, pro: true },
+                        { feat: 'monetization', starter: false, popular: true, pro: true },
+                        { feat: 'benchmark', starter: false, popular: true, pro: true },
+                        { feat: 'growth', starter: false, popular: true, pro: true },
+                        { feat: 'commerce', starter: false, popular: true, pro: true },
+                        { feat: 'risk', starter: false, popular: true, pro: true },
+                        { feat: 'ip', starter: false, popular: false, pro: true },
+                        { feat: 'content', starter: false, popular: false, pro: true },
+                        { feat: 'api', starter: false, popular: false, pro: true },
+                      ] as Array<{ feat: string; starter: boolean; popular: boolean; pro: boolean }>).map(row => (
+                        <tr key={row.feat} className="border-b border-neutral-800/50">
+                          <td className="px-5 py-3 text-neutral-300">
+                            {dict.home.pricing.features[row.feat as keyof typeof dict.home.pricing.features] ?? row.feat}
+                          </td>
+                          <td className="text-center px-5 py-3">
+                            {row.starter ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-400 mx-auto" />
+                            ) : (
+                              <span className="text-neutral-700">—</span>
+                            )}
+                          </td>
+                          <td className="text-center px-5 py-3 bg-[#FF0050]/[0.04]">
+                            {row.popular ? (
+                              <CheckCircle2 className="h-4 w-4 text-[#FF0050] mx-auto" />
+                            ) : (
+                              <span className="text-neutral-700">—</span>
+                            )}
+                          </td>
+                          <td className="text-center px-5 py-3">
+                            {row.pro ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-400 mx-auto" />
+                            ) : (
+                              <span className="text-neutral-700">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex flex-wrap justify-center gap-6 text-xs text-neutral-600">
+                {dict.home.pricing.footer.map((text: string, i: number) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-[#00F2EA]/50" />
+                    {text}
+                  </div>
                 ))}
               </div>
             </div>
@@ -1289,6 +1424,7 @@ function HomePageContent() {
               <ul className="space-y-3">
                 <li><a href="#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</a></li>
                 <li><a href="#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</a></li>
+                <li><Link href="/blog" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.blog}</Link></li>
                 {isLoggedIn && <li><Link href="/tracker" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.tracker}</Link></li>}
                 {isLoggedIn && <li><Link href="/history" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.history}</Link></li>}
               </ul>
