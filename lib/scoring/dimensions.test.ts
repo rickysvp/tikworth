@@ -135,7 +135,7 @@ describe('scoreCommerce', () => {
 
   it('mega account has commerce baseline even without keywords', () => {
     const posts = [makePost({ desc: '#entertainment fun video' })]
-    const score = scoreCommerce(posts, ['娱乐'], 100_000_000)
+    const score = scoreCommerce(posts, ['娱乐'], 100_000_000, 20_000_000)
     expect(score).toBeGreaterThanOrEqual(50)
   })
 })
@@ -176,7 +176,7 @@ describe('scoreHealth', () => {
   })
 
   it('mega account with normal ER gets high health score', () => {
-    const metrics = makeMetrics({ engagementRate: 1.5, cvPlays: 1.0, daysSinceLastPost: 3 })
+    const metrics = makeMetrics({ engagementRate: 1.5, cvPlays: 1.0, daysSinceLastPost: 3, effectiveAvgPlays: 20_000_000 })
     const score = scoreHealth(100_000_000, 100, metrics)
     expect(score).toBeGreaterThanOrEqual(80)
   })
@@ -194,7 +194,7 @@ describe('scoreStability', () => {
       classify(makePost({ playCount: 200000 })),
       classify(makePost({ playCount: 50000 })),
     ]
-    expect(scoreStability(stable, 1, 50000)).toBeGreaterThan(scoreStability(volatile, 1, 50000))
+    expect(scoreStability(stable, 1, 50000, 100000)).toBeGreaterThan(scoreStability(volatile, 1, 50000, 100000))
   })
 
   it('mega account with moderate CV gets reasonable score', () => {
@@ -203,7 +203,7 @@ describe('scoreStability', () => {
       classify(makePost({ playCount: 45_000_000 })),
       classify(makePost({ playCount: 55_000_000 })),
     ]
-    const score = scoreStability(posts, 3, 100_000_000)
+    const score = scoreStability(posts, 3, 100_000_000, 50_000_000)
     expect(score).toBeGreaterThanOrEqual(50)
   })
 })

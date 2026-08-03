@@ -273,4 +273,105 @@ describe('scoreProfile', () => {
     expect(evaluation.brandDealPerVideo!.high).toBeGreaterThanOrEqual(evaluation.brandDealPerVideo!.mid)
     expect(evaluation.brandDealPerVideo!.monthlyBrandPosts).toBeGreaterThan(0)
   })
+
+  // ===== Part C: 高粉低播账号修复测试 =====
+
+  it('high-follower low-play account (@dudamartins_52-like) gets downgraded tier and reasonable valuation', () => {
+    // 1M 粉丝但平均播放仅 3 万（playFanRatio = 0.03，远低于 mega 基准 0.15）
+    // 旧模型：S 级 + $2.8M 估值；新模型应降级且估值合理
+    const lowPlayProfile = buildProfile({
+      username: 'dudamartins_52',
+      nickname: 'Duda Martins',
+      followerCount: 1_000_000,
+      followingCount: 500,
+      totalLikes: 300_000,
+      videoCount: 200,
+      bio: 'fashion content creator',
+      verified: false,
+      region: 'BR',
+      posts: Array.from({ length: 10 }, (_, i) =>
+        post(`d${i}`, 30_000, now - (i + 1) * 86400, '#fashion #ootd daily outfit')
+      ),
+    })
+    const evaluation = scoreProfile(lowPlayProfile, { now })
+
+    // tier 应 ≤ B（不能是 S 或 A）— 高粉低播不应评高等级
+    expect(['B', 'C', 'D', 'E', 'F']).toContain(evaluation.tier)
+
+    // 总估值应 ≤ $500K（旧模型 $2.8M 不合理）
+    expect(evaluation.businessValue.totalValue.mid).toBeLessThanOrEqual(500_000)
+
+    // 单条视频报价应 ≤ $8K（旧模型 $36K 不合理）
+    if (evaluation.brandDealPerVideo) {
+      expect(evaluation.brandDealPerVideo.mid).toBeLessThanOrEqual(8_000)
+    }
+
+    // IP 资产不应虚高（旧模型 IP 资产是主要虚高来源）
+    const ipComp = evaluation.businessValue.components.find(c => c.label === 'IP/Brand Asset Value')
+    if (ipComp) {
+      expect(ipComp.amount.mid).toBeLessThanOrEqual(200_000)
+    }
+  })
+
+  it('true top-tier account (10M followers + 5M plays) still gets S tier and high valuation', () => {
+    // 10M 粉丝 + 500 万播放（playFanRatio = 0.5，远高于 mega 基准 0.15）
+    // 确保修复不误伤真正头部账号
+    const topProfile = buildProfile({
+      username: 'topcreator',
+      nickname: 'Top Creator',
+      followerCount: 10_000_000,
+      followingCount: 100,
+      totalLikes: 2_000_000_000,
+      videoCount: 500,
+      bio: 'founder of tech brand, visit my website',
+      verified: true,
+      region: 'US',
+      posts: Array.from({ length: 10 }, (_, i) =>
+        post(`t${i}`, 5_000_000, now - (i + 1) * 86400, '#tech #review founder brand product')
+      ),
+    })
+    const evaluation = scoreProfile(topProfile, { now })
+
+    // tier 应 = S — 真正头部账号不应被误降级
+    expect(evaluation.tier).toBe('S')
+
+    // 总估值应 ≥ $1M — 头部账号商业价值不应被过度折损
+    expect(evaluation.businessValue.totalValue.mid).toBeGreaterThanOrEqual(1_000_000)
+  })
+
+  it('play-fan penalty multiplier correctly scales brand deal value for low-play accounts', () => {
+    // 同样 1M 粉丝，对比正常播放 vs 低播放的品牌报价
+    const normalPlayProfile = buildProfile({
+      followerCount: 1_000_000,
+      followingCount: 500,
+      totalLikes: 3_000_000,
+      videoCount: 200,
+      bio: 'fashion content creator',
+      verified: false,
+      region: 'US',
+      posts: Array.from({ length: 10 }, (_, i) =>
+        post(`n${i}`, 300_000, now - (i + 1) * 86400, '#fashion #ootf daily outfit')
+      ),
+    })
+    const lowPlayProfile = buildProfile({
+      followerCount: 1_000_000,
+      followingCount: 500,
+      totalLikes: 300_000,
+      videoCount: 200,
+      bio: 'fashion content creator',
+      verified: false,
+      region: 'US',
+      posts: Array.from({ length: 10 }, (_, i) =>
+        post(`l${i}`, 30_000, now - (i + 1) * 86400, '#fashion #ootd daily outfit')
+      ),
+    })
+    const normalEval = scoreProfile(normalPlayProfile, { now })
+    const lowEval = scoreProfile(lowPlayProfile, { now })
+
+    // 低播放账号的品牌报价应远低于正常播放账号
+    expect(lowEval.brandDealPerVideo!.mid).toBeLessThan(normalEval.brandDealPerVideo!.mid * 0.5)
+
+    // 低播放账号的总估值也应低于正常播放账号
+    expect(lowEval.businessValue.totalValue.mid).toBeLessThan(normalEval.businessValue.totalValue.mid)
+  })
 })

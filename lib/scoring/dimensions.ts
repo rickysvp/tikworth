@@ -95,15 +95,9 @@ export function scoreReach(
   const benchmark = TIER_PLAY_FAN_BENCHMARK[tier]
   const playFanRatio = followerCount > 0 ? effectiveAvgPlays / followerCount : 0
 
-  // 用层级基准做归一化评分
+  // 100% 基于播放粉比 — 粉丝数不再提供地板，reach 完全反映真实触达能力
   const ratio = playFanRatio / Math.max(benchmark, 0.01)
-  const reachScore = scoreFromRatio(ratio, tier)
-
-  // 粉丝规模加分（对数尺度，上限 100）
-  const f = Math.max(followerCount, 100)
-  const followerScore = clamp((Math.log10(f / 1000) / Math.log10(100000)) * 100, 0, 100)
-
-  return Math.round(reachScore * 0.55 + followerScore * 0.45)
+  return Math.round(scoreFromRatio(ratio, tier))
 }
 
 export function scoreEngagement(
@@ -175,16 +169,12 @@ export function scoreContent(
     const maxTag = Math.max(...Object.values(tagCounts))
     verticality = maxTag / totalTags * 100
   }
-  // mega/macro 账号：垂直度默认给高分（多样化是正常的内容策略，不是缺陷）
-  if (tier === 'mega') verticality = Math.max(verticality, 70)
-  else if (tier === 'macro') verticality = Math.max(verticality, 55)
+  // 移除 mega/macro 硬地板 — 垂直度完全由实际 hashtag 集中度决定
 
-  // 4. 爆款能力：峰值/均值比（mega/macro 稳定高播放不惩罚）
+  // 4. 爆款能力：峰值/均值比
   const breakoutRatio = effectivePeakPlays / Math.max(effectiveAvgPlays, 1)
-  let breakoutScore = clamp((breakoutRatio - 1) / 4 * 100, 0, 100)
-  // mega/macro 账号：稳定高播放 = 好，不需要爆款来证明
-  if (tier === 'mega') breakoutScore = Math.max(breakoutScore, 65)
-  else if (tier === 'macro') breakoutScore = Math.max(breakoutScore, 50)
+  const breakoutScore = clamp((breakoutRatio - 1) / 4 * 100, 0, 100)
+  // 移除 mega/macro 硬地板 — 爆款能力完全由实际数据决定
 
   return Math.round(
     performanceScore * 0.30 +
@@ -241,7 +231,8 @@ export function scoreMomentum(playGrowth: number, followerCount: number): number
 export function scoreStability(
   maturePosts: ClassifiedPost[],
   daysSinceLastPost: number,
-  followerCount: number
+  followerCount: number,
+  effectiveAvgPlays: number
 ): number {
   const tier = getFollowerTier(followerCount)
   const cvBenchmark = TIER_CV_BENCHMARK[tier]
@@ -255,6 +246,15 @@ export function scoreStability(
   const cvRatio = cvBenchmark / Math.max(cv, 0.01)
   let score = scoreFromRatio(cvRatio, tier)
 
+  // 播放粉比惩罚：高粉低播账号稳定性额外扣分
+  // playFanRatio < 0.05 → 扣 15-25 分（越低扣越多）
+  const playFanRatio = followerCount > 0 ? effectiveAvgPlays / followerCount : 0
+  if (playFanRatio < 0.05 && followerCount >= 100000) {
+    // 比率越低，扣分越多：0.05→-15，0→-25
+    const penalty = 15 + (1 - playFanRatio / 0.05) * 10
+    score -= penalty
+  }
+
   if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysCritical) score -= 40
   else if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysWarning) score -= 20
 
@@ -263,9 +263,25 @@ export function scoreStability(
 
 const COMMERCIAL_CATEGORIES = new Set(['Fitness & Sports', 'fitness', 'Beauty & Skincare', 'beauty', 'Fashion & Style', 'fashion', 'Food & Cooking', 'food', 'Tech & Gadgets', 'tech', 'Finance & Investing', 'finance'])
 
-export function scoreCommerce(posts: Post[], categories: string[], followerCount: number): number {
+/**
+ * 播放粉比折损的 baseline 调整
+ * 高粉低播账号（playFanRatio < 0.05 且粉丝 >= 10万）的 baseline 折损
+ * playFanRatio 0.05 → 1.0x, 0 → 0.4x
+ * 防止高粉低播账号因 baseline 虚高而获得不合理的评级
+ */
+function adjustBaselineByPlayFan(baseline: number, followerCount: number, effectiveAvgPlays: number): number {
+  const playFanRatio = followerCount > 0 ? effectiveAvgPlays / followerCount : 0
+  if (followerCount >= 100000 && playFanRatio < 0.05) {
+    const factor = 0.4 + (playFanRatio / 0.05) * 0.6
+    return baseline * factor
+  }
+  return baseline
+}
+
+export function scoreCommerce(posts: Post[], categories: string[], followerCount: number, effectiveAvgPlays: number = 0): number {
   const tier = getFollowerTier(followerCount)
-  if (!posts.length) return TIER_COMMERCE_BASELINE[tier]
+  const baseline = adjustBaselineByPlayFan(TIER_COMMERCE_BASELINE[tier], followerCount, effectiveAvgPlays)
+  if (!posts.length) return Math.round(baseline)
 
   // 关键词检测
   const enKeywords = COMMERCE_INTENT_KEYWORDS.en
@@ -283,8 +299,8 @@ export function scoreCommerce(posts: Post[], categories: string[], followerCount
   // 高商业化品类的额外加成
   const categoryBonus = categories.some(c => COMMERCIAL_CATEGORIES.has(c)) ? 25 : 0
 
-  // 层级基础分：大号天然有品牌价值
-  return Math.round(clamp(keywordScore + categoryBonus + TIER_COMMERCE_BASELINE[tier], 0, 100))
+  // 层级基础分：大号天然有品牌价值（受播放折损影响）
+  return Math.round(clamp(keywordScore + categoryBonus + baseline, 0, 100))
 }
 
 export function scoreMonetization(
@@ -297,7 +313,7 @@ export function scoreMonetization(
   const tier = getFollowerTier(followerCount)
   const monthlyViews = effectiveAvgPlays * postsPerMonth
 
-  let score = TIER_MONETIZATION_BASELINE[tier]
+  let score = adjustBaselineByPlayFan(TIER_MONETIZATION_BASELINE[tier], followerCount, effectiveAvgPlays)
 
   // 渐进式变现门槛加分
   if (followerCount >= MONETIZATION_THRESHOLDS.creatorFundFollowers && videoCount >= 10) score += 10
@@ -328,7 +344,7 @@ export function scoreHealth(
   const erBenchmark = TIER_ER_BENCHMARK[tier]
   const cvBenchmark = TIER_CV_BENCHMARK[tier]
 
-  let score = TIER_HEALTH_BASELINE[tier]
+  let score = adjustBaselineByPlayFan(TIER_HEALTH_BASELINE[tier], followerCount, metrics.effectiveAvgPlays)
 
   // 层级化互动率健康检测
   if (engagementRate < erBenchmark * 0.3) score -= 25
@@ -357,7 +373,7 @@ export function scoreInfluence(
   const peers = getPeerBenchmarks(followerCount)
   const playsRatio = followerCount > 0 ? effectiveAvgPlays / followerCount : 0
 
-  let score = TIER_INFLUENCE_BASELINE[tier]
+  let score = adjustBaselineByPlayFan(TIER_INFLUENCE_BASELINE[tier], followerCount, effectiveAvgPlays)
 
   // 互动率 vs 同层级
   if (engagementRate >= peers.top10ER) score += 20
@@ -395,8 +411,8 @@ export function computeDimensions(input: ComputeDimsInput): DimensionScores {
     content: scoreContent(profile, metrics),
     authenticity: scoreAuthenticity(followerCount, profile.followingCount, metrics.engagementRate, classified.mature),
     momentum: scoreMomentum(metrics.playGrowth / 100, followerCount),
-    stability: scoreStability(classified.mature, metrics.daysSinceLastPost, followerCount),
-    commerce: scoreCommerce(profile.posts, categories, followerCount),
+    stability: scoreStability(classified.mature, metrics.daysSinceLastPost, followerCount, metrics.effectiveAvgPlays),
+    commerce: scoreCommerce(profile.posts, categories, followerCount, metrics.effectiveAvgPlays),
     monetization: scoreMonetization(followerCount, profile.videoCount, metrics.effectiveAvgPlays, postsPerMonth, metrics.engagementRate),
     health: scoreHealth(followerCount, profile.followingCount, metrics),
     influence: scoreInfluence(followerCount, metrics.engagementRate, metrics.effectiveAvgPlays),

@@ -19,7 +19,7 @@ import {
   pickCategoryCpm, pickRegionMultiplier, getEngagementMultiplier, getFollowerTier,
   calcBrandDealValue, buildIncomeEstimate, buildBusinessValue, buildRevenueRoadmap, buildCommerceReadiness,
 } from './scoring/valuation'
-import { tierFromScore, tierFromBusinessValue, buildPriceAdvice, buildVerdict, buildSummary } from './scoring/verdict'
+import { tierFromScore, buildPriceAdvice, buildVerdict, buildSummary } from './scoring/verdict'
 import { buildContentStrategy } from './scoring/content-strategy'
 
 export { clamp, tierFromScore, inferCategories, peerGroupFromFollowers, aggregateByHour, aggregateByWeekday, average, median, stdDev }
@@ -102,10 +102,18 @@ function detectRisks(profile: RawProfile, metrics: Metrics, classified: ReturnTy
     risks.push({ level: 'medium', label: 'Insufficient Data', detail: 'No recent videos available — score reliability is limited' })
     return risks
   }
-  const { engagementRate, cvPlays, daysSinceLastPost } = metrics
+  const { engagementRate, cvPlays, daysSinceLastPost, effectiveAvgPlays } = metrics
   const frRatio = profile.followerCount / Math.max(profile.followingCount, 1)
   if (engagementRate < RISK_THRESHOLDS.engagementRateCritical) risks.push({ level: 'high', label: 'Suspected Bot Followers', detail: 'Extremely low engagement rate — follower activity may be inauthentic' })
   else if (profile.followerCount > 100000 && engagementRate < 1) risks.push({ level: 'high', label: 'Inflated Followers', detail: 'Large follower count with abnormally low engagement — limited commercial value' })
+  // 高粉低播检测：粉丝 >= 10万 但 playFanRatio < 0.05 → 高风险（粉丝不活跃/僵尸粉/算法不推荐）
+  // ER 相对播放量可能不低（因播放基数小导致 ER 失真），需用 playFanRatio 识别真实触达能力
+  if (profile.followerCount >= 100000 && effectiveAvgPlays > 0) {
+    const playFanRatio = effectiveAvgPlays / profile.followerCount
+    if (playFanRatio < 0.05) {
+      risks.push({ level: 'high', label: 'Inflated Followers', detail: `Very low play-to-follower ratio (${(playFanRatio * 100).toFixed(1)}%) — followers are not engaging with content, indicating possible fake followers or algorithmic suppression` })
+    }
+  }
   if (frRatio < RISK_THRESHOLDS.followerFollowingCritical) risks.push({ level: 'high', label: 'Suspected Follow-for-Follow', detail: 'Following count close to or exceeding follower count — possible bot/follow-train activity' })
   if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysCritical) risks.push({ level: 'high', label: 'Extended Inactivity', detail: 'No new videos in over 60 days' })
   else if (daysSinceLastPost > RISK_THRESHOLDS.inactiveDaysWarning) risks.push({ level: 'medium', label: 'Low Posting Frequency', detail: 'No new videos in over 30 days' })
@@ -391,8 +399,8 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
   const health = buildAccountHealth(metrics, risks, dims)
   const income = buildIncomeEstimate({ profile, metrics, dims, categories, cadence, risks })
   const business = buildBusinessValue({ profile, metrics, dims, categories, income, risks })
-  // Rating is based on business value (computed after business value calculation)
-  const { tier, reason: tierReason } = tierFromBusinessValue(business.totalValue.mid, profile.followerCount, risks)
+  // Tier is driven by 10-dimension score (not business value) — prevents high-follower-low-play accounts from getting S tier
+  const { tier, reason: tierReason } = tierFromScore(score, risks)
   const roadmap = buildRevenueRoadmap({ profile, metrics, dims, risks, income })
   const { cpm: categoryCpm, label: categoryLabel } = pickCategoryCpm(categories)
   const { mult: regionMult, label: regionLabel } = pickRegionMultiplier(profile.region)

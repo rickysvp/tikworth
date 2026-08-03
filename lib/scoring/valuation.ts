@@ -8,13 +8,14 @@ import {
   CATEGORY_BRAND_CPM, CATEGORY_CREATOR_RPM, REGION_VALUE_MULTIPLIER,
   ENGAGEMENT_TIERS, CATEGORY_FAN_VALUE_MULT,
   INCOME_LOW_HIGH_FACTORS, MIN_BRAND_DEAL_PRICE,
-  MONETIZATION_THRESHOLDS, GROWTH_RATE_PARAMS, clamp,
+  MONETIZATION_THRESHOLDS, GROWTH_RATE_PARAMS, clamp, getPeerBenchmarks,
   // 新增 tier 分层配置
   TIER_PREMIUM, BRAND_DEAL_LIMITS_BY_TIER, VIDEO_COUNT_CAP_BY_TIER,
   CONTENT_CPM_RATIO_BY_TIER, DISCOUNT_FACTOR_BY_TIER,
   FOLLOWER_BASE_RATE, FOLLOWER_POWER_LAW_EXPONENT,
   VALUATION_PERIOD_BY_TIER, CHANNEL_WEIGHTS,
   TIER_IP_MULTIPLE, MARKET_ANCHORS, MARKET_ANCHOR_CLAMP,
+  PLAY_FAN_PENALTY, PLAY_FAN_FACTOR_CLAMP,
   MOMENTUM_PARAMS, GROWTH_MULTIPLIER_PARAMS, RISK_DISCOUNT, VERIFIED_MULTIPLIER,
   ENGAGEMENT_FACTOR, BRANDING_SIGNAL_KEYWORDS, BRANDING_SIGNAL_BONUS,
   // 保留旧配置（SUBSCRIPTION/SHOP/LIVE 用）
@@ -190,6 +191,28 @@ export function calcTopViralBonus(posts: Post[], avgPlays: number, _tier: Follow
   return 0
 }
 
+/** 播放粉比折损乘数（品牌报价用）
+ * playFanRatio >= threshold → 1.0（无折损）
+ * playFanRatio < threshold → 指数衰减，最低 minMultiplier
+ * 高粉低播账号（如 1M 粉 + 3 万播放 = ratio 0.03）应被显著折损 */
+export function calcPlayFanPenaltyMultiplier(playFanRatio: number): number {
+  if (playFanRatio >= PLAY_FAN_PENALTY.threshold) return 1.0
+  if (playFanRatio <= 0) return PLAY_FAN_PENALTY.minMultiplier
+  // 差距：每低于阈值 0.05，乘一次 decayFactor
+  const gap = (PLAY_FAN_PENALTY.threshold - playFanRatio) / 0.05
+  const multiplier = Math.pow(PLAY_FAN_PENALTY.decayFactor, gap)
+  return Math.max(multiplier, PLAY_FAN_PENALTY.minMultiplier)
+}
+
+/** 播放粉比因子（粉丝资产用）
+ * playFanFactor = clamp(playFanRatio / tierBenchmark, min, max)
+ * 高粉低播账号粉丝资产应反映真实触达能力
+ * ratio = 1.0 → 1.0（达到层级基准），ratio < 1.0 → 折损到 min 0.3 */
+export function calcPlayFanFactor(playFanRatio: number, tierBenchmark: number): number {
+  const ratio = playFanRatio / Math.max(tierBenchmark, 0.01)
+  return clamp(ratio, PLAY_FAN_FACTOR_CLAMP.min, PLAY_FAN_FACTOR_CLAMP.max)
+}
+
 /** 检测 bio/posts 中的品牌信号，返回加成系数（1.0-1.5） */
 export function detectBrandingSignals(bio: string, posts: Post[], verified?: boolean): number {
   let bonus = 0
@@ -208,14 +231,17 @@ export function detectBrandingSignals(bio: string, posts: Post[], verified?: boo
   return 1.0 + Math.min(bonus, BRANDING_SIGNAL_BONUS.max)
 }
 
-/** IP/品牌资产价值（仅 macro/mega，基于品牌年收入的倍数模型） */
+/** IP/品牌资产价值（仅 macro/mega，基于品牌年收入的倍数模型）
+ * 高粉低播账号 IP 资产应用播放折损 — IP 价值应反映真实影响力，而非虚高的粉丝数 */
 export function calcIpBrandValue(
   brandDealAnnual: number,
   tier: FollowerTier,
   bio: string,
   posts: Post[],
   verified: boolean | undefined,
-  risks: RiskFlag[]
+  risks: RiskFlag[],
+  followers: number = 0,
+  effectiveAvgPlays: number = 0,
 ): { value: number; detail: string } {
   if (tier !== 'macro' && tier !== 'mega') {
     return { value: 0, detail: 'IP asset value only applies to macro/mega tier accounts' }
@@ -228,8 +254,11 @@ export function calcIpBrandValue(
 
   const brandingBonus = detectBrandingSignals(bio, posts, verified)
   const riskDiscount = calcRiskDiscount(risks)
-  const value = Math.round(brandDealAnnual * tierMultiple * brandingBonus * riskDiscount)
-  const detail = `Brand Deal Annual $${Math.round(brandDealAnnual).toLocaleString()} × ${tier} IP multiple ${tierMultiple}x × Branding signals ${brandingBonus.toFixed(2)}x × Risk discount ${riskDiscount.toFixed(2)}x`
+  // 播放折损：高粉低播账号 IP 价值应反映真实触达能力
+  const playFanRatio = followers > 0 ? effectiveAvgPlays / followers : 0
+  const playPenaltyMult = calcPlayFanPenaltyMultiplier(playFanRatio)
+  const value = Math.round(brandDealAnnual * tierMultiple * brandingBonus * riskDiscount * playPenaltyMult)
+  const detail = `Brand Deal Annual $${Math.round(brandDealAnnual).toLocaleString()} × ${tier} IP multiple ${tierMultiple}x × Branding signals ${brandingBonus.toFixed(2)}x × Risk discount ${riskDiscount.toFixed(2)}x${playPenaltyMult < 1.0 ? ` × Play-Fan penalty ${playPenaltyMult.toFixed(2)}x` : ''}`
 
   return { value, detail }
 }
@@ -281,9 +310,8 @@ export function calcBrandDealValue(input: BrandDealInput): BrandDealResult {
   const verifiedMultiplier = calcVerifiedMultiplier(verified)
 
   let perVideoMid = (effectiveAvgPlays / 1000) * categoryCpm * tierPremium * engagementMult * regionMult * momentumMultiplier * riskDiscount * verifiedMultiplier
-  perVideoMid = Math.max(perVideoMid, MIN_BRAND_DEAL_PRICE)
 
-  // mega/macro 市场基准夹紧
+  // mega/macro 市场基准夹紧（先夹紧，再应用播放折损，避免折损被锚点下限覆盖）
   let marketAnchored = false
   if (tier === 'mega' || tier === 'macro') {
     const anchor = getMarketAnchor(tier, categories)
@@ -296,6 +324,16 @@ export function calcBrandDealValue(input: BrandDealInput): BrandDealResult {
       }
     }
   }
+
+  // 播放折损系数：高粉低播账号品牌报价应反映真实触达能力
+  // 在市场锚点夹紧之后应用，确保折损不被锚点下限覆盖
+  const playFanRatio = followers > 0 ? effectiveAvgPlays / followers : 0
+  const playPenaltyMult = calcPlayFanPenaltyMultiplier(playFanRatio)
+  if (playPenaltyMult < 1.0) {
+    perVideoMid *= playPenaltyMult
+  }
+
+  perVideoMid = Math.max(perVideoMid, MIN_BRAND_DEAL_PRICE)
 
   const limits = BRAND_DEAL_LIMITS_BY_TIER[tier] ?? { maxRatioOfMonthlyPosts: 0.3, maxPerMonth: 4 }
   const maxRatioPosts = postsPerMonth * limits.maxRatioOfMonthlyPosts
@@ -636,16 +674,18 @@ export interface FollowerAssetInput {
   bio: string
   posts: Post[]
   verified?: boolean
+  effectiveAvgPlays?: number
 }
 
 /**
  * 粉丝资产价值（幂律定价模型）
- * value = baseRate × realFollowers^0.85 × categoryMult × engagementFactor × riskDiscount × commercialProximityMult
+ * value = baseRate × realFollowers^0.85 × categoryMult × engagementFactor × riskDiscount × commercialProximityMult × playFanFactor
  * 幂律公式避免线性低估头部账号（1 亿粉线性计价 ≈ $5M，幂律计价 ≈ $30M+）
  * commercialProximityMult：无商业信号 → 0.6（折损），有信号 → 1.0-1.5（加成）
+ * playFanFactor：高粉低播账号粉丝资产折损（clamp 0.3-1.5），反映真实触达能力
  */
 export function calcFollowerAssetValue(input: FollowerAssetInput): FollowerAssetResult {
-  const { followers, authenticityScore, engagementRate, categories, risks, bio, posts, verified } = input
+  const { followers, authenticityScore, engagementRate, categories, risks, bio, posts, verified, effectiveAvgPlays } = input
   const tier = getFollowerTier(followers)
   const realFollowers = followers * (authenticityScore / 100)
   const engagementFactor = calcEngagementFactor(engagementRate, tier)
@@ -662,13 +702,19 @@ export function calcFollowerAssetValue(input: FollowerAssetInput): FollowerAsset
   // 商业接近度调整：无商业信号 → 0.6（折损），有信号 → 1.0-1.5（加成）
   const commercialProximityMult = brandingBonus <= 1.0 ? 0.6 : brandingBonus
 
+  // 播放因子：高粉低播账号粉丝资产折损
+  // playFanFactor = clamp(playFanRatio / peerBenchmark, 0.3, 1.5)
+  const playFanRatio = followers > 0 && effectiveAvgPlays !== undefined ? effectiveAvgPlays / followers : 0
+  const peerBenchmark = getPeerBenchmarks(followers).avgPlaysRatio
+  const playFanFactor = effectiveAvgPlays !== undefined ? calcPlayFanFactor(playFanRatio, peerBenchmark) : 1.0
+
   const baseRate = getFollowerBaseRate(tier)
-  // 幂律定价：value = base × realFollowers^0.85 × mult × factor × discount × commercialProximity
-  const value = baseRate * Math.pow(realFollowers, FOLLOWER_POWER_LAW_EXPONENT) * categoryMult * engagementFactor * riskDiscount * commercialProximityMult
+  // 幂律定价：value = base × realFollowers^0.85 × mult × factor × discount × commercialProximity × playFanFactor
+  const value = baseRate * Math.pow(realFollowers, FOLLOWER_POWER_LAW_EXPONENT) * categoryMult * engagementFactor * riskDiscount * commercialProximityMult * playFanFactor
 
   return {
     value: Math.round(value),
-    detail: `${Math.round(realFollowers).toLocaleString()} real followers × $${baseRate.toFixed(3)}/fan × ^${FOLLOWER_POWER_LAW_EXPONENT} power law × Category ${categoryMult.toFixed(1)}x × Engagement ${engagementFactor.toFixed(2)} × Risk ${riskDiscount.toFixed(2)} × Commercial Proximity ${commercialProximityMult.toFixed(2)}x`,
+    detail: `${Math.round(realFollowers).toLocaleString()} real followers × $${baseRate.toFixed(3)}/fan × ^${FOLLOWER_POWER_LAW_EXPONENT} power law × Category ${categoryMult.toFixed(1)}x × Engagement ${engagementFactor.toFixed(2)} × Risk ${riskDiscount.toFixed(2)} × Commercial Proximity ${commercialProximityMult.toFixed(2)}x × Play-Fan Factor ${playFanFactor.toFixed(2)}x`,
   }
 }
 
@@ -875,6 +921,7 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
     bio: profile.bio || '',
     posts: profile.posts,
     verified: profile.verified,
+    effectiveAvgPlays: metrics.effectiveAvgPlays,
   })
   // monCap 排除 brand_deals 渠道，避免与品牌合作年价值重复计价
   const nonBrandChannels = income.breakdown.filter(b => b.source !== 'brand_deals' && b.monthlyAmount.mid > 0).map(b => b.source)
@@ -893,7 +940,9 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
     profile.bio || '',
     profile.posts,
     profile.verified,
-    risks
+    risks,
+    profile.followerCount,
+    metrics.effectiveAvgPlays,
   )
 
   const components: BusinessValueComponent[] = [
@@ -939,7 +988,12 @@ export function buildBusinessValue(input: BuildValueInput): BusinessValue {
     for (const c of components) c.percentage = Math.round((c.amount.mid / totalMid) * 100)
   }
   // 全局 cap：总估值不超过品牌年收入的 30 倍（防止任何组件失控）
-  const GLOBAL_CAP_MULTIPLE = 30
+  // 高粉低播账号使用更严格的 cap（3 倍）— 真实触达能力远低于粉丝数暗示的价值
+  const playFanRatio = profile.followerCount > 0 && metrics.effectiveAvgPlays > 0
+    ? metrics.effectiveAvgPlays / profile.followerCount
+    : 0
+  const isLowPlayAccount = profile.followerCount >= 100000 && playFanRatio < 0.05
+  const GLOBAL_CAP_MULTIPLE = isLowPlayAccount ? 3 : 30
   if (brandDealValue > 0) {
     const globalCap = brandDealValue * GLOBAL_CAP_MULTIPLE
     if (totalMid > globalCap) {

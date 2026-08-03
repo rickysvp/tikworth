@@ -26,62 +26,45 @@ const noRisks: RiskFlag[] = []
 
 describe('tierFromScore', () => {
   it('maps scores to tiers correctly', () => {
-    expect(tierFromScore(90)).toBe('S')
-    expect(tierFromScore(75)).toBe('A')
-    expect(tierFromScore(60)).toBe('B')
-    expect(tierFromScore(45)).toBe('C')
-    expect(tierFromScore(30)).toBe('D')
-    expect(tierFromScore(15)).toBe('E')
-    expect(tierFromScore(5)).toBe('F')
-  })
-})
-
-describe('tierFromBusinessValue', () => {
-  it('S tier for business value > $1M', () => {
-    const result = tierFromBusinessValue(2_000_000, 50_000_000, noRisks)
-    expect(result.tier).toBe('S')
-  })
-
-  it('S tier for followers > 10M with no high risk', () => {
-    const result = tierFromBusinessValue(500_000, 20_000_000, noRisks)
-    expect(result.tier).toBe('S')
-  })
-
-  it('A tier for business value > $100K', () => {
-    const result = tierFromBusinessValue(200_000, 500_000, noRisks)
-    expect(result.tier).toBe('A')
-  })
-
-  it('B tier for business value > $10K', () => {
-    const result = tierFromBusinessValue(50_000, 50_000, noRisks)
-    expect(result.tier).toBe('B')
-  })
-
-  it('C tier for business value > $1K', () => {
-    const result = tierFromBusinessValue(5_000, 10_000, noRisks)
-    expect(result.tier).toBe('C')
-  })
-
-  it('D tier for business value > $100', () => {
-    const result = tierFromBusinessValue(500, 5_000, noRisks)
-    expect(result.tier).toBe('D')
-  })
-
-  it('F tier for severe risk (2+ high risks)', () => {
-    const risks: RiskFlag[] = [
-      { level: 'high', label: '疑似买粉', detail: '互动率极低' },
-      { level: 'high', label: '疑似互关刷量', detail: '粉关比异常' },
-    ]
-    const result = tierFromBusinessValue(500_000, 100_000, risks)
-    expect(result.tier).toBe('F')
+    expect(tierFromScore(90, noRisks).tier).toBe('S')
+    expect(tierFromScore(75, noRisks).tier).toBe('A')
+    expect(tierFromScore(60, noRisks).tier).toBe('B')
+    expect(tierFromScore(45, noRisks).tier).toBe('C')
+    expect(tierFromScore(30, noRisks).tier).toBe('D')
+    expect(tierFromScore(15, noRisks).tier).toBe('E')
+    expect(tierFromScore(5, noRisks).tier).toBe('F')
   })
 
   it('downgrades one tier for single high risk', () => {
     const risks: RiskFlag[] = [
       { level: 'high', label: '疑似买粉', detail: '互动率极低' },
     ]
-    const result = tierFromBusinessValue(200_000, 500_000, risks)
-    expect(result.tier).toBe('B') // A → B due to risk downgrade
+    // score 75 → A, downgrade → B
+    expect(tierFromScore(75, risks).tier).toBe('B')
+  })
+
+  it('forces F for 2+ high risks regardless of score', () => {
+    const risks: RiskFlag[] = [
+      { level: 'high', label: '疑似买粉', detail: '互动率极低' },
+      { level: 'high', label: '疑似互关刷量', detail: '粉关比异常' },
+    ]
+    expect(tierFromScore(95, risks).tier).toBe('F')
+  })
+})
+
+describe('tierFromBusinessValue (deprecated)', () => {
+  it('always returns F tier (deprecated, delegates to tierFromScore with score=0)', () => {
+    const result = tierFromBusinessValue(2_000_000, 50_000_000, noRisks)
+    expect(result.tier).toBe('F')
+  })
+
+  it('F tier for severe risk', () => {
+    const risks: RiskFlag[] = [
+      { level: 'high', label: '疑似买粉', detail: '互动率极低' },
+      { level: 'high', label: '疑似互关刷量', detail: '粉关比异常' },
+    ]
+    const result = tierFromBusinessValue(500_000, 100_000, risks)
+    expect(result.tier).toBe('F')
   })
 })
 

@@ -2,7 +2,7 @@ import {
   DimensionScores, Metrics, RiskFlag, ReportSummary,
   AccountHealth,
 } from '../../types'
-import { TIER_THRESHOLDS, BUSINESS_VALUE_TIERS } from './config'
+import { TIER_THRESHOLDS } from './config'
 
 const DIM_LABELS: Record<keyof DimensionScores, { name: string; strength: string; weakness: string }> = {
   reach: { name: 'Reach', strength: 'Strong reach — follower count and play volume perform well', weakness: 'Limited reach — consider growing follower base or improving play volume' },
@@ -17,20 +17,7 @@ const DIM_LABELS: Record<keyof DimensionScores, { name: string; strength: string
   influence: { name: 'Influence', strength: 'High industry standing — above peer average for this tier', weakness: 'Low industry standing — below peer average for this tier' },
 }
 
-// ========== Legacy absolute score tier (backward compatible) ==========
-
-/** @deprecated Use tierFromBusinessValue instead */
-export function tierFromScore(score: number): 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' {
-  if (score >= TIER_THRESHOLDS.S) return 'S'
-  if (score >= TIER_THRESHOLDS.A) return 'A'
-  if (score >= TIER_THRESHOLDS.B) return 'B'
-  if (score >= TIER_THRESHOLDS.C) return 'C'
-  if (score >= TIER_THRESHOLDS.D) return 'D'
-  if (score >= TIER_THRESHOLDS.E) return 'E'
-  return 'F'
-}
-
-// ========== Business Value Tier System ==========
+// ========== Score-based Tier System ==========
 
 export interface TierResult {
   tier: 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
@@ -38,20 +25,16 @@ export interface TierResult {
 }
 
 /**
- * Business value-based tier system
- * Tier reflects "how much is it worth, how reliable is it" — not "how big is it"
- * A 500K finance account can earn S-tier; a 5M bot account gets D-tier
+ * Score-based tier system
+ * Tier reflects overall account quality across 10 dimensions (reach, engagement, content, etc.)
+ * Business value is a display metric, not a tier determinant — prevents "high followers + low plays" from getting S tier
  */
-export function tierFromBusinessValue(
-  businessValueMid: number,
-  followerCount: number,
-  risks: RiskFlag[],
-): TierResult {
+export function tierFromScore(score: number, risks: RiskFlag[]): TierResult {
   const hasHighRisk = risks.some(r => r.level === 'high')
   const highRiskCount = risks.filter(r => r.level === 'high').length
 
   // Critical risk → straight to F
-  if (highRiskCount >= 2 || (hasHighRisk && businessValueMid < 100)) {
+  if (highRiskCount >= 2) {
     return {
       tier: 'F' as const,
       reason: 'Critical risk signals detected — not recommended for any commercial partnership',
@@ -61,39 +44,27 @@ export function tierFromBusinessValue(
   let tier: 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
   let reason: string
 
-  if (businessValueMid >= BUSINESS_VALUE_TIERS.S) {
+  if (score >= TIER_THRESHOLDS.S) {
     tier = 'S'
-    reason = 'Business value exceeds $1M — top-tier IP asset'
-  } else if (followerCount > 10_000_000 && !hasHighRisk) {
-    tier = 'S'
-    reason = '10M+ followers with no high-risk signals — top-tier IP asset'
-  }
-  else if (businessValueMid >= BUSINESS_VALUE_TIERS.A) {
+    reason = `Score ${score} — top-tier account with exceptional performance across all dimensions`
+  } else if (score >= TIER_THRESHOLDS.A) {
     tier = 'A'
-    reason = 'Business value exceeds $100K — high-quality monetizing account'
-  } else if (followerCount > 1_000_000 && !hasHighRisk) {
-    tier = 'A'
-    reason = '1M+ followers with clean risk profile — premium account'
-  }
-  else if (businessValueMid >= BUSINESS_VALUE_TIERS.B) {
+    reason = `Score ${score} — premium account with above-average performance`
+  } else if (score >= TIER_THRESHOLDS.B) {
     tier = 'B'
-    reason = 'Business value exceeds $10K — stable monetization capability'
-  }
-  else if (businessValueMid >= BUSINESS_VALUE_TIERS.C) {
+    reason = `Score ${score} — solid account with stable performance and growth room`
+  } else if (score >= TIER_THRESHOLDS.C) {
     tier = 'C'
-    reason = 'Growth potential present — not yet at stable monetization level'
-  }
-  else if (businessValueMid >= BUSINESS_VALUE_TIERS.D) {
+    reason = `Score ${score} — growing account with potential, not yet at stable level`
+  } else if (score >= TIER_THRESHOLDS.D) {
     tier = 'D'
-    reason = 'Entry-level account — average performance metrics'
-  }
-  else if (hasHighRisk) {
+    reason = `Score ${score} — entry-level account, multiple dimensions need improvement`
+  } else if (score >= TIER_THRESHOLDS.E) {
     tier = 'E'
-    reason = 'Risk signals detected — limited commercial value'
-  }
-  else {
+    reason = `Score ${score} — below-average performance with risk signals`
+  } else {
     tier = 'F'
-    reason = 'Minimal commercial value — not ready for partnerships'
+    reason = `Score ${score} — minimal commercial value, not ready for partnerships`
   }
 
   // Risk downgrade: high risk signals → force downgrade one tier
@@ -108,6 +79,18 @@ export function tierFromBusinessValue(
   }
 
   return { tier, reason }
+}
+
+/**
+ * @deprecated Use tierFromScore instead
+ * Business value-based tier — kept for backward compatibility, no longer used in scoreProfile
+ */
+export function tierFromBusinessValue(
+  _businessValueMid: number,
+  _followerCount: number,
+  risks: RiskFlag[],
+): TierResult {
+  return tierFromScore(0, risks)
 }
 
 function formatPlays(n: number): string {

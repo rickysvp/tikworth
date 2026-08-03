@@ -251,13 +251,14 @@ export const CHANNEL_WEIGHTS: Record<string, number> = {
   creator_program: 0.3,
 }
 
-/** IP/品牌资产倍数（IP = brandDealAnnual × multiple，仅 macro/mega 计入） */
+/** IP/品牌资产倍数（IP = brandDealAnnual × multiple，仅 macro/mega 计入）
+ * 调整：mega 5→3, macro 2→1.5 — IP 价值不应 5 倍于年收入，避免高粉低播账号 IP 资产虚高 */
 export const TIER_IP_MULTIPLE: Record<string, number> = {
   nano: 0,
   micro: 0,
   mid: 0,
-  macro: 2,
-  mega: 5,
+  macro: 1.5,
+  mega: 3,
 }
 
 /** 品类 IP 系数（金融/科技 IP 价值高，搞笑低） */
@@ -315,8 +316,23 @@ export const MARKET_ANCHORS: Record<string, Record<string, number>> = {
   },
 }
 
-/** 市场基准夹紧系数（公式输出限制在 anchor × [0.3, 3.0] 区间） */
-export const MARKET_ANCHOR_CLAMP = { low: 0.3, high: 3.0 }
+/** 市场基准夹紧系数（公式输出限制在 anchor × [0.1, 3.0] 区间）
+ * 调整：下限 0.3→0.1 — 允许高粉低播账号报价反映真实触达能力（原来 0.3 托底过高） */
+export const MARKET_ANCHOR_CLAMP = { low: 0.1, high: 3.0 }
+
+/** 播放折损阈值 — 品牌报价折损系数配置
+ * playFanRatio < threshold 时，品牌报价按 decayFactor 折损
+ * 调整目的：高粉低播账号（如 @dudamartins_52）品牌报价应反映真实触达能力 */
+export const PLAY_FAN_PENALTY = {
+  threshold: 0.1,        // playFanRatio < 0.1 触发折损
+  decayFactor: 0.5,      // 折损系数：每低于阈值 0.01，报价 ×0.5^(差距/0.05)
+  minMultiplier: 0.2,    // 最低折损倍数（防止归零）
+}
+
+/** 粉丝资产播放因子配置（calcFollowerAssetValue 用）
+ * playFanFactor = clamp(playFanRatio / tierBenchmark, min, max)
+ * 高粉低播账号粉丝资产应反映真实触达能力 */
+export const PLAY_FAN_FACTOR_CLAMP = { min: 0.3, max: 1.5 }
 
 /** 动量乘数参数（playGrowth → momentumMultiplier） */
 export const MOMENTUM_PARAMS = {
