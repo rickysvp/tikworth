@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getPostBySlug, getAllPosts } from '@/lib/blog'
-import { Calendar, Clock, ArrowLeft, Share2 } from 'lucide-react'
+import { Calendar, Clock, ArrowLeft } from 'lucide-react'
+import ShareButton from './ShareButton'
 
 // ── Static generation ──
 
@@ -148,23 +149,7 @@ export default async function BlogPostPage({
             >
               ← Back to all posts
             </Link>
-            <button
-              onClick={() => {
-                const url = window.location.href
-                navigator.clipboard.writeText(url).catch(() => {})
-                // Brief visual feedback
-                const btn = document.activeElement as HTMLButtonElement
-                if (btn) {
-                  const orig = btn.textContent
-                  btn.textContent = 'Copied!'
-                  setTimeout(() => { btn.textContent = orig }, 1500)
-                }
-              }}
-              className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
-            >
-              <Share2 className="h-4 w-4" />
-              Share this post
-            </button>
+            <ShareButton />
           </div>
         </div>
 
