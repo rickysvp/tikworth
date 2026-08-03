@@ -186,6 +186,29 @@ body {
   to { opacity: 1; }
 }
 
+@keyframes scan-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scan-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+@keyframes data-flow {
+  0% { transform: translateY(-100%); opacity: 0; }
+  20% { opacity: 0.6; }
+  80% { opacity: 0.6; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes burst {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 @keyframes scale-in {
   from {
     opacity: 0;
@@ -199,6 +222,18 @@ body {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
+}
+
+.animate-scan-rotate {
+  animation: scan-rotate 2.5s linear infinite;
+}
+
+.animate-scan-pulse {
+  animation: scan-pulse 1.8s ease-in-out infinite;
+}
+
+.animate-burst {
+  animation: burst 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .animate-scale-in {
