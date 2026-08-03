@@ -57,6 +57,7 @@ export const CATEGORY_BRAND_CPM: Record<string, number> = {
   'Pets & Animals': 14, 'pets': 14,
   'Lifestyle': 14, 'lifestyle': 14,
   'Beauty & Lifestyle': 14,
+  'Shopping & Deals': 22, 'shopping': 22, 'deals': 22,  // 带货账号 CPM 高于 Lifestyle
   'General Entertainment': 10, 'entertainment': 10,
   'default': 15,
 }
@@ -242,6 +243,9 @@ export const VALUATION_PERIOD_BY_TIER: Record<string, number> = {
 export const CHANNEL_WEIGHTS: Record<string, number> = {
   brand_deals: 1.0,
   tiktok_shop: 0.8,
+  amazon_associates: 0.75,
+  shopify_dtc: 0.85,
+  live_commerce: 0.9,
   subscriptions: 0.6,
   live_gifts: 0.5,
   creator_program: 0.3,
@@ -360,6 +364,8 @@ export const BRANDING_SIGNAL_KEYWORDS = {
   brand: ['brand', 'shop', 'store', 'company', 'product', '品牌', '店铺', '旗舰店', '自有'],
   crossPlatform: ['youtube', 'instagram', 'twitter', 'twitch', 'website', 'link in bio', '主页链接'],
   product: ['merch', 'course', 'book', 'app', 'subscribe', '周边', '课程', '电子书'],
+  // 带货 storefront 信号（识别 Amazon/Shopify/Etsy 自建电商）
+  storefront: ['amazon storefront', 'amazon store', 'etsy shop', 'shopify store', 'my store', 'tiktok shop', 'storefront', '旗舰店', '我的店铺'],
 }
 
 /** 品牌信号加成系数 */
@@ -475,6 +481,9 @@ export const SHOP_OPERATIONAL_METRICS: Record<string, { aov: number; commission:
   'fitness': { aov: 45, commission: 0.12, conversionRate: 0.002 },
   'Tech & Gadgets': { aov: 80, commission: 0.08, conversionRate: 0.0015 },
   'tech': { aov: 80, commission: 0.08, conversionRate: 0.0015 },
+  'Shopping & Deals': { aov: 35, commission: 0.15, conversionRate: 0.004 },
+  'shopping': { aov: 35, commission: 0.15, conversionRate: 0.004 },
+  'deals': { aov: 35, commission: 0.15, conversionRate: 0.004 },
 }
 
 /** LIVE 礼物月收入系数（每粉 USD/月） */
@@ -615,8 +624,12 @@ export const CATEGORY_HASHTAGS: Record<string, string[]> = {
  * 商业意图关键词（中英双语），用于 commerce 维度检测带货/商业合作线索
  */
 export const COMMERCE_INTENT_KEYWORDS = {
-  en: ['link in bio', 'shop now', 'use code', 'discount', 'promo', 'affiliate', 'sponsored', 'partner', 'get yours', 'buy now', 'limited edition', 'available now', 'sale', 'coupon', 'collab', 'gifted', 'branddeal'],
-  zh: ['链接在主页', '购物车', '同款', '购买', '优惠', '折扣', '带货', '种草', '安利', '测评', '合作', '推广', '赞助', '码', '购买链接', '上新', '促销', '包邮', '好物推荐', '旗舰店'],
+  en: ['link in bio', 'shop now', 'use code', 'discount', 'promo', 'affiliate', 'sponsored', 'partner', 'get yours', 'buy now', 'limited edition', 'available now', 'sale', 'coupon', 'collab', 'gifted', 'branddeal',
+    // 带货账号常用词（清单/评测/deals finder）
+    'amazon finds', 'tiktokmadeemebuyit', 'product roundup', 'must have', 'top 10', 'haul', 'unboxing', 'deals', 'storefront', 'amazon storefront', 'etsy shop', 'shopify', 'tiktok shop', 'product link', 'shopping link', 'my store', 'use my code', 'affiliate link'],
+  zh: ['链接在主页', '购物车', '同款', '购买', '优惠', '折扣', '带货', '种草', '安利', '测评', '合作', '推广', '赞助', '码', '购买链接', '上新', '促销', '包邮', '好物推荐', '旗舰店',
+    // 带货账号常用词
+    '好物清单', '必买清单', '开箱', '亚马逊好物', 'amazon好物', '我的店铺', '专属链接', '优惠码', '粉丝专属'],
 }
 
 // ========== 三层评分体系（Spec 定义） ==========

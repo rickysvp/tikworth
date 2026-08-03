@@ -88,6 +88,8 @@ function inferCategories(profile: RawProfile): string[] {
     { keyword: '\\bcomedy\\b|\\bfunny\\b|搞笑|幽默|段子|笑话|\\bmeme\\b', label: 'Comedy' },
     { keyword: '\\bmusic\\b|\\bdance\\b|跳舞|舞蹈|翻唱|\\bcover\\b|\\bsong\\b', label: 'Music & Dance' },
     { keyword: '\\bpet\\b|\\bcat\\b|\\bdog\\b|宠物|猫|狗|\\banimal\\b', label: 'Pets & Animals' },
+    // 带货账号类型（清单博主/评测博主/deals finder/电商带货）—— 优先级最高，确保覆盖 airlandolists 这类账号
+    { keyword: 'amazon\\s*finds|tiktokmadeemebuyit|product\\s*roundup|must\\s*have|deals|haul|storefront|amazon\\s*storefront|etsy\\s*shop|shopify|tiktok\\s*shop|好物|清单|必买|开箱|购物车|带货|种草|推荐|好物推荐|评测|安利|flagship|旗舰店', label: 'Shopping & Deals', priority: 12 },
   ]
   const matched = categories.filter(c => new RegExp(c.keyword, 'i').test(text))
     .sort((a, b) => (b.priority || 0) - (a.priority || 0)).map(c => c.label)
