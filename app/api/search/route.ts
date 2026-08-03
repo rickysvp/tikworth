@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchUsers } from '@/lib/tiktok'
 import { getServerDict } from '@/lib/i18n/server'
+import { recordEventFromRequest } from '@/lib/analytics'
 import { ApiErrorResponse } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -20,9 +21,10 @@ const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
 }
 
 export async function GET(req: NextRequest) {
+  let keywords = ''
   try {
     const { searchParams } = new URL(req.url)
-    const keywords = searchParams.get('q') || searchParams.get('keywords') || ''
+    keywords = searchParams.get('q') || searchParams.get('keywords') || ''
     const count = Math.max(1, Math.min(parseInt(searchParams.get('count') || '10', 10) || 10, 30))
 
     if (!keywords.trim()) {
@@ -41,7 +43,15 @@ export async function GET(req: NextRequest) {
     const detail = err instanceof Error ? err.message : String(err)
     const mapping = CODE_TO_HTTP[code] || CODE_TO_HTTP.API_ERROR
 
-    console.error(`[search] ${code}:`, detail)
+    console.error(`[search] ${code} | query=${keywords || 'N/A'} | ${detail}`)
+    recordEventFromRequest(req, {
+      event_type: 'api_error',
+      path: '/api/search',
+      metadata: {
+        error_code: code,
+        error_message: detail.slice(0, 200),
+      },
+    }).catch(e => console.warn('[search] recordEvent(error) failed:', e))
     return NextResponse.json<ApiErrorResponse>(
       { error: mapping.message, code },
       { status: mapping.status }

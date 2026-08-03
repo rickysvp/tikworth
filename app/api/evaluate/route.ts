@@ -93,6 +93,7 @@ const CODE_TO_HTTP: Record<ApiCode, { status: number; message: string }> = {
 
 export async function POST(req: NextRequest) {
   let userEmail = ''
+  let normalized = ''
   try {
     const body = await req.json().catch(() => ({}))
     const username = String(body.username || '').trim()
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
       return errorResponse('INVALID_USERNAME', getServerDict().api.evaluate.INVALID_USERNAME, 400)
     }
 
-    const normalized = username.replace(/^@/, '').toLowerCase()
+    normalized = username.replace(/^@/, '').toLowerCase()
 
     // 24h cache to save RapidAPI quota
     if (await isCacheValid(normalized, 24)) {
@@ -175,12 +176,16 @@ export async function POST(req: NextRequest) {
     const detail = err instanceof Error ? err.message : String(err)
     const mapping = CODE_TO_HTTP[code] || CODE_TO_HTTP.API_ERROR
 
-    console.error(`[evaluate] ${code}:`, detail)
+    console.error(`[evaluate] ${code} | user=${normalized || 'N/A'} | ${detail}`)
     // Record api_error event
     recordEventFromRequest(req, {
       event_type: 'api_error',
       path: '/api/evaluate',
-      metadata: { error_code: code },
+      username: normalized || undefined,
+      metadata: {
+        error_code: code,
+        error_message: detail.slice(0, 200),
+      },
     }).catch(err => console.warn('[evaluate] recordEvent(error) failed:', err))
     return errorResponse(code, mapping.message, mapping.status)
   }

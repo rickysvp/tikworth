@@ -221,6 +221,13 @@ export async function recordAuditLog(entry: {
 
 // ── Query: Stats Overview ──
 
+export interface ApiErrorStats {
+  errorsToday: number
+  errorsMonth: number
+  errorsTotal: number
+  byCode: { code: string; count: number }[]
+}
+
 export interface StatsOverview {
   totalRevenue: number
   revenueToday: number
@@ -234,6 +241,7 @@ export interface StatsOverview {
   evaluationsWeek: number
   evaluationsMonth: number
   remainingCredits: number
+  apiErrors: ApiErrorStats
 }
 
 // 安全的 numeric 聚合：过滤非数字字符串，避免 ::numeric 抛错
@@ -241,12 +249,14 @@ const AMOUNT_EXPR = `CASE WHEN metadata->>'amount' ~ '^[0-9]+(\\\\.[0-9]+)?$' TH
 
 export async function getStatsOverview(): Promise<StatsOverview> {
   const useDb = await initDb()
+  const emptyErrors: ApiErrorStats = { errorsToday: 0, errorsMonth: 0, errorsTotal: 0, byCode: [] }
   if (!useDb || !sql) {
     return {
       totalRevenue: 0, revenueToday: 0, revenueWeek: 0, revenueMonth: 0,
       totalPayers: 0, payersToday: 0, payersWeek: 0, payersMonth: 0,
       evaluationsToday: 0, evaluationsWeek: 0, evaluationsMonth: 0,
       remainingCredits: 0,
+      apiErrors: emptyErrors,
     }
   }
 
@@ -278,6 +288,14 @@ export async function getStatsOverview(): Promise<StatsOverview> {
     console.warn('[analytics] failed to query credit_balances:', err)
   }
 
+  // API 错误统计
+  let apiErrors: ApiErrorStats = emptyErrors
+  try {
+    apiErrors = await getApiErrorStats()
+  } catch (err) {
+    console.warn('[analytics] failed to query api_error stats:', err)
+  }
+
   const row = (r: Record<string, unknown>, key: string) => Number(r[key]) || 0
 
   return {
@@ -293,6 +311,52 @@ export async function getStatsOverview(): Promise<StatsOverview> {
     evaluationsWeek: row(evalWeek[0] as Record<string, unknown>, 'week'),
     evaluationsMonth: row(evalMonth[0] as Record<string, unknown>, 'month'),
     remainingCredits,
+    apiErrors,
+  }
+}
+
+/** API 错误统计（今日/本月/总错误次数 + 按错误码分组 top 6） */
+export async function getApiErrorStats(): Promise<ApiErrorStats> {
+  const useDb = await initDb()
+  if (!useDb || !sql) {
+    return { errorsToday: 0, errorsMonth: 0, errorsTotal: 0, byCode: [] }
+  }
+  try {
+    const { todayStart, monthStart } = shanghaiBoundaries()
+    const [overviewRows, codeRows] = await Promise.all([
+      sql`
+        SELECT
+          COUNT(*) FILTER (WHERE created_at >= ${todayStart}::timestamptz)::int AS errors_today,
+          COUNT(*) FILTER (WHERE created_at >= ${monthStart}::timestamptz)::int AS errors_month,
+          COUNT(*)::int AS errors_total
+        FROM analytics_events
+        WHERE event_type = 'api_error'
+      `,
+      sql`
+        SELECT
+          metadata->>'error_code' AS code,
+          COUNT(*)::int AS count
+        FROM analytics_events
+        WHERE event_type = 'api_error'
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY metadata->>'error_code'
+        ORDER BY count DESC
+        LIMIT 6
+      `,
+    ])
+    const o = overviewRows[0] || {}
+    return {
+      errorsToday: Number(o.errors_today) || 0,
+      errorsMonth: Number(o.errors_month) || 0,
+      errorsTotal: Number(o.errors_total) || 0,
+      byCode: codeRows.map((r: Record<string, unknown>) => ({
+        code: String(r.code || 'UNKNOWN'),
+        count: Number(r.count) || 0,
+      })),
+    }
+  } catch (err) {
+    console.error('[analytics] getApiErrorStats failed:', err)
+    return { errorsToday: 0, errorsMonth: 0, errorsTotal: 0, byCode: [] }
   }
 }
 

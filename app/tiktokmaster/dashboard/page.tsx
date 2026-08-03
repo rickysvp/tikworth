@@ -7,7 +7,7 @@ import {
   LogOut, TrendingUp, DollarSign, Users, Activity,
   Settings, Loader2, CheckCircle2, XCircle, Search, FileText,
   CreditCard, Zap, RefreshCw, Filter,
-  Clock, AlertCircle, Globe,
+  Clock, AlertCircle, AlertTriangle, Globe,
   PieChart as PieIcon,
 } from 'lucide-react'
 import {
@@ -32,6 +32,12 @@ interface StatsData {
     evaluationsWeek: number
     evaluationsMonth: number
     remainingCredits: number
+    apiErrors?: {
+      errorsToday: number
+      errorsMonth: number
+      errorsTotal: number
+      byCode: { code: string; count: number }[]
+    }
   }
   revenue: {
     byDay: { date: string; amount: number }[]
@@ -136,6 +142,7 @@ const EVENT_LABELS: Record<string, { label: string; color: string }> = {
   email_sent: { label: '邮件发送', color: 'text-pink-400' },
   email_verified: { label: '邮箱验证', color: 'text-indigo-400' },
   share_created: { label: '分享创建', color: 'text-teal-400' },
+  api_error: { label: 'API错误', color: 'text-red-400' },
 }
 
 function getEventLabel(type: string): { label: string; color: string } {
@@ -450,11 +457,12 @@ export default function AdminDashboard() {
         {tab === 'overview' && (
           <div className="space-y-8">
             {/* 核心指标卡片 */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <StatCard label="总收入" value={fmtUsd(o.totalRevenue)} sub={`今日 ${fmtUsd(o.revenueToday)}`} icon={<DollarSign className="h-5 w-5" />} gradient="from-[#00F2EA]/20 to-transparent" accent="text-[#00F2EA]" border="border-[#00F2EA]/30" />
               <StatCard label="付费用户" value={fmtNum(o.totalPayers)} sub={`今日新增 ${fmtNum(o.payersToday)}`} icon={<Users className="h-5 w-5" />} gradient="from-[#FF0050]/20 to-transparent" accent="text-[#FF0050]" border="border-[#FF0050]/30" />
               <StatCard label="评估次数（本月）" value={fmtNum(o.evaluationsMonth)} sub={`今日 ${fmtNum(o.evaluationsToday)}`} icon={<Activity className="h-5 w-5" />} gradient="from-green-500/20 to-transparent" accent="text-green-400" border="border-green-500/30" />
               <StatCard label="未使用评估数" value={fmtNum(o.remainingCredits)} sub="待消耗额度" icon={<TrendingUp className="h-5 w-5" />} gradient="from-amber-500/20 to-transparent" accent="text-amber-400" border="border-amber-500/30" />
+              <StatCard label="API 错误（本月）" value={fmtNum(o.apiErrors?.errorsMonth ?? 0)} sub={`今日 ${fmtNum(o.apiErrors?.errorsToday ?? 0)}`} icon={<AlertTriangle className="h-5 w-5" />} gradient="from-red-500/20 to-transparent" accent="text-red-400" border="border-red-500/30" />
             </div>
 
             {/* 趋势周期切换器 */}
@@ -908,6 +916,33 @@ export default function AdminDashboard() {
                 )
               })}
             </div>
+
+            {/* 错误码分布（近30天） */}
+            {stats?.overview.apiErrors?.byCode && stats.overview.apiErrors.byCode.length > 0 && (
+              <div className="rounded-xl border border-red-900/30 bg-red-950/10 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                  <div className="text-xs text-neutral-400">API 错误码分布（近 30 天）</div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {stats.overview.apiErrors.byCode.map(item => {
+                    const maxCount = Math.max(...stats.overview.apiErrors!.byCode.map(c => c.count), 1)
+                    const pct = Math.round((item.count / maxCount) * 100)
+                    return (
+                      <div key={item.code} className="rounded-lg border border-neutral-800 bg-[#141414] p-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-red-400 font-mono text-xs">{item.code}</span>
+                          <span className="text-neutral-300 tabular-nums text-sm font-bold">{item.count}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-[#FF0050] to-red-400" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-neutral-800 bg-[#141414] overflow-hidden">
               <div className="p-6 pb-4 flex items-center justify-between">
