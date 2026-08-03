@@ -255,6 +255,35 @@ export async function isCacheValid(username: string, ttlHours = 24): Promise<boo
   return hours < ttlHours
 }
 
+/**
+ * 评估统计：总数 + 商业价值总额（high 端）。
+ * 用于公开 stats 端点，确保 evaluations 表已初始化后再查询。
+ */
+export async function getEvaluationStats(): Promise<{ count: number; totalValueAssessed: number }> {
+  const type = await initStore()
+  if (type !== 'postgres') {
+    // file / memory 模式下手动聚合
+    const store = type === 'file' ? readFileStore() : memoryFallback
+    const count = store.length
+    const totalValueAssessed = store.reduce((sum, e) => {
+      const high = e.businessValue?.totalValue?.high
+      return sum + (typeof high === 'number' && Number.isFinite(high) ? high : 0)
+    }, 0)
+    return { count, totalValueAssessed }
+  }
+
+  const countRows = await getSql()`SELECT COUNT(*) as count FROM evaluations`
+  const count = Number(countRows[0]?.count || 0)
+
+  const valueRows = await getSql()`
+    SELECT COALESCE(SUM((business_value->'totalValue'->>'high')::numeric), 0) as total
+    FROM evaluations
+    WHERE business_value->'totalValue'->>'high' IS NOT NULL
+  `
+  const totalValueAssessed = Number(valueRows[0]?.total || 0)
+  return { count, totalValueAssessed }
+}
+
 function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
   const defaultMetrics = {
     engagementRate: 0,

@@ -1,34 +1,15 @@
 import { NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
 import { getPVUV } from '@/lib/analytics'
+import { getEvaluationStats } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
-    if (!DATABASE_URL) {
-      return NextResponse.json(
-        { accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 },
-        { headers: { 'Cache-Control': 'no-store, max-age=0' } }
-      )
-    }
+    // 评估统计走 lib/db 统一管道（确保 evaluations 表已初始化）
+    const { count: accountsEvaluated, totalValueAssessed } = await getEvaluationStats()
 
-    const sql = neon(DATABASE_URL)
-
-    // 1. Total evaluations count
-    const countRows = await sql`SELECT COUNT(*) as count FROM evaluations`
-    const accountsEvaluated = Number(countRows[0]?.count || 0)
-
-    // 2. Sum of business value highs across all evaluations
-    const valueRows = await sql`
-      SELECT COALESCE(SUM((business_value->'totalValue'->>'high')::numeric), 0) as total
-      FROM evaluations
-      WHERE business_value->'totalValue'->>'high' IS NOT NULL
-    `
-    const totalValueAssessed = Number(valueRows[0]?.total || 0)
-
-    // 3. Unique visitors — 统一走 lib/analytics（不再自己建表）
+    // 独立访客数走 lib/analytics 统一管道（确保 analytics_events 表已初始化）
     let uniqueVisitors = 0
     try {
       const pvuv = await getPVUV()

@@ -75,7 +75,6 @@ async function initDb(): Promise<boolean> {
         )
       `
       // 幂等列迁移：补齐历史表可能缺失的列（CREATE TABLE IF NOT EXISTS 不会改已有表）
-      // 兼容旧 schema（event_name → event_type, 旧表无 session_id 迁移）
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS event_type TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS session_id TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS path TEXT`
@@ -85,10 +84,10 @@ async function initDb(): Promise<boolean> {
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer TEXT`
-      // 修复旧表 event_name NOT NULL 约束导致新代码 INSERT 失败
-      try { await sql`ALTER TABLE analytics_events ALTER COLUMN event_name DROP NOT NULL` } catch { /* 迁移已执行或列不存在 */ }
-      // 回填 event_name ← event_type（迁移后补齐旧列）
-      await sql`UPDATE analytics_events SET event_name = event_type WHERE event_name IS NULL`
+      // 旧表可能存在 event_name 列（历史 schema），所有读写已统一为 event_type。
+      // 这里仅在列存在时清理 NOT NULL 约束，避免历史 INSERT 失败；列不存在时静默跳过。
+      // 注意：不再做 UPDATE event_name（列不存在时会抛错导致 initDb 整体失败）。
+      try { await sql`ALTER TABLE analytics_events ALTER COLUMN event_name DROP NOT NULL` } catch { /* 列不存在，无需迁移 */ }
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
 
@@ -179,10 +178,16 @@ export async function recordEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at
 /**
  * 从 NextRequest 中自动提取 IP/UA/referrer 并写入事件。
  * 所有 API 路由应优先使用此函数，确保埋点数据完整。
+ *
+ * 注意：浏览器 fetch 自动设置的 `Referer` header 是当前页面 URL（同源时），
+ * 不是外部来源。对于 page_view 等需要追踪外部来源的事件，调用方应通过
+ * event.referrer 显式传入 document.referrer，覆盖 header 值。
  */
 export async function recordEventFromRequest(
   req: Request,
-  event: Omit<AnalyticsEvent, 'id' | 'created_at' | 'ip_hash' | 'user_agent' | 'referrer'>
+  event: Omit<AnalyticsEvent, 'id' | 'created_at' | 'ip_hash' | 'user_agent' | 'referrer'> & {
+    referrer?: string
+  }
 ): Promise<void> {
   const forwarded = req.headers.get('x-forwarded-for')
   const ip = forwarded ? forwarded.split(',')[0].trim() : '0.0.0.0'
@@ -190,7 +195,8 @@ export async function recordEventFromRequest(
     ...event,
     ip_hash: hashIp(ip),
     user_agent: req.headers.get('user-agent') || undefined,
-    referrer: req.headers.get('referer') || undefined,
+    // 显式传入的 referrer 优先（client 端 document.referrer 才是真实外部来源）
+    referrer: event.referrer || req.headers.get('referer') || undefined,
   })
 }
 
@@ -385,6 +391,49 @@ export async function getAuditLog(limit = 50, offset = 0, action?: string): Prom
     reason: String(r.reason || ''),
     created_at: String(r.created_at),
   }))
+  return { items, total: Number((countRow[0] as { total: string })?.total || 0) }
+}
+
+// ── Query: Recent Events (admin logs) ──
+
+export interface EventLogItem {
+  id: number
+  eventType: string
+  path: string
+  username: string
+  email: string
+  metadata: Record<string, unknown> | null
+  ipHash: string
+  userAgent: string
+  createdAt: string
+}
+
+export async function getRecentEvents(limit = 100, offset = 0): Promise<{ items: EventLogItem[]; total: number }> {
+  const useDb = await initDb()
+  if (!useDb || !sql) return { items: [], total: 0 }
+
+  const [rows, countRow] = await Promise.all([
+    sql`
+      SELECT id, event_type, path, username, email, metadata, ip_hash, user_agent, created_at
+      FROM analytics_events
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `,
+    sql`SELECT COUNT(*) as total FROM analytics_events`,
+  ])
+
+  const items = (rows as Array<Record<string, unknown>>).map(r => ({
+    id: Number(r.id),
+    eventType: String(r.event_type || ''),
+    path: String(r.path || ''),
+    username: String(r.username || ''),
+    email: String(r.email || ''),
+    metadata: (r.metadata as Record<string, unknown>) || null,
+    ipHash: String(r.ip_hash || ''),
+    userAgent: String(r.user_agent || ''),
+    createdAt: String(r.created_at),
+  }))
+
   return { items, total: Number((countRow[0] as { total: string })?.total || 0) }
 }
 
