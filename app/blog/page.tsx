@@ -25,20 +25,6 @@ export default function BlogIndexPage() {
       <SiteHeader />
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="border-b border-neutral-800">
-          <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8">
-            <p className="text-sm font-medium uppercase tracking-wider text-[#00F2EA]">Blog</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-              Creator Economy Intelligence
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-neutral-400 leading-relaxed">
-              Data-driven guides on TikTok valuation, brand deal pricing, creator monetization, and analytics.
-              No fluff — just real numbers and strategies that work in 2026.
-            </p>
-          </div>
-        </section>
-
         <BlogIndexClient posts={posts} featured={featured} />
 
         {/* CTA */}
