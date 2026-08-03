@@ -30,6 +30,7 @@ export interface RawProfile {
   language?: string
   posts: Post[]
   dataQuality?: 'full' | 'partial' | 'minimal'
+  postsFetchError?: string
 }
 
 export interface DimensionScores {
@@ -110,6 +111,8 @@ export interface Evaluation {
   posts?: Post[]
   formulaVersion?: 'v2'
   calculationMetadata?: CalculationMetadata
+  dataQuality?: 'full' | 'partial'
+  postsFetchError?: string
 }
 
 export interface Metrics {

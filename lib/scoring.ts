@@ -441,5 +441,7 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
     followerCount: profile.followerCount, followingCount: profile.followingCount, totalLikes: profile.totalLikes, videoCount: profile.videoCount,
     verified: profile.verified, region: profile.region, posts: profile.posts,
     formulaVersion: 'v2', calculationMetadata,
+    dataQuality: (profile.dataQuality as 'full' | 'partial' | undefined),
+    postsFetchError: profile.postsFetchError,
   }
 }

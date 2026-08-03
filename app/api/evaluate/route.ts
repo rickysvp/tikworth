@@ -6,7 +6,7 @@ import { generateTrendAnalysis, generateCommercializationAdvice, generateContent
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
 import { consumeCredit } from '@/lib/credits-server'
 import { getServerDict } from '@/lib/i18n/server'
-import { recordEvent } from '@/lib/analytics'
+import { recordEvent, recordEventFromRequest } from '@/lib/analytics'
 import { ApiErrorResponse, Evaluation } from '@/types'
 
 function buildSnapshot(evaluation: Evaluation) {
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       const cached = await findEvaluation(normalized)
       if (cached) {
         // 缓存命中也记录 evaluate_done（口径与非缓存一致，metadata.cached=true 区分）
-        recordEvent({
+        recordEventFromRequest(req, {
           event_type: 'evaluate_done',
           username: normalized,
           metadata: { score: cached.score, tier: cached.tier, cached: true },
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     const profile = await fetchProfile(normalized)
 
     // Record evaluate_start event
-    recordEvent({
+    recordEventFromRequest(req, {
       event_type: 'evaluate_start',
       username: normalized,
       path: '/api/evaluate',
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
     await saveEvaluation(evaluation)
 
     // Record evaluate_done event
-    recordEvent({
+    recordEventFromRequest(req, {
       event_type: 'evaluate_done',
       username: normalized,
       metadata: { score: evaluation.score, tier: evaluation.tier, cached: false },
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
 
     console.error(`[evaluate] ${code}:`, detail)
     // Record api_error event
-    recordEvent({
+    recordEventFromRequest(req, {
       event_type: 'api_error',
       path: '/api/evaluate',
       metadata: { error_code: code },

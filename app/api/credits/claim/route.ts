@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPendingPurchase, claimPendingPurchase } from '@/lib/credits-server'
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
 import { getServerDict } from '@/lib/i18n/server'
-import { recordEvent } from '@/lib/analytics'
+import { recordEventFromRequest } from '@/lib/analytics'
 
 export const dynamic = 'force-dynamic'
 
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Track purchase event (metadata.checkout_id 与 webhook 一致)
-    recordEvent({
+    recordEventFromRequest(req, {
       event_type: 'purchase',
       email,
       metadata: { package_id: pending.packageId, credits: pending.credits, amount: pending.amount, checkout_id: pending.checkoutId, claimed_via: 'success_page' },

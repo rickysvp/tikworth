@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { grantCredits } from '@/lib/credits-server'
 import { getServerDict } from '@/lib/i18n/server'
-import { recordEvent } from '@/lib/analytics'
+import { recordEvent, hashIp } from '@/lib/analytics'
 import crypto from 'crypto'
 
 const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
@@ -63,10 +63,12 @@ export async function POST(req: NextRequest) {
           await grantCredits(email.toLowerCase(), packageId, creditsNum, parseFloat(amount || '0'), checkoutId)
           console.log('[creem-webhook] credits granted for', email, 'checkout:', checkoutId)
           // Record purchase analytics event
+          // webhook 无真实用户 IP/UA，用 Creem 来源标记
           recordEvent({
             event_type: 'purchase',
             email: email.toLowerCase(),
-            metadata: { package_id: packageId, credits: creditsNum, amount: parseFloat(amount || '0'), checkout_id: checkoutId },
+            metadata: { package_id: packageId, credits: creditsNum, amount: parseFloat(amount || '0'), checkout_id: checkoutId, source: 'creem_webhook' },
+            ip_hash: hashIp('webhook'),
           }).catch(err => console.warn('[creem-webhook] analytics record failed:', err))
         } catch (err) {
           console.error('[creem-webhook] failed to grant credits:', err)

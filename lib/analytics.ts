@@ -91,17 +91,12 @@ async function initDb(): Promise<boolean> {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `
-      await sql`
-        CREATE TABLE IF NOT EXISTS credit_balances (
-          email TEXT PRIMARY KEY,
-          credits INTEGER NOT NULL DEFAULT 0,
-          total_purchased INTEGER NOT NULL DEFAULT 0,
-          purchases JSONB NOT NULL DEFAULT '[]'::jsonb,
-          verified_at BIGINT NOT NULL DEFAULT 0,
-          disabled BOOLEAN NOT NULL DEFAULT false
-        )
-      `
-      await sql`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`
+
+      // credit_balances 表由 lib/credits-server.ts 统一管理，此处不再重复建表
+      // 但确保 disabled 列存在（credits-server 可能还未建表）
+      try {
+        await sql`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`
+      } catch { /* 表尚未创建时忽略 */ }
 
       dbReady = true
       return true
@@ -145,6 +140,11 @@ function shanghaiBoundaries() {
 
 // ── Record Event ──
 
+/**
+ * 写入事件到 analytics_events 表。
+ * 用于无 HTTP request 上下文的场景（如 webhook、cron）。
+ * 有 request 时优先用 recordEventFromRequest() 以自动填充 IP/UA/referrer。
+ */
 export async function recordEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at'>): Promise<void> {
   const useDb = await initDb()
   if (!useDb || !sql) {
@@ -157,6 +157,24 @@ export async function recordEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at
       ${event.email || null}, ${JSON.stringify(event.metadata || {})}::jsonb,
       ${event.ip_hash || null}, ${event.user_agent || null}, ${event.referrer || null})
   `
+}
+
+/**
+ * 从 NextRequest 中自动提取 IP/UA/referrer 并写入事件。
+ * 所有 API 路由应优先使用此函数，确保埋点数据完整。
+ */
+export async function recordEventFromRequest(
+  req: Request,
+  event: Omit<AnalyticsEvent, 'id' | 'created_at' | 'ip_hash' | 'user_agent' | 'referrer'>
+): Promise<void> {
+  const forwarded = req.headers.get('x-forwarded-for')
+  const ip = forwarded ? forwarded.split(',')[0].trim() : '0.0.0.0'
+  return recordEvent({
+    ...event,
+    ip_hash: hashIp(ip),
+    user_agent: req.headers.get('user-agent') || undefined,
+    referrer: req.headers.get('referer') || undefined,
+  })
 }
 
 // ── Record Audit Log ──

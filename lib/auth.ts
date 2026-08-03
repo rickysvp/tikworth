@@ -43,12 +43,22 @@ async function ensurePg(): Promise<NeonQueryFunction<false, false> | null> {
   }
 }
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-jwt-secret-min-32-bytes-long!' : '')
-)
-
-if (JWT_SECRET.length < 32 && process.env.NODE_ENV !== 'development') {
-  console.warn('[auth] JWT_SECRET is too short or missing. Sessions are insecure.')
+// ── JWT Secret ──
+// 生产环境必须设置 ≥32 字节；开发环境可用 dev fallback。
+// 缺失或过短时直接 throw，避免静默降级导致所有鉴权失效。
+function getJwtSecret(): Uint8Array {
+  const raw = process.env.JWT_SECRET
+  if (raw && raw.length >= 32) {
+    return new TextEncoder().encode(raw)
+  }
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[auth] Using dev JWT secret — sessions will not survive restarts')
+    return new TextEncoder().encode('dev-jwt-secret-min-32-bytes-long!')
+  }
+  throw new Error(
+    '[auth] JWT_SECRET is not set or too short (< 32 chars). ' +
+    'Set the JWT_SECRET environment variable in production.'
+  )
 }
 
 const TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60 // 7 days
@@ -256,20 +266,18 @@ export async function verifyCode(
 // ── JWT session tokens ──
 
 export async function createSessionToken(email: string): Promise<string> {
-  if (JWT_SECRET.length < 32) {
-    throw new Error('JWT_SECRET must be at least 32 bytes')
-  }
+  const secret = getJwtSecret()
   return new SignJWT({ email: email.toLowerCase().trim() })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${TOKEN_MAX_AGE_SECONDS}s`)
-    .sign(JWT_SECRET)
+    .sign(secret)
 }
 
 export async function verifySessionToken(token: string): Promise<AuthPayload | null> {
-  if (JWT_SECRET.length < 32) return null
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, { algorithms: ['HS256'] })
+    const secret = getJwtSecret()
+    const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] })
     if (typeof payload.email !== 'string' || !payload.email) return null
     return { email: payload.email.toLowerCase().trim() }
   } catch (err) {

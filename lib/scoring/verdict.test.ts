@@ -93,7 +93,7 @@ describe('buildVerdict', () => {
       health: baseHealth, dims: baseDims, risks: noRisks, categories: ['健身运动'],
       businessValueMid: 200_000,
     })
-    expect(result.verdict).toContain('互动率优秀')
+    expect(result.verdict).toContain('excellent engagement')
   })
 
   it('labels low engagement as low', () => {
@@ -103,7 +103,7 @@ describe('buildVerdict', () => {
       health: baseHealth, dims: baseDims, risks: noRisks, categories: ['健身运动'],
       businessValueMid: 500,
     })
-    expect(result.verdict).toContain('互动率偏低')
+    expect(result.verdict).toContain('below-average engagement')
   })
 
   it('B tier advice points to weakest dimension', () => {
@@ -114,7 +114,7 @@ describe('buildVerdict', () => {
       health: baseHealth, dims, risks: noRisks, categories: ['健身运动'],
       businessValueMid: 50_000,
     })
-    expect(result.advice).toContain('内容爆款力')
+    expect(result.advice).toContain('content virality')
   })
 
   it('prioritizes high risks over tier advice', () => {
@@ -127,7 +127,7 @@ describe('buildVerdict', () => {
       categories: ['健身运动'],
       businessValueMid: 200_000,
     })
-    expect(result.advice).toContain('高风险')
+    expect(result.advice).toContain('High-risk signals detected')
   })
 })
 
@@ -138,7 +138,7 @@ describe('buildSummary', () => {
       dims: baseDims, metrics: baseMetrics, tier: 'A', tierReason: '优质变现账号',
       categories: ['健身运动'], percentile: 74, businessValueMid: 200_000,
     })
-    expect(summary.headline).toContain('A 级账号')
+    expect(summary.headline).toContain('Tier A')
     expect(summary.headline).toContain('健身运动')
     expect(summary.headline).toContain('74%')
   })

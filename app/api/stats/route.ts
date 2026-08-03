@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
+import { getPVUV } from '@/lib/analytics'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,25 +28,11 @@ export async function GET() {
     `
     const totalValueAssessed = Number(valueRows[0]?.total || 0)
 
-    // 3. Unique visitors — ensure table exists first, then query
+    // 3. Unique visitors — 统一走 lib/analytics（不再自己建表）
     let uniqueVisitors = 0
     try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS analytics_events (
-          id SERIAL PRIMARY KEY,
-          event_type TEXT,
-          path TEXT,
-          username TEXT,
-          email TEXT,
-          metadata JSONB,
-          ip_hash TEXT,
-          user_agent TEXT,
-          referrer TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `
-      const uvRows = await sql`SELECT COUNT(DISTINCT ip_hash) as count FROM analytics_events WHERE event_type = 'page_view' AND ip_hash IS NOT NULL`
-      uniqueVisitors = Number(uvRows[0]?.count || 0)
+      const pvuv = await getPVUV()
+      uniqueVisitors = pvuv.totalUV
     } catch (e) {
       console.error('[stats] analytics query failed:', e instanceof Error ? e.message : String(e))
     }

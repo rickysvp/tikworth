@@ -341,6 +341,8 @@ export async function fetchProfile(inputUsername: string): Promise<RawProfile> {
     throw new TikTokApiError('User has empty stats', 'USER_NOT_FOUND', 404)
   }
 
+  const postsFetched = posts.length > 0
+
   return {
     username,
     nickname,
@@ -353,7 +355,8 @@ export async function fetchProfile(inputUsername: string): Promise<RawProfile> {
     avatar: String(pickField(info, 'profile_image', 'avatar_larger', 'avatar_medium', 'avatar_thumb') || ''),
     bio: String(pickField(info, 'description', 'signature') || ''),
     posts,
-    dataQuality: posts.length === 0 ? 'partial' : 'full',
+    dataQuality: postsFetched ? 'full' as const : 'partial' as const,
+    postsFetchError: postsFetched ? undefined : 'Video data unavailable — evaluation may be less accurate',
   }
 }
 
