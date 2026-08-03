@@ -106,6 +106,12 @@ export async function POST(req: NextRequest) {
     if (await isCacheValid(normalized, 24)) {
       const cached = await findEvaluation(normalized)
       if (cached) {
+        // 缓存命中也记录 evaluate_done（口径与非缓存一致，metadata.cached=true 区分）
+        recordEvent({
+          event_type: 'evaluate_done',
+          username: normalized,
+          metadata: { score: cached.score, tier: cached.tier, cached: true },
+        }).catch(err => console.warn('[evaluate] recordEvent(cached) failed:', err))
         return NextResponse.json({ ...cached, cached: true })
       }
     }
@@ -138,7 +144,7 @@ export async function POST(req: NextRequest) {
       event_type: 'evaluate_start',
       username: normalized,
       path: '/api/evaluate',
-    }).catch(() => {})
+    }).catch(err => console.warn('[evaluate] recordEvent(start) failed:', err))
 
     let evaluation = scoreProfile(profile)
     evaluation = await enrichWithAI(evaluation)
@@ -150,7 +156,7 @@ export async function POST(req: NextRequest) {
       event_type: 'evaluate_done',
       username: normalized,
       metadata: { score: evaluation.score, tier: evaluation.tier, cached: false },
-    }).catch(() => {})
+    }).catch(err => console.warn('[evaluate] recordEvent(done) failed:', err))
 
     return NextResponse.json(evaluation)
   } catch (err) {
@@ -166,7 +172,7 @@ export async function POST(req: NextRequest) {
       event_type: 'api_error',
       path: '/api/evaluate',
       metadata: { error_code: code },
-    }).catch(() => {})
+    }).catch(err => console.warn('[evaluate] recordEvent(error) failed:', err))
     return errorResponse(code, mapping.message, mapping.status)
   }
 }

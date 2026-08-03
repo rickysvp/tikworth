@@ -36,17 +36,24 @@ import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 import { ShareModal } from '@/components/ShareModal'
 
 // Client-side analytics tracking helper
+// 注意：page_view 由 components/PageViewTracker.tsx 统一发送，本函数只负责行为事件
 function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
+  const body = JSON.stringify({
+    event_type,
+    path: typeof window !== 'undefined' ? window.location.pathname : '/',
+    metadata,
+    referrer: typeof window !== 'undefined' ? (document.referrer || '') : '',
+  })
   fetch('/api/track', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      event_type,
-      path: typeof window !== 'undefined' ? window.location.pathname : '/',
-      metadata,
-      referrer: typeof window !== 'undefined' ? (document.referrer || '') : '',
-    }),
-  }).catch(() => {})
+    body,
+    keepalive: true,
+  }).catch(err => {
+    console.warn(`[analytics] trackEvent ${event_type} failed:`, err)
+    // sendBeacon 兜底（页面卸载或网络抖动场景）
+    try { navigator.sendBeacon('/api/track', body) } catch {}
+  })
 }
 
 const examples = ['charlidamelio', 'mrbeast', 'khaby.lame', 'zachking']
@@ -89,10 +96,7 @@ function HomePageContent() {
     }
   }, [])
 
-  // Track page view
-  useEffect(() => {
-    trackEvent('page_view', { path: '/' })
-  }, [])
+  // page_view 由全局 PageViewTracker 统一发送，此处不再重复
 
   // Fetch real stats
   const refreshStats = useCallback(() => {

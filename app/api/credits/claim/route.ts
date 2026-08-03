@@ -22,9 +22,7 @@ async function verifyCreemCheckout(checkoutId: string): Promise<boolean> {
   }
   try {
     const apiBase = getCreemApiBase()
-    // Creem API uses query parameter, NOT path parameter
     const url = `${apiBase}/v1/checkouts?checkout_id=${encodeURIComponent(checkoutId)}`
-    console.log('[claim] Verifying checkout:', url)
 
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 8000)
@@ -39,12 +37,6 @@ async function verifyCreemCheckout(checkoutId: string): Promise<boolean> {
         return false
       }
       const data = await res.json()
-      console.log('[claim] Creem checkout response:', JSON.stringify({
-        id: data.id,
-        status: data.status,
-        orderStatus: data.order?.status,
-        orderAmount: data.order?.amount,
-      }))
 
       // checkout.status is "completed" even before payment
       // real payment status is in order.status: "pending" → "paid"
@@ -52,14 +44,11 @@ async function verifyCreemCheckout(checkoutId: string): Promise<boolean> {
       const checkoutStatus = data.status || ''
 
       if (orderStatus === 'paid') {
-        console.log('[claim] Payment verified: order.status=paid')
         return true
       }
 
       // Fallback: some one-time payments may not have order.status
-      // Check if checkout is completed AND order exists
       if (checkoutStatus === 'completed' && data.order && orderStatus !== 'pending') {
-        console.log('[claim] Payment verified: checkout completed + order not pending')
         return true
       }
 
@@ -76,26 +65,20 @@ async function verifyCreemCheckout(checkoutId: string): Promise<boolean> {
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('[claim] POST received')
-
     const token = getBearerToken(req)
     if (!token) {
-      console.warn('[claim] No session token')
       return NextResponse.json({ error: getServerDict().api.balance.UNAUTHORIZED, code: 'UNAUTHORIZED' }, { status: 401 })
     }
     const payload = await verifySessionToken(token)
     if (!payload) {
-      console.warn('[claim] Invalid/expired session token')
       return NextResponse.json({ error: getServerDict().api.balance.SESSION_EXPIRED, code: 'UNAUTHORIZED' }, { status: 401 })
     }
 
     const email = payload.email.toLowerCase().trim()
-    console.log('[claim] Checking pending purchase for:', email)
 
     // Step 1: Look up pending purchase
     const pending = await getPendingPurchase(email)
     if (!pending) {
-      console.log('[claim] No pending purchase found for:', email)
       return NextResponse.json({
         claimed: false,
         email,
@@ -103,12 +86,6 @@ export async function POST(req: NextRequest) {
         totalPurchased: 0,
       })
     }
-
-    console.log('[claim] Found pending purchase:', {
-      checkoutId: pending.checkoutId,
-      packageId: pending.packageId,
-      credits: pending.credits,
-    })
 
     // Step 2: Verify payment with Creem before granting credits
     const isPaid = await verifyCreemCheckout(pending.checkoutId)
@@ -123,11 +100,10 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Step 3: Grant credits
-    console.log('[claim] Granting credits for:', email)
+    // Step 3: Grant credits (claimPendingPurchase 内部用 checkoutId 作为幂等键，
+    // 与 webhook 路径一致，避免双发放)
     const balance = await claimPendingPurchase(email)
     if (!balance) {
-      console.warn('[claim] claimPendingPurchase returned null for:', email)
       return NextResponse.json({
         claimed: false,
         email,
@@ -136,17 +112,12 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    console.log('[claim] Credits granted successfully:', {
-      email: balance.email,
-      credits: balance.credits,
-    })
-
-    // Track purchase event
+    // Track purchase event (metadata.checkout_id 与 webhook 一致)
     recordEvent({
       event_type: 'purchase',
       email,
-      metadata: { package_id: pending.packageId, credits: pending.credits, amount: pending.amount, claimed_via: 'success_page' },
-    }).catch(() => {})
+      metadata: { package_id: pending.packageId, credits: pending.credits, amount: pending.amount, checkout_id: pending.checkoutId, claimed_via: 'success_page' },
+    }).catch(err => console.warn('[claim] analytics record failed:', err))
 
     return NextResponse.json({
       claimed: true,
@@ -155,7 +126,7 @@ export async function POST(req: NextRequest) {
       totalPurchased: balance.totalPurchased,
     })
   } catch (err) {
-    console.error('[claim] CRASH:', err instanceof Error ? err.message : String(err), err instanceof Error ? err.stack : '')
+    console.error('[claim] CRASH:', err instanceof Error ? err.message : String(err))
     return NextResponse.json({ error: getServerDict().api.balance.BALANCE_ERROR, code: 'CLAIM_ERROR' }, { status: 500 })
   }
 }

@@ -1,14 +1,13 @@
 /**
  * Analytics — event recording + aggregation queries.
- * Supports PostgreSQL (Neon) and file-based JSON fallback.
+ * PostgreSQL (Neon) only. Requires DATABASE_URL.
+ *
+ * 时区策略：所有"今日/本周/本月"边界和按日聚合均基于 Asia/Shanghai (UTC+8)，
+ * 避免 Vercel 默认 UTC 导致用户感知的"今日"错位 8 小时。
  */
 
 import type { NeonQueryFunction } from '@neondatabase/serverless'
-import type { CreditBalance } from '@/lib/credits'
-import fs from 'fs'
-import path from 'path'
 import crypto from 'crypto'
-import { withFileLock, atomicWriteJson, dataDir as DATA_DIR } from '@/lib/file-lock'
 
 // ── Types ──
 
@@ -28,11 +27,15 @@ export interface AnalyticsEvent {
   created_at: string
 }
 
-// ── DB init ──
+// ── Config ──
 
 const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
-const EVENTS_FILE = path.join(DATA_DIR, 'analytics_events.json')
-const AUDIT_FILE = path.join(DATA_DIR, 'admin_audit_log.json')
+const TIMEZONE = 'Asia/Shanghai'
+
+// ip_hash HMAC 密钥（防止 sha256 截断被彩虹表反查）
+const IP_HMAC_KEY = process.env.IP_HASH_SECRET || 'tikworth-ip-hmac-v1'
+
+// ── DB init ──
 
 let sql: NeonQueryFunction<false, false> | null = null
 let dbReady = false
@@ -43,11 +46,14 @@ async function initDb(): Promise<boolean> {
   if (dbInitPromise) return dbInitPromise
 
   dbInitPromise = (async () => {
-    if (!DATABASE_URL) return false
+    if (!DATABASE_URL) {
+      console.error('[analytics] DATABASE_URL is not configured')
+      return false
+    }
     try {
       const { neon } = await import('@neondatabase/serverless')
       sql = neon(DATABASE_URL)
-      // Single statement — avoids multi-statement failure cascade in serverless
+      // CREATE TABLE IF NOT EXISTS — 幂等
       await sql`
         CREATE TABLE IF NOT EXISTS analytics_events (
           id SERIAL PRIMARY KEY,
@@ -62,6 +68,18 @@ async function initDb(): Promise<boolean> {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `
+      // 幂等列迁移：补齐历史表可能缺失的列（CREATE TABLE IF NOT EXISTS 不会改已有表）
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS event_type TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS path TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS username TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS email TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS metadata JSONB`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer TEXT`
+      await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
+
       await sql`
         CREATE TABLE IF NOT EXISTS admin_audit_log (
           id SERIAL PRIMARY KEY,
@@ -79,13 +97,16 @@ async function initDb(): Promise<boolean> {
           credits INTEGER NOT NULL DEFAULT 0,
           total_purchased INTEGER NOT NULL DEFAULT 0,
           purchases JSONB NOT NULL DEFAULT '[]'::jsonb,
-          verified_at BIGINT NOT NULL DEFAULT 0
+          verified_at BIGINT NOT NULL DEFAULT 0,
+          disabled BOOLEAN NOT NULL DEFAULT false
         )
       `
+      await sql`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`
+
       dbReady = true
       return true
     } catch (err) {
-      console.warn('[analytics] Postgres init failed, using file fallback:', err)
+      console.error('[analytics] Postgres init failed:', err instanceof Error ? err.message : String(err))
       return false
     }
   })()
@@ -93,33 +114,49 @@ async function initDb(): Promise<boolean> {
   return dbInitPromise
 }
 
+// ── 时区边界工具 ──
+
+/**
+ * 计算 Asia/Shanghai 时区的今日/本周/本月起始时间（UTC ISO 字符串）。
+ * Vercel 默认 TZ=UTC，直接用 new Date(y,m,d) 得到的是 UTC 边界，
+ * 上海用户在 00:00-08:00 会感知到"今日"错位。
+ */
+function shanghaiBoundaries() {
+  const now = new Date()
+  // 上海当前时间的各分量
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
+  const year = shanghaiNow.getFullYear()
+  const month = shanghaiNow.getMonth()
+  const date = shanghaiNow.getDate()
+
+  // 上海今日 00:00 对应的 UTC 时间
+  const todayStart = new Date(Date.UTC(year, month, date, -8, 0, 0))
+  // 上海本月 1 日 00:00
+  const monthStart = new Date(Date.UTC(year, month, 1, -8, 0, 0))
+  // 滚动 7×24h
+  const weekStart = new Date(now.getTime() - 7 * 86400000)
+
+  return {
+    todayStart: todayStart.toISOString(),
+    weekStart: weekStart.toISOString(),
+    monthStart: monthStart.toISOString(),
+  }
+}
+
 // ── Record Event ──
 
 export async function recordEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at'>): Promise<void> {
   const useDb = await initDb()
-
-  if (useDb && sql) {
-    await sql`
-      INSERT INTO analytics_events (event_type, path, username, email, metadata, ip_hash, user_agent, referrer)
-      VALUES (${event.event_type}, ${event.path || null}, ${event.username || null},
-        ${event.email || null}, ${JSON.stringify(event.metadata || {})}::jsonb,
-        ${event.ip_hash || null}, ${event.user_agent || null}, ${event.referrer || null})
-    `
+  if (!useDb || !sql) {
+    console.error('[analytics] recordEvent skipped — DB not ready:', event.event_type)
     return
   }
-
-  // File fallback
-  await withFileLock(EVENTS_FILE, async () => {
-    const events = readFileStore(EVENTS_FILE)
-    events.push({
-      ...event,
-      id: events.length + 1,
-      created_at: new Date().toISOString(),
-    })
-    // Keep last 10000 events
-    const trimmed = events.slice(-10000)
-    atomicWriteJson(EVENTS_FILE, trimmed)
-  })
+  await sql`
+    INSERT INTO analytics_events (event_type, path, username, email, metadata, ip_hash, user_agent, referrer)
+    VALUES (${event.event_type}, ${event.path || null}, ${event.username || null},
+      ${event.email || null}, ${JSON.stringify(event.metadata || {})}::jsonb,
+      ${event.ip_hash || null}, ${event.user_agent || null}, ${event.referrer || null})
+  `
 }
 
 // ── Record Audit Log ──
@@ -131,25 +168,14 @@ export async function recordAuditLog(entry: {
   reason: string
 }): Promise<void> {
   const useDb = await initDb()
-
-  if (useDb && sql) {
-    await sql`
-      INSERT INTO admin_audit_log (action, target_email, credits, reason)
-      VALUES (${entry.action}, ${entry.target_email}, ${entry.credits}, ${entry.reason})
-    `
+  if (!useDb || !sql) {
+    console.error('[analytics] recordAuditLog skipped — DB not ready')
     return
   }
-
-  await withFileLock(AUDIT_FILE, async () => {
-    const logs = readFileStore(AUDIT_FILE)
-    logs.push({
-      ...entry,
-      id: logs.length + 1,
-      operator: 'admin',
-      created_at: new Date().toISOString(),
-    })
-    atomicWriteJson(AUDIT_FILE, logs.slice(-5000))
-  })
+  await sql`
+    INSERT INTO admin_audit_log (action, target_email, credits, reason)
+    VALUES (${entry.action}, ${entry.target_email}, ${entry.credits}, ${entry.reason})
+  `
 }
 
 // ── Query: Stats Overview ──
@@ -169,81 +195,62 @@ export interface StatsOverview {
   remainingCredits: number
 }
 
+// 安全的 numeric 聚合：过滤非数字字符串，避免 ::numeric 抛错
+const AMOUNT_EXPR = `CASE WHEN metadata->>'amount' ~ '^[0-9]+(\\\\.[0-9]+)?$' THEN (metadata->>'amount')::numeric ELSE 0 END`
+
 export async function getStatsOverview(): Promise<StatsOverview> {
   const useDb = await initDb()
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-  const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-  if (useDb && sql) {
-    const [purchaseTotal, purchaseToday, purchaseWeek, purchaseMonth,
-      payerTotal, payerToday, payerWeek, payerMonth,
-      evalToday, evalWeek, evalMonth] = await Promise.all([
-      sql`SELECT COALESCE(SUM((metadata->>'amount')::numeric), 0) as total FROM analytics_events WHERE event_type = 'purchase'`,
-      sql`SELECT COALESCE(SUM((metadata->>'amount')::numeric), 0) as today FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${todayStart}::timestamptz`,
-      sql`SELECT COALESCE(SUM((metadata->>'amount')::numeric), 0) as week FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${weekStart}::timestamptz`,
-      sql`SELECT COALESCE(SUM((metadata->>'amount')::numeric), 0) as month FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${monthStart}::timestamptz`,
-      sql`SELECT COUNT(DISTINCT email) as total FROM analytics_events WHERE event_type = 'purchase'`,
-      sql`SELECT COUNT(DISTINCT email) as today FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${todayStart}::timestamptz`,
-      sql`SELECT COUNT(DISTINCT email) as week FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${weekStart}::timestamptz`,
-      sql`SELECT COUNT(DISTINCT email) as month FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${monthStart}::timestamptz`,
-      sql`SELECT COUNT(*) as today FROM analytics_events WHERE event_type = 'evaluate_done' AND created_at >= ${todayStart}::timestamptz`,
-      sql`SELECT COUNT(*) as week FROM analytics_events WHERE event_type = 'evaluate_done' AND created_at >= ${weekStart}::timestamptz`,
-      sql`SELECT COUNT(*) as month FROM analytics_events WHERE event_type = 'evaluate_done' AND created_at >= ${monthStart}::timestamptz`,
-    ])
-
-    let remainingCredits = 0
-    try {
-      const creditRows = await sql`SELECT COALESCE(SUM(credits), 0) as total FROM credit_balances`
-      remainingCredits = Number(creditRows[0]?.total) || 0
-    } catch (err) {
-      console.warn('[analytics] failed to query credit_balances:', err)
-    }
-
-    const row = (r: Record<string, unknown>, key: string) => Number(r[key]) || 0
-
+  if (!useDb || !sql) {
     return {
-      totalRevenue: row(purchaseTotal[0] as Record<string, unknown>, 'total'),
-      revenueToday: row(purchaseToday[0] as Record<string, unknown>, 'today'),
-      revenueWeek: row(purchaseWeek[0] as Record<string, unknown>, 'week'),
-      revenueMonth: row(purchaseMonth[0] as Record<string, unknown>, 'month'),
-      totalPayers: row(payerTotal[0] as Record<string, unknown>, 'total'),
-      payersToday: row(payerToday[0] as Record<string, unknown>, 'today'),
-      payersWeek: row(payerWeek[0] as Record<string, unknown>, 'week'),
-      payersMonth: row(payerMonth[0] as Record<string, unknown>, 'month'),
-      evaluationsToday: row(evalToday[0] as Record<string, unknown>, 'today'),
-      evaluationsWeek: row(evalWeek[0] as Record<string, unknown>, 'week'),
-      evaluationsMonth: row(evalMonth[0] as Record<string, unknown>, 'month'),
-      remainingCredits,
+      totalRevenue: 0, revenueToday: 0, revenueWeek: 0, revenueMonth: 0,
+      totalPayers: 0, payersToday: 0, payersWeek: 0, payersMonth: 0,
+      evaluationsToday: 0, evaluationsWeek: 0, evaluationsMonth: 0,
+      remainingCredits: 0,
     }
   }
 
-  // File fallback: aggregate from flat files
-  const events = readFileStore(EVENTS_FILE) as unknown as AnalyticsEvent[]
-  const filterEvents = (type: EventType, since: number) =>
-    events.filter(e => e.event_type === type && new Date(e.created_at).getTime() >= since)
+  const { todayStart, weekStart, monthStart } = shanghaiBoundaries()
 
-  // File fallback: remainingCredits not available without DB
-  const remainingCredits = 0
+  // 评估计数从 evaluations 表查询（单一事实源，避免双写不一致）
+  const [purchaseTotal, purchaseToday, purchaseWeek, purchaseMonth,
+    payerTotal, payerToday, payerWeek, payerMonth,
+    evalToday, evalWeek, evalMonth] = await Promise.all([
+    sql`SELECT COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as total FROM analytics_events WHERE event_type = 'purchase'`,
+    sql`SELECT COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as today FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${todayStart}::timestamptz`,
+    sql`SELECT COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as week FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${weekStart}::timestamptz`,
+    sql`SELECT COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as month FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${monthStart}::timestamptz`,
+    sql`SELECT COUNT(DISTINCT email) as total FROM analytics_events WHERE event_type = 'purchase'`,
+    sql`SELECT COUNT(DISTINCT email) as today FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${todayStart}::timestamptz`,
+    sql`SELECT COUNT(DISTINCT email) as week FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${weekStart}::timestamptz`,
+    sql`SELECT COUNT(DISTINCT email) as month FROM analytics_events WHERE event_type = 'purchase' AND created_at >= ${monthStart}::timestamptz`,
+    // 评估次数从 evaluations 表查（computed_at 字段）
+    sql`SELECT COUNT(*) as today FROM evaluations WHERE computed_at >= ${todayStart}::timestamptz`,
+    sql`SELECT COUNT(*) as week FROM evaluations WHERE computed_at >= ${weekStart}::timestamptz`,
+    sql`SELECT COUNT(*) as month FROM evaluations WHERE computed_at >= ${monthStart}::timestamptz`,
+  ])
 
-  const purchases = events.filter(e => e.event_type === 'purchase')
-  const purchasesToday = filterEvents('purchase', new Date(todayStart).getTime())
-  const purchasesWeek = filterEvents('purchase', new Date(weekStart).getTime())
-  const purchasesMonth = filterEvents('purchase', new Date(monthStart).getTime())
+  let remainingCredits = 0
+  try {
+    const creditRows = await sql`SELECT COALESCE(SUM(credits), 0) as total FROM credit_balances`
+    remainingCredits = Number(creditRows[0]?.total) || 0
+  } catch (err) {
+    console.warn('[analytics] failed to query credit_balances:', err)
+  }
+
+  const row = (r: Record<string, unknown>, key: string) => Number(r[key]) || 0
 
   return {
-    totalRevenue: purchases.reduce((sum, e) => sum + (Number((e.metadata as Record<string, unknown>)?.amount) || 0), 0),
-    revenueToday: purchasesToday.reduce((sum, e) => sum + (Number((e.metadata as Record<string, unknown>)?.amount) || 0), 0),
-    revenueWeek: purchasesWeek.reduce((sum, e) => sum + (Number((e.metadata as Record<string, unknown>)?.amount) || 0), 0),
-    revenueMonth: purchasesMonth.reduce((sum, e) => sum + (Number((e.metadata as Record<string, unknown>)?.amount) || 0), 0),
-    totalPayers: new Set(purchases.map(e => e.email).filter(Boolean)).size,
-    payersToday: new Set(purchasesToday.map(e => e.email).filter(Boolean)).size,
-    payersWeek: new Set(purchasesWeek.map(e => e.email).filter(Boolean)).size,
-    payersMonth: new Set(purchasesMonth.map(e => e.email).filter(Boolean)).size,
-    evaluationsToday: filterEvents('evaluate_done', new Date(todayStart).getTime()).length,
-    evaluationsWeek: filterEvents('evaluate_done', new Date(weekStart).getTime()).length,
-    evaluationsMonth: filterEvents('evaluate_done', new Date(monthStart).getTime()).length,
+    totalRevenue: row(purchaseTotal[0] as Record<string, unknown>, 'total'),
+    revenueToday: row(purchaseToday[0] as Record<string, unknown>, 'today'),
+    revenueWeek: row(purchaseWeek[0] as Record<string, unknown>, 'week'),
+    revenueMonth: row(purchaseMonth[0] as Record<string, unknown>, 'month'),
+    totalPayers: row(payerTotal[0] as Record<string, unknown>, 'total'),
+    payersToday: row(payerToday[0] as Record<string, unknown>, 'today'),
+    payersWeek: row(payerWeek[0] as Record<string, unknown>, 'week'),
+    payersMonth: row(payerMonth[0] as Record<string, unknown>, 'month'),
+    evaluationsToday: row(evalToday[0] as Record<string, unknown>, 'today'),
+    evaluationsWeek: row(evalWeek[0] as Record<string, unknown>, 'week'),
+    evaluationsMonth: row(evalMonth[0] as Record<string, unknown>, 'month'),
     remainingCredits,
   }
 }
@@ -261,40 +268,28 @@ export interface FunnelData {
 
 export async function getFunnel(days: number): Promise<FunnelData> {
   const useDb = await initDb()
+  if (!useDb || !sql) {
+    return { pageViews: 0, searches: 0, evaluateStarts: 0, paywallViews: 0, paywallClicks: 0, purchases: 0 }
+  }
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
-  if (useDb && sql) {
-    const rows = await sql`
-      SELECT event_type, COUNT(*) as count
-      FROM analytics_events
-      WHERE created_at >= ${since}::timestamptz
-        AND event_type IN ('page_view', 'search', 'evaluate_start', 'paywall_view', 'paywall_click', 'purchase')
-      GROUP BY event_type
-    ` as Array<{ event_type: string; count: string }>
+  const rows = await sql`
+    SELECT event_type, COUNT(*) as count
+    FROM analytics_events
+    WHERE created_at >= ${since}::timestamptz
+      AND event_type IN ('page_view', 'search', 'evaluate_start', 'paywall_view', 'paywall_click', 'purchase')
+    GROUP BY event_type
+  ` as Array<{ event_type: string; count: string }>
 
-    const map: Record<string, number> = {}
-    for (const r of rows) map[r.event_type] = Number(r.count)
-    return {
-      pageViews: map.page_view || 0,
-      searches: map.search || 0,
-      evaluateStarts: map.evaluate_start || 0,
-      paywallViews: map.paywall_view || 0,
-      paywallClicks: map.paywall_click || 0,
-      purchases: map.purchase || 0,
-    }
-  }
-
-  const events = readFileStore(EVENTS_FILE) as unknown as AnalyticsEvent[]
-  const sinceTime = new Date(since).getTime()
-  const filtered = events.filter(e => new Date(e.created_at).getTime() >= sinceTime)
-
+  const map: Record<string, number> = {}
+  for (const r of rows) map[r.event_type] = Number(r.count)
   return {
-    pageViews: filtered.filter(e => e.event_type === 'page_view').length,
-    searches: filtered.filter(e => e.event_type === 'search').length,
-    evaluateStarts: filtered.filter(e => e.event_type === 'evaluate_start').length,
-    paywallViews: filtered.filter(e => e.event_type === 'paywall_view').length,
-    paywallClicks: filtered.filter(e => e.event_type === 'paywall_click').length,
-    purchases: filtered.filter(e => e.event_type === 'purchase').length,
+    pageViews: map.page_view || 0,
+    searches: map.search || 0,
+    evaluateStarts: map.evaluate_start || 0,
+    paywallViews: map.paywall_view || 0,
+    paywallClicks: map.paywall_click || 0,
+    purchases: map.purchase || 0,
   }
 }
 
@@ -307,31 +302,20 @@ export interface DailyRevenue {
 
 export async function getRevenueByDay(days: number): Promise<DailyRevenue[]> {
   const useDb = await initDb()
+  if (!useDb || !sql) return []
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
-  if (useDb && sql) {
-    const rows = await sql`
-      SELECT DATE(created_at) as date, COALESCE(SUM((metadata->>'amount')::numeric), 0) as amount
-      FROM analytics_events
-      WHERE event_type = 'purchase' AND created_at >= ${since}::timestamptz
-      GROUP BY DATE(created_at)
-      ORDER BY date
-    ` as Array<{ date: string; amount: string }>
-    return rows.map(r => ({ date: String(r.date).slice(0, 10), amount: Number(r.amount) }))
-  }
-
-  const events = readFileStore(EVENTS_FILE) as unknown as AnalyticsEvent[]
-  const sinceTime = new Date(since).getTime()
-  const byDay = new Map<string, number>()
-  for (const e of events) {
-    if (e.event_type !== 'purchase') continue
-    const d = new Date(e.created_at).toISOString().slice(0, 10)
-    byDay.set(d, (byDay.get(d) || 0) + (Number((e.metadata as Record<string, unknown>)?.amount) || 0))
-  }
-  return Array.from(byDay.entries())
-    .filter(([d]) => new Date(d).getTime() >= sinceTime)
-    .map(([date, amount]) => ({ date, amount }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  // 按 Asia/Shanghai 时区的日期聚合（date_trunc + AT TIME ZONE）
+  const rows = await sql`
+    SELECT
+      TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date,
+      COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as amount
+    FROM analytics_events
+    WHERE event_type = 'purchase' AND created_at >= ${since}::timestamptz
+    GROUP BY (created_at AT TIME ZONE ${TIMEZONE})::date
+    ORDER BY date
+  ` as Array<{ date: string; amount: string }>
+  return rows.map(r => ({ date: String(r.date), amount: Number(r.amount) }))
 }
 
 // ── Query: Package Distribution ──
@@ -344,31 +328,17 @@ export interface PackageStat {
 
 export async function getRevenueByPackage(days: number): Promise<PackageStat[]> {
   const useDb = await initDb()
+  if (!useDb || !sql) return []
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
-  if (useDb && sql) {
-    const rows = await sql`
-      SELECT metadata->>'package_id' as package_id, COUNT(*) as count,
-        COALESCE(SUM((metadata->>'amount')::numeric), 0) as revenue
-      FROM analytics_events
-      WHERE event_type = 'purchase' AND created_at >= ${since}::timestamptz
-      GROUP BY metadata->>'package_id'
-    ` as Array<{ package_id: string; count: string; revenue: string }>
-    return rows.map(r => ({ id: r.package_id || 'unknown', count: Number(r.count), revenue: Number(r.revenue) }))
-  }
-
-  const events = readFileStore(EVENTS_FILE) as unknown as AnalyticsEvent[]
-  const sinceTime = new Date(since).getTime()
-  const byPkg = new Map<string, { count: number; revenue: number }>()
-  for (const e of events) {
-    if (e.event_type !== 'purchase' || new Date(e.created_at).getTime() < sinceTime) continue
-    const pkgId = String((e.metadata as Record<string, unknown>)?.package_id || 'unknown')
-    const entry = byPkg.get(pkgId) || { count: 0, revenue: 0 }
-    entry.count++
-    entry.revenue += Number((e.metadata as Record<string, unknown>)?.amount) || 0
-    byPkg.set(pkgId, entry)
-  }
-  return Array.from(byPkg.entries()).map(([id, v]) => ({ id, ...v }))
+  const rows = await sql`
+    SELECT metadata->>'package_id' as package_id, COUNT(*) as count,
+      COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as revenue
+    FROM analytics_events
+    WHERE event_type = 'purchase' AND created_at >= ${since}::timestamptz
+    GROUP BY metadata->>'package_id'
+  ` as Array<{ package_id: string; count: string; revenue: string }>
+  return rows.map(r => ({ id: r.package_id || 'unknown', count: Number(r.count), revenue: Number(r.revenue) }))
 }
 
 // ── Query: Audit Log ──
@@ -384,12 +354,13 @@ export interface AuditEntry {
 
 export async function getAuditLog(limit = 50, offset = 0, action?: string): Promise<{ items: AuditEntry[]; total: number }> {
   const useDb = await initDb()
+  if (!useDb || !sql) return { items: [], total: 0 }
 
-  if (useDb && sql) {
-    const whereClause = action ? `WHERE action = '${action.replace(/'/g, "''")}'` : ''
+  // 参数化查询，彻底避免 SQL 注入（不再使用 sql.unsafe 拼接 WHERE）
+  if (action) {
     const [rows, countRow] = await Promise.all([
-      sql`SELECT * FROM admin_audit_log ${sql.unsafe(whereClause)} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}` as unknown as Promise<Array<Record<string, unknown>>>,
-      sql`SELECT COUNT(*) as total FROM admin_audit_log ${sql.unsafe(whereClause)}` as unknown as Promise<Array<{ total: string }>>,
+      sql`SELECT * FROM admin_audit_log WHERE action = ${action} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      sql`SELECT COUNT(*) as total FROM admin_audit_log WHERE action = ${action}`,
     ])
     const items = (rows as Array<Record<string, unknown>>).map(r => ({
       id: Number(r.id),
@@ -399,24 +370,22 @@ export async function getAuditLog(limit = 50, offset = 0, action?: string): Prom
       reason: String(r.reason || ''),
       created_at: String(r.created_at),
     }))
-    return { items, total: Number(countRow[0]?.total || 0) }
+    return { items, total: Number((countRow[0] as { total: string })?.total || 0) }
   }
 
-  const logs = readFileStore(AUDIT_FILE) as unknown as AuditEntry[]
-  const filtered = action ? logs.filter(l => l.action === action) : logs
-  const sorted = filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  return { items: sorted.slice(offset, offset + limit), total: filtered.length }
-}
-
-// ── File Helpers ──
-
-function readFileStore(filePath: string): Array<Record<string, unknown>> {
-  try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-    }
-  } catch {}
-  return []
+  const [rows, countRow] = await Promise.all([
+    sql`SELECT * FROM admin_audit_log ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+    sql`SELECT COUNT(*) as total FROM admin_audit_log`,
+  ])
+  const items = (rows as Array<Record<string, unknown>>).map(r => ({
+    id: Number(r.id),
+    action: String(r.action),
+    target_email: String(r.target_email || ''),
+    credits: Number(r.credits),
+    reason: String(r.reason || ''),
+    created_at: String(r.created_at),
+  }))
+  return { items, total: Number((countRow[0] as { total: string })?.total || 0) }
 }
 
 // ── Query: PV/UV ──
@@ -434,46 +403,27 @@ export interface PVUVData {
 
 export async function getPVUV(): Promise<PVUVData> {
   const useDb = await initDb()
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-  const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-  if (useDb && sql) {
-    const [total, today, week, month] = await Promise.all([
-      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view'`,
-      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
-      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
-      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
-    ]) as Array<Array<{ pv: string; uv: string }>>
-
-    const num = (r: { pv: string; uv: string }) => ({ pv: Number(r.pv), uv: Number(r.uv) })
-    const t = num(total[0]), td = num(today[0]), tw = num(week[0]), tm = num(month[0])
-
-    return {
-      totalPV: t.pv, totalUV: t.uv,
-      pvToday: td.pv, uvToday: td.uv,
-      pvWeek: tw.pv, uvWeek: tw.uv,
-      pvMonth: tm.pv, uvMonth: tm.uv,
-    }
+  if (!useDb || !sql) {
+    return { totalPV: 0, totalUV: 0, pvToday: 0, uvToday: 0, pvWeek: 0, uvWeek: 0, pvMonth: 0, uvMonth: 0 }
   }
 
-  // File fallback
-  const events = readFileStore(EVENTS_FILE) as unknown as AnalyticsEvent[]
-  const pageViews = events.filter(e => e.event_type === 'page_view')
-  const filter = (since: number) => pageViews.filter(e => new Date(e.created_at).getTime() >= since)
+  const { todayStart, weekStart, monthStart } = shanghaiBoundaries()
 
-  const pvToday = filter(new Date(todayStart).getTime())
-  const pvWeek = filter(new Date(weekStart).getTime())
-  const pvMonth = filter(new Date(monthStart).getTime())
+  const [total, today, week, month] = await Promise.all([
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view'`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
+  ]) as Array<Array<{ pv: string; uv: string }>>
 
-  const distinctIp = (list: AnalyticsEvent[]) => new Set(list.map(e => e.ip_hash).filter(Boolean)).size
+  const num = (r: { pv: string; uv: string }) => ({ pv: Number(r.pv), uv: Number(r.uv) })
+  const t = num(total[0]), td = num(today[0]), tw = num(week[0]), tm = num(month[0])
 
   return {
-    totalPV: pageViews.length, totalUV: distinctIp(pageViews),
-    pvToday: pvToday.length, uvToday: distinctIp(pvToday),
-    pvWeek: pvWeek.length, uvWeek: distinctIp(pvWeek),
-    pvMonth: pvMonth.length, uvMonth: distinctIp(pvMonth),
+    totalPV: t.pv, totalUV: t.uv,
+    pvToday: td.pv, uvToday: td.uv,
+    pvWeek: tw.pv, uvWeek: tw.uv,
+    pvMonth: tm.pv, uvMonth: tm.uv,
   }
 }
 
@@ -491,66 +441,37 @@ export interface UserListItem {
 
 export async function getUsersList(): Promise<UserListItem[]> {
   const useDb = await initDb()
+  if (!useDb || !sql) return []
 
-  if (useDb && sql) {
-    try {
-      const rows = await sql`
-        SELECT email, credits, total_purchased, purchases, verified_at, disabled
-        FROM credit_balances
-        ORDER BY total_purchased DESC, credits DESC
-      `
-      return rows.map((r: Record<string, unknown>) => {
-        const purchases = Array.isArray(r.purchases) ? r.purchases as Array<{ purchasedAt: number }> : []
-        const lastPurchase = purchases.length > 0 ? purchases[0] : null
-        return {
-          email: String(r.email),
-          hasPaid: Number(r.total_purchased) > 0,
-          remainingCredits: Number(r.credits),
-          totalPurchased: Number(r.total_purchased),
-          verifiedAt: new Date(Number(r.verified_at)).toISOString(),
-          lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
-          disabled: r.disabled === true,
-        }
-      })
-    } catch (err) {
-      console.warn('[analytics] failed to query credit_balances for users list:', err)
-      return []
-    }
-  }
-
-  // File fallback: try reading from file
-  const balancesFile = path.join(DATA_DIR, 'credit_balances.json')
   try {
-    if (fs.existsSync(balancesFile)) {
-      const balances = JSON.parse(fs.readFileSync(balancesFile, 'utf-8'))
-      const users: UserListItem[] = []
-      for (const [email, bal] of Object.entries(balances) as Array<[string, CreditBalance]>) {
-        const lastPurchase = bal.purchases.length > 0 ? bal.purchases[0] : null
-        users.push({
-          email,
-          hasPaid: bal.totalPurchased > 0,
-          remainingCredits: bal.credits,
-          totalPurchased: bal.totalPurchased,
-          verifiedAt: new Date(bal.verifiedAt).toISOString(),
-          lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
-          disabled: false,
-        })
+    const rows = await sql`
+      SELECT email, credits, total_purchased, purchases, verified_at, disabled
+      FROM credit_balances
+      ORDER BY total_purchased DESC, credits DESC
+    `
+    return rows.map((r: Record<string, unknown>) => {
+      const purchases = Array.isArray(r.purchases) ? r.purchases as Array<{ purchasedAt: number }> : []
+      const lastPurchase = purchases.length > 0 ? purchases[0] : null
+      return {
+        email: String(r.email),
+        hasPaid: Number(r.total_purchased) > 0,
+        remainingCredits: Number(r.credits),
+        totalPurchased: Number(r.total_purchased),
+        verifiedAt: new Date(Number(r.verified_at)).toISOString(),
+        lastPurchaseAt: lastPurchase ? new Date(lastPurchase.purchasedAt).toISOString() : null,
+        disabled: r.disabled === true,
       }
-      users.sort((a, b) => {
-        if (a.hasPaid !== b.hasPaid) return a.hasPaid ? -1 : 1
-        return b.remainingCredits - a.remainingCredits
-      })
-      return users
-    }
-  } catch {}
-
-  return []
+    })
+  } catch (err) {
+    console.warn('[analytics] failed to query credit_balances for users list:', err)
+    return []
+  }
 }
 
-// ── Hash IP ──
+// ── Hash IP (HMAC-SHA256 防彩虹表反查) ──
 
 export function hashIp(ip: string): string {
-  return crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16)
+  return crypto.createHmac('sha256', IP_HMAC_KEY).update(ip).digest('hex').slice(0, 32)
 }
 
 // ── Query: Traffic Sources ──
@@ -563,58 +484,78 @@ export interface TrafficSource {
 
 export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
   const useDb = await initDb()
+  if (!useDb || !sql) return []
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
-  if (useDb && sql) {
-    try {
-      const rows = await sql`
-        SELECT
-          COALESCE(NULLIF(referrer, ''), '直接访问') as source,
-          COUNT(DISTINCT ip_hash) as visitors
-        FROM analytics_events
-        WHERE event_type = 'page_view'
-          AND created_at >= ${since}::timestamptz
-        GROUP BY source
-        ORDER BY visitors DESC
-        LIMIT 20
-      `
-      const total = rows.reduce((s: number, r: Record<string, unknown>) => s + Number(r.visitors), 0)
-      return rows.map((r: Record<string, unknown>) => ({
-        source: classifyReferrer(String(r.source)),
-        visitors: Number(r.visitors),
-        pct: total > 0 ? Math.round((Number(r.visitors) / total) * 1000) / 10 : 0,
-      }))
-    } catch (err) {
-      console.warn('[analytics] failed to query traffic sources:', err)
-      return []
-    }
-  }
+  try {
+    const rows = await sql`
+      SELECT
+        COALESCE(NULLIF(referrer, ''), '直接访问') as source,
+        COUNT(DISTINCT ip_hash) as visitors
+      FROM analytics_events
+      WHERE event_type = 'page_view'
+        AND created_at >= ${since}::timestamptz
+      GROUP BY source
+      ORDER BY visitors DESC
+      LIMIT 20
+    `
+    const raw = rows.map((r: Record<string, unknown>) => ({
+      source: classifyReferrer(String(r.source)),
+      visitors: Number(r.visitors),
+    }))
+    const total = raw.reduce((s, r) => s + r.visitors, 0)
+    if (total === 0 || raw.length === 0) return []
 
-  return []
+    // 合并相同来源（classifyReferrer 可能将多个 referrer 归到同一来源）
+    const merged = new Map<string, number>()
+    for (const r of raw) {
+      merged.set(r.source, (merged.get(r.source) || 0) + r.visitors)
+    }
+    const result = Array.from(merged.entries())
+      .map(([source, visitors]) => ({
+        source,
+        visitors,
+        pct: Math.round((visitors / total) * 1000) / 10,
+      }))
+      .sort((a, b) => b.visitors - a.visitors)
+
+    // 修正百分比和为 100（最后一条兜底）
+    const sumPct = result.reduce((s, r) => s + r.pct, 0)
+    if (result.length > 0 && sumPct !== 100) {
+      result[result.length - 1].pct = Math.max(0, result[result.length - 1].pct + (100 - sumPct))
+    }
+    return result
+  } catch (err) {
+    console.warn('[analytics] failed to query traffic sources:', err)
+    return []
+  }
 }
 
+// 域名后缀匹配（避免 includes 子串误判）
 function classifyReferrer(ref: string): string {
   if (!ref || ref === '直接访问') return '直接访问'
-  const lower = ref.toLowerCase()
-  if (lower.includes('google.')) return 'Google'
-  if (lower.includes('bing.com')) return 'Bing'
-  if (lower.includes('baidu.com')) return '百度'
-  if (lower.includes('twitter.com') || lower.includes('x.com')) return 'X/Twitter'
-  if (lower.includes('facebook.com') || lower.includes('fb.com')) return 'Facebook'
-  if (lower.includes('instagram.com')) return 'Instagram'
-  if (lower.includes('youtube.com')) return 'YouTube'
-  if (lower.includes('tiktok.com')) return 'TikTok'
-  if (lower.includes('reddit.com')) return 'Reddit'
-  if (lower.includes('linkedin.com')) return 'LinkedIn'
-  if (lower.includes('github.com')) return 'GitHub'
-  if (lower.includes('producthunt')) return 'Product Hunt'
-  if (lower.includes('duckduckgo.com')) return 'DuckDuckGo'
-  if (lower.includes('yandex')) return 'Yandex'
-  // 提取域名
+
+  let hostname: string
   try {
-    const url = new URL(ref)
-    return url.hostname.replace(/^www\./, '')
+    hostname = new URL(ref).hostname.toLowerCase().replace(/^www\./, '')
   } catch {
     return ref.slice(0, 40)
   }
+
+  const endsWith = (suffix: string) => hostname === suffix || hostname.endsWith('.' + suffix)
+  if (endsWith('google.com') || hostname === 'google' || hostname.endsWith('.google')) return 'Google'
+  if (endsWith('bing.com')) return 'Bing'
+  if (endsWith('baidu.com')) return '百度'
+  if (endsWith('twitter.com') || endsWith('x.com')) return 'X/Twitter'
+  if (endsWith('facebook.com') || endsWith('fb.com')) return 'Facebook'
+  if (endsWith('instagram.com')) return 'Instagram'
+  if (endsWith('youtube.com')) return 'YouTube'
+  if (endsWith('tiktok.com')) return 'TikTok'
+  if (endsWith('reddit.com')) return 'Reddit'
+  if (endsWith('linkedin.com')) return 'LinkedIn'
+  if (endsWith('github.com')) return 'GitHub'
+  if (hostname.includes('producthunt')) return 'Product Hunt'
+  if (endsWith('duckduckgo.com')) return 'DuckDuckGo'
+  if (hostname.includes('yandex')) return 'Yandex'
+  return hostname
 }

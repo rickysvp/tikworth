@@ -29,19 +29,14 @@ export async function POST(req: NextRequest) {
     const payload = await req.text()
     const sig = req.headers.get('creem-signature') || ''
 
-    console.log('[creem-webhook] received payload, sig present:', !!sig, 'payload length:', payload.length)
-
     if (!sig || !verifyCreemSignature(payload, sig)) {
       console.warn('[creem-webhook] signature verification failed')
       return NextResponse.json({ error: getServerDict().api.creem.SIGNATURE_FAILED }, { status: 400 })
     }
 
-    console.log('[creem-webhook] signature verified OK')
-
     let event: { id: string; eventType: string; object: Record<string, unknown> }
     try {
       event = JSON.parse(payload)
-      console.log('[creem-webhook] event type:', event.eventType, 'event id:', event.id)
     } catch {
       console.error('[creem-webhook] invalid JSON payload')
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
@@ -51,13 +46,10 @@ export async function POST(req: NextRequest) {
     if (event.eventType === 'checkout.completed') {
       const obj = event.object as Record<string, unknown>
       const metadata = (obj.metadata || {}) as Record<string, string>
-      const order = obj.order as Record<string, unknown> | undefined
       const email = metadata.email || ''
       const packageId = metadata.packageId || ''
       const credits = metadata.credits || ''
       const amount = metadata.amount || ''
-
-      console.log('[creem-webhook] metadata:', { email, packageId, credits, amount, hasOrder: !!order, objectKeys: Object.keys(obj).slice(0, 10) })
 
       if (email && packageId && credits) {
         const creditsNum = parseInt(credits, 10)
@@ -66,16 +58,15 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: getServerDict().api.creem.INVALID_CREDITS }, { status: 400 })
         }
         try {
-          // Use order ID (or checkout ID) as paymentId for idempotency
-          const paymentId = (order?.id as string) || (obj.id as string) || event.id
-          console.log('[creem-webhook] granting credits:', { email, packageId, creditsNum, paymentId })
-          await grantCredits(email.toLowerCase(), packageId, creditsNum, parseFloat(amount || '0'), paymentId)
-          console.log('[creem-webhook] credits granted successfully for', email)
+          // 幂等键统一用 checkout_id（obj.id），与 claim 路径一致，避免 webhook+claim 双发放
+          const checkoutId = (obj.id as string) || event.id
+          await grantCredits(email.toLowerCase(), packageId, creditsNum, parseFloat(amount || '0'), checkoutId)
+          console.log('[creem-webhook] credits granted for', email, 'checkout:', checkoutId)
           // Record purchase analytics event
           recordEvent({
             event_type: 'purchase',
             email: email.toLowerCase(),
-            metadata: { package_id: packageId, credits: creditsNum, amount: parseFloat(amount || '0') },
+            metadata: { package_id: packageId, credits: creditsNum, amount: parseFloat(amount || '0'), checkout_id: checkoutId },
           }).catch(err => console.warn('[creem-webhook] analytics record failed:', err))
         } catch (err) {
           console.error('[creem-webhook] failed to grant credits:', err)
