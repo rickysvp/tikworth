@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStatsOverview, getRevenueByDay, getRevenueByPackage, getPVUV, getUsersList, getTrafficSources } from '@/lib/analytics'
+import {
+  getStatsOverview,
+  getRevenueByDay,
+  getRevenueByPackage,
+  getPVUV,
+  getUsersList,
+  getTrafficSources,
+  getPayersByDay,
+  getEvaluationsByDay,
+  getPvuvByDay,
+} from '@/lib/analytics'
 import { verifyAdminRequest } from '@/lib/admin-api-utils'
 
 export const dynamic = 'force-dynamic'
@@ -9,18 +19,26 @@ export async function GET(req: NextRequest) {
   if (authError) return authError
   const url = new URL(req.url)
   const period = url.searchParams.get('period') || '30d'
-  const days = period === 'today' ? 1 : period === '7d' ? 7 : 30
+  // 支持 7/14/30/90 天窗口；兼容旧参数 today（1 天）
+  const days = period === 'today' ? 1
+    : period === '7d' ? 7
+    : period === '14d' ? 14
+    : period === '90d' ? 90
+    : 30
 
   const noStore = { 'Cache-Control': 'no-store, max-age=0' }
 
   try {
-    const [overview, byDay, byPackage, pvuv, users, sources] = await Promise.all([
+    const [overview, byDay, byPackage, pvuv, users, sources, payersByDay, evaluationsByDay, pvuvByDay] = await Promise.all([
       getStatsOverview(),
       getRevenueByDay(days),
       getRevenueByPackage(days),
       getPVUV(),
       getUsersList(),
       getTrafficSources(days),
+      getPayersByDay(days),
+      getEvaluationsByDay(days),
+      getPvuvByDay(days),
     ])
 
     return NextResponse.json({
@@ -29,6 +47,12 @@ export async function GET(req: NextRequest) {
       pvuv,
       users,
       sources,
+      // 趋势时序数据（按所选周期 days 填充连续日期）
+      trends: {
+        payersByDay,
+        evaluationsByDay,
+        pvuvByDay,
+      },
     }, { headers: noStore })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

@@ -13,6 +13,7 @@ import {
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
+  LineChart, Line, Legend,
 } from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
 
@@ -60,7 +61,21 @@ interface StatsData {
     visitors: number
     pct: number
   }>
+  trends?: {
+    payersByDay: Array<{ date: string; count: number }>
+    evaluationsByDay: Array<{ date: string; count: number }>
+    pvuvByDay: Array<{ date: string; pv: number; uv: number }>
+  }
 }
+
+type TrendPeriod = '7d' | '14d' | '30d' | '90d'
+
+const TREND_PERIODS: { key: TrendPeriod; label: string }[] = [
+  { key: '7d', label: '7天' },
+  { key: '14d', label: '14天' },
+  { key: '30d', label: '30天' },
+  { key: '90d', label: '90天' },
+]
 
 interface LogItem {
   id: number
@@ -164,6 +179,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('30d')
 
   const [grantMode, setGrantMode] = useState<'single' | 'batch'>('single')
   const [grantEmail, setGrantEmail] = useState('')
@@ -195,7 +211,7 @@ export default function AdminDashboard() {
   const fetchStats = useCallback(async () => {
     if (!token) { router.push('/tiktokmaster'); return }
     try {
-      const res = await fetch('/api/tiktokmaster/stats', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`/api/tiktokmaster/stats?period=${trendPeriod}`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.status === 401) { localStorage.removeItem('admin_token'); router.push('/tiktokmaster'); return }
       const data = await res.json()
       if (!res.ok || data.error) {
@@ -214,6 +230,11 @@ export default function AdminDashboard() {
           pvuv: data.pvuv || { totalPV: 0, totalUV: 0, pvToday: 0, uvToday: 0, pvWeek: 0, uvWeek: 0, pvMonth: 0, uvMonth: 0 },
           users: Array.isArray(data.users) ? data.users : [],
           sources: Array.isArray(data.sources) ? data.sources : [],
+          trends: data.trends || {
+            payersByDay: [],
+            evaluationsByDay: [],
+            pvuvByDay: [],
+          },
         })
         setLastRefresh(new Date())
       }
@@ -223,7 +244,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [token, router])
+  }, [token, router, trendPeriod])
 
   const fetchHistory = useCallback(async () => {
     if (!token) return
@@ -436,9 +457,29 @@ export default function AdminDashboard() {
               <StatCard label="未使用评估数" value={fmtNum(o.remainingCredits)} sub="待消耗额度" icon={<TrendingUp className="h-5 w-5" />} gradient="from-amber-500/20 to-transparent" accent="text-amber-400" border="border-amber-500/30" />
             </div>
 
-            {/* 收入趋势 + 流量趋势 */}
+            {/* 趋势周期切换器 */}
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-xs text-neutral-600 mr-1">趋势周期</span>
+              <div className="inline-flex rounded-lg border border-neutral-800 bg-[#141414] p-0.5">
+                {TREND_PERIODS.map(p => (
+                  <button
+                    key={p.key}
+                    onClick={() => setTrendPeriod(p.key)}
+                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                      trendPeriod === p.key
+                        ? 'bg-[#00F2EA] text-black font-semibold'
+                        : 'text-neutral-500 hover:text-neutral-300'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 收入趋势 + 流量趋势（折线图） */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ChartCard title="收入趋势（近30天）" icon={<DollarSign className="h-4 w-4" />}>
+              <ChartCard title={`收入趋势（近${TREND_PERIODS.find(p => p.key === trendPeriod)?.label}）`} icon={<DollarSign className="h-4 w-4" />}>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={r.byDay}>
@@ -458,22 +499,49 @@ export default function AdminDashboard() {
                 </div>
               </ChartCard>
 
-              <ChartCard title="流量趋势（PV / UV）" icon={<BarChart className="h-4 w-4" />}>
+              <ChartCard title={`流量趋势 · PV / UV（近${TREND_PERIODS.find(p => p.key === trendPeriod)?.label}）`} icon={<TrendingUp className="h-4 w-4" />}>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[
-                      { name: '今日', PV: stats!.pvuv.pvToday, UV: stats!.pvuv.uvToday },
-                      { name: '近7天', PV: stats!.pvuv.pvWeek, UV: stats!.pvuv.uvWeek },
-                      { name: '近30天', PV: stats!.pvuv.pvMonth, UV: stats!.pvuv.uvMonth },
-                      { name: '总计', PV: stats!.pvuv.totalPV, UV: stats!.pvuv.totalUV },
-                    ]}>
+                    <LineChart data={stats!.trends?.pvuvByDay || []}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#525252' }} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#525252' }} />
                       <YAxis tick={{ fontSize: 10, fill: '#525252' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }} />
-                      <Bar dataKey="PV" fill="#a855f7" radius={[4, 4, 0, 0]} name="页面浏览" />
-                      <Bar dataKey="UV" fill="#c084fc" radius={[4, 4, 0, 0]} name="独立访客" />
-                    </BarChart>
+                      <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#737373' }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line type="monotone" dataKey="pv" stroke="#a855f7" strokeWidth={2} dot={false} name="PV（页面浏览）" />
+                      <Line type="monotone" dataKey="uv" stroke="#c084fc" strokeWidth={2} dot={false} name="UV（独立访客）" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </ChartCard>
+            </div>
+
+            {/* 付费用户数 + 评估次数（折线图） */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartCard title={`付费用户数（近${TREND_PERIODS.find(p => p.key === trendPeriod)?.label}）`} icon={<Users className="h-4 w-4" />}>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stats!.trends?.payersByDay || []}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#525252' }} />
+                      <YAxis tick={{ fontSize: 10, fill: '#525252' }} allowDecimals={false} />
+                      <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#737373' }} />
+                      <Line type="monotone" dataKey="count" stroke="#FF0050" strokeWidth={2} dot={false} name="累计付费用户" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </ChartCard>
+
+              <ChartCard title={`评估次数（近${TREND_PERIODS.find(p => p.key === trendPeriod)?.label}）`} icon={<Activity className="h-4 w-4" />}>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stats!.trends?.evaluationsByDay || []}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#525252' }} />
+                      <YAxis tick={{ fontSize: 10, fill: '#525252' }} allowDecimals={false} />
+                      <Tooltip contentStyle={{ backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#737373' }} />
+                      <Line type="monotone" dataKey="count" stroke="#22c55e" strokeWidth={2} dot={false} name="每日评估次数" />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </ChartCard>

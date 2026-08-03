@@ -321,7 +321,158 @@ export async function getRevenueByDay(days: number): Promise<DailyRevenue[]> {
     GROUP BY date
     ORDER BY date
   ` as Array<{ date: string; amount: string }>
-  return rows.map(r => ({ date: String(r.date), amount: Number(r.amount) }))
+  return fillDailyDays(days, Object.fromEntries(rows.map(r => [String(r.date), Number(r.amount)])))
+}
+
+// ── Date-range filler ──
+
+/**
+ * 生成最近 `days` 天（含今天，基于 Asia/Shanghai 时区）的连续日期序列，
+ * 缺失日期用 0 填充，保证前端折线图 X 轴连续无断点。
+ */
+function fillDailyDays(days: number, valueByDate: Record<string, number>): DailyRevenue[] {
+  const result: DailyRevenue[] = []
+  const now = new Date()
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    result.push({ date: dateStr, amount: Number(valueByDate[dateStr] || 0) })
+  }
+  return result
+}
+
+// ── Query: Payers by Day (cumulative distinct payers) ──
+
+export interface DailyPayers {
+  date: string
+  count: number
+}
+
+/**
+ * 累计付费用户数曲线：每个日期的值 = 截至该日已发生首购的 distinct email 数。
+ * 查询所有历史首购日期（不限窗口），保证窗口起点之前的付费用户计入基线。
+ */
+export async function getPayersByDay(days: number): Promise<DailyPayers[]> {
+  const useDb = await initDb()
+  if (!useDb || !sql) return []
+
+  // 每个付费用户的首购日期（全量，不限时间窗口）
+  const rows = await sql`
+    SELECT MIN(TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD')) as first_date
+    FROM analytics_events
+    WHERE event_type = 'purchase' AND email IS NOT NULL AND email <> ''
+    GROUP BY email
+  ` as Array<{ first_date: string }>
+
+  const newByDate = new Map<string, number>()
+  for (const r of rows) {
+    const d = String(r.first_date || '')
+    if (!d) continue
+    newByDate.set(d, (newByDate.get(d) || 0) + 1)
+  }
+
+  // 计算窗口起点，累计基线 = 窗口起点之前的首购用户数
+  const now = new Date()
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
+  const windowStartDate = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - (days - 1))
+  const windowStartStr = `${windowStartDate.getFullYear()}-${String(windowStartDate.getMonth() + 1).padStart(2, '0')}-${String(windowStartDate.getDate()).padStart(2, '0')}`
+
+  let cumulative = 0
+  for (const [date, count] of newByDate) {
+    if (date < windowStartStr) cumulative += count
+  }
+
+  // 逐日累加，填充连续日期
+  const result: DailyPayers[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    cumulative += newByDate.get(dateStr) || 0
+    result.push({ date: dateStr, count: cumulative })
+  }
+  return result
+}
+
+// ── Query: Evaluations by Day (daily count) ──
+
+export interface DailyEvaluations {
+  date: string
+  count: number
+}
+
+/**
+ * 每日评估次数：基于 evaluations 表 computed_at 聚合，缺失日期填 0。
+ */
+export async function getEvaluationsByDay(days: number): Promise<DailyEvaluations[]> {
+  const useDb = await initDb()
+  if (!useDb || !sql) return []
+  const since = new Date(Date.now() - days * 86400000).toISOString()
+
+  const rows = await sql`
+    SELECT TO_CHAR((computed_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date, COUNT(*) as count
+    FROM evaluations
+    WHERE computed_at >= ${since}::timestamptz
+    GROUP BY date
+  ` as Array<{ date: string; count: string }>
+
+  const valueByDate: Record<string, number> = {}
+  for (const r of rows) valueByDate[String(r.date)] = Number(r.count)
+
+  const now = new Date()
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
+  const result: DailyEvaluations[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    result.push({ date: dateStr, count: Number(valueByDate[dateStr] || 0) })
+  }
+  return result
+}
+
+// ── Query: PV/UV by Day (daily timeseries) ──
+
+export interface DailyPvUv {
+  date: string
+  pv: number
+  uv: number
+}
+
+/**
+ * 每日 PV/UV 时序：用 session_id（回退 ip_hash）做 UV 去重，缺失日期填 0。
+ */
+export async function getPvuvByDay(days: number): Promise<DailyPvUv[]> {
+  const useDb = await initDb()
+  if (!useDb || !sql) return []
+  const since = new Date(Date.now() - days * 86400000).toISOString()
+  const UV_COL = sql.unsafe('COALESCE(NULLIF(ip_hash, \'\'), session_id)')
+
+  const rows = await sql`
+    SELECT date, COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv
+    FROM (
+      SELECT
+        TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date,
+        ${UV_COL} as uv_id
+      FROM analytics_events
+      WHERE event_type = 'page_view' AND created_at >= ${since}::timestamptz
+    ) sub
+    GROUP BY date
+    ORDER BY date
+  ` as Array<{ date: string; pv: string; uv: string }>
+
+  const valueByDate: Record<string, { pv: number; uv: number }> = {}
+  for (const r of rows) valueByDate[String(r.date)] = { pv: Number(r.pv), uv: Number(r.uv) }
+
+  const now = new Date()
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
+  const result: DailyPvUv[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const v = valueByDate[dateStr] || { pv: 0, uv: 0 }
+    result.push({ date: dateStr, pv: v.pv, uv: v.uv })
+  }
+  return result
 }
 
 // ── Query: Package Distribution ──
