@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStatsOverview, getFunnel, getRevenueByDay, getRevenueByPackage, getPVUV, getUsersList, getTrafficSources } from '@/lib/analytics'
+import { getStatsOverview, getRevenueByDay, getRevenueByPackage, getPVUV, getUsersList, getTrafficSources } from '@/lib/analytics'
 import { verifyAdminRequest } from '@/lib/admin-api-utils'
 
 export const dynamic = 'force-dynamic'
@@ -14,9 +14,8 @@ export async function GET(req: NextRequest) {
   const noStore = { 'Cache-Control': 'no-store, max-age=0' }
 
   try {
-    const [overview, funnel, byDay, byPackage, pvuv, users, sources] = await Promise.all([
+    const [overview, byDay, byPackage, pvuv, users, sources] = await Promise.all([
       getStatsOverview(),
-      getFunnel(days),
       getRevenueByDay(days),
       getRevenueByPackage(days),
       getPVUV(),
@@ -26,7 +25,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       overview,
-      funnel,
       revenue: { byDay, byPackage },
       pvuv,
       users,

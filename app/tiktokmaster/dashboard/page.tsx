@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
-  LogOut, TrendingUp, DollarSign, Users, Activity, BarChart3,
+  LogOut, TrendingUp, DollarSign, Users, Activity,
   Settings, Loader2, CheckCircle2, XCircle, Search, FileText,
-  Eye, MousePointerClick, CreditCard, Zap, RefreshCw, Filter,
-  ArrowUpRight, ArrowDownRight, Clock, AlertCircle, Globe,
+  CreditCard, Zap, RefreshCw, Filter,
+  Clock, AlertCircle, Globe,
   PieChart as PieIcon,
 } from 'lucide-react'
 import {
@@ -31,14 +31,6 @@ interface StatsData {
     evaluationsWeek: number
     evaluationsMonth: number
     remainingCredits: number
-  }
-  funnel: {
-    pageViews: number
-    searches: number
-    evaluateStarts: number
-    paywallViews: number
-    paywallClicks: number
-    purchases: number
   }
   revenue: {
     byDay: { date: string; amount: number }[]
@@ -82,7 +74,7 @@ interface LogItem {
   createdAt: string
 }
 
-type Tab = 'overview' | 'funnel' | 'revenue' | 'users' | 'logs' | 'ops'
+type Tab = 'overview' | 'revenue' | 'users' | 'logs' | 'ops'
 
 // ── 赠送原因选项 ──
 const GRANT_REASONS = [
@@ -159,7 +151,6 @@ const PACKAGE_LABELS: Record<string, string> = {
 
 const TAB_CONFIG: Record<Tab, { label: string; icon: React.ReactNode; activeColor: string }> = {
   overview: { label: '数据总览', icon: <Activity className="h-4 w-4" />, activeColor: 'text-[#00F2EA] border-[#00F2EA]' },
-  funnel:   { label: '转化漏斗', icon: <BarChart3 className="h-4 w-4" />, activeColor: 'text-[#FF0050] border-[#FF0050]' },
   revenue:  { label: '收入分析', icon: <DollarSign className="h-4 w-4" />, activeColor: 'text-green-400 border-green-400' },
   users:    { label: '用户管理', icon: <Users className="h-4 w-4" />, activeColor: 'text-purple-400 border-purple-400' },
   logs:     { label: '系统日志', icon: <FileText className="h-4 w-4" />, activeColor: 'text-amber-400 border-amber-400' },
@@ -219,7 +210,6 @@ export default function AdminDashboard() {
             evaluationsToday: 0, evaluationsWeek: 0, evaluationsMonth: 0,
             remainingCredits: 0,
           },
-          funnel: data.funnel || { pageViews: 0, searches: 0, evaluateStarts: 0, paywallViews: 0, paywallClicks: 0, purchases: 0 },
           revenue: data.revenue || { byDay: [], byPackage: [] },
           pvuv: data.pvuv || { totalPV: 0, totalUV: 0, pvToday: 0, uvToday: 0, pvWeek: 0, uvWeek: 0, pvMonth: 0, uvMonth: 0 },
           users: Array.isArray(data.users) ? data.users : [],
@@ -363,7 +353,6 @@ export default function AdminDashboard() {
   }
 
   const o = stats!.overview
-  const f = stats!.funnel
   const r = stats!.revenue
   const src = stats!.sources || []
 
@@ -385,14 +374,6 @@ export default function AdminDashboard() {
     return true
   })
 
-  const funnelSteps = [
-    { label: '页面浏览', value: f.pageViews, color: '#3b82f6', icon: <Eye className="h-4 w-4" /> },
-    { label: '搜索账号', value: f.searches, color: '#06b6d4', icon: <Search className="h-4 w-4" /> },
-    { label: '开始评估', value: f.evaluateStarts, color: '#a855f7', icon: <Zap className="h-4 w-4" /> },
-    { label: '付费墙展示', value: f.paywallViews, color: '#f59e0b', icon: <FileText className="h-4 w-4" /> },
-    { label: '付费墙点击', value: f.paywallClicks, color: '#FF0050', icon: <MousePointerClick className="h-4 w-4" /> },
-    { label: '购买完成', value: f.purchases, color: '#22c55e', icon: <CreditCard className="h-4 w-4" /> },
-  ]
 
   return (
     <main className="min-h-screen bg-[#0a0a0a]">
@@ -477,7 +458,7 @@ export default function AdminDashboard() {
                 </div>
               </ChartCard>
 
-              <ChartCard title="流量趋势（PV / UV）" icon={<BarChart3 className="h-4 w-4" />}>
+              <ChartCard title="流量趋势（PV / UV）" icon={<BarChart className="h-4 w-4" />}>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
@@ -540,7 +521,7 @@ export default function AdminDashboard() {
               {/* PV/UV 汇总 */}
               <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-6">
                 <h3 className="text-sm font-semibold text-neutral-300 mb-5 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-purple-400" />
+                  <BarChart className="h-4 w-4 text-purple-400" />
                   PV / UV 汇总
                 </h3>
                 <div className="space-y-4">
@@ -564,54 +545,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ════════ Tab: 转化漏斗 ════════ */}
-        {tab === 'funnel' && (
-          <div className="space-y-8">
-            <ChartCard title="转化漏斗（近30天）" icon={<BarChart3 className="h-4 w-4" />}>
-              <div className="space-y-4 pt-2">
-                {funnelSteps.map((step, i) => {
-                  const prev = i > 0 ? funnelSteps[i - 1].value : step.value
-                  const rate = i === 0 ? '100%' : pct(step.value, prev)
-                  const maxVal = Math.max(f.pageViews, 1)
-                  const width = `${Math.max((step.value / maxVal) * 100, 2)}%`
-                  const isIncrease = i === 0 || step.value >= prev
-                  return (
-                    <div key={step.label}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <span style={{ color: step.color }}>{step.icon}</span>
-                          <span className="text-sm text-neutral-200">{step.label}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold tabular-nums text-white">{fmtNum(step.value)}</span>
-                          <span className="text-xs text-neutral-500 w-12 text-right">{rate}</span>
-                          {i > 0 && (
-                            <span className={`text-xs flex items-center gap-0.5 ${isIncrease ? 'text-green-400' : 'text-red-400'}`}>
-                              {isIncrease ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="h-10 bg-[#0f0f0f] rounded-lg overflow-hidden border border-neutral-800/50">
-                        <div className="h-full rounded-lg transition-all flex items-center px-3" style={{ width, backgroundColor: step.color }}>
-                          <span className="text-xs font-semibold text-white/90">{fmtNum(step.value)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </ChartCard>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label="搜索→评估转化率" value={pct(f.evaluateStarts, f.searches)} icon={<Zap className="h-5 w-5" />} gradient="from-purple-500/20 to-transparent" accent="text-purple-400" border="border-purple-500/30" />
-              <StatCard label="评估→付费墙转化率" value={pct(f.paywallViews, f.evaluateStarts)} icon={<FileText className="h-5 w-5" />} gradient="from-amber-500/20 to-transparent" accent="text-amber-400" border="border-amber-500/30" />
-              <StatCard label="付费墙→购买转化率" value={pct(f.purchases, f.paywallViews)} icon={<CreditCard className="h-5 w-5" />} gradient="from-[#FF0050]/20 to-transparent" accent="text-[#FF0050]" border="border-[#FF0050]/30" />
-              <StatCard label="整体转化率" value={pct(f.purchases, f.pageViews)} icon={<TrendingUp className="h-5 w-5" />} gradient="from-green-500/20 to-transparent" accent="text-green-400" border="border-green-500/30" />
             </div>
           </div>
         )}
@@ -762,7 +695,7 @@ export default function AdminDashboard() {
                         <td className="px-6 py-3.5 text-neutral-500 text-xs">{fmtDate(u.verifiedAt)}</td>
                         <td className="px-6 py-3.5 text-neutral-500 text-xs">{u.lastPurchaseAt ? fmtDate(u.lastPurchaseAt) : '—'}</td>
                         <td className="px-6 py-3.5">
-                          <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-1.5">
                             {u.disabled ? (
                               <button
                                 onClick={() => { setUserAction({ type: 'enable', email: u.email }); setActionReason(''); setActionResult(null) }}

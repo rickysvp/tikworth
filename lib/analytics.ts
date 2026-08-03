@@ -24,6 +24,7 @@ export interface AnalyticsEvent {
   ip_hash?: string
   user_agent?: string
   referrer?: string
+  session_id?: string | null
   created_at: string
 }
 
@@ -74,7 +75,9 @@ async function initDb(): Promise<boolean> {
         )
       `
       // 幂等列迁移：补齐历史表可能缺失的列（CREATE TABLE IF NOT EXISTS 不会改已有表）
+      // 兼容旧 schema（event_name → event_type, 旧表无 session_id 迁移）
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS event_type TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS session_id TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS path TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS username TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS email TEXT`
@@ -161,10 +164,11 @@ export async function recordEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at
     return
   }
   await sql`
-    INSERT INTO analytics_events (event_type, path, username, email, metadata, ip_hash, user_agent, referrer)
+    INSERT INTO analytics_events (event_type, path, username, email, metadata, ip_hash, user_agent, referrer, session_id)
     VALUES (${event.event_type}, ${event.path || null}, ${event.username || null},
       ${event.email || null}, ${JSON.stringify(event.metadata || {})}::jsonb,
-      ${event.ip_hash || null}, ${event.user_agent || null}, ${event.referrer || null})
+      ${event.ip_hash || null}, ${event.user_agent || null}, ${event.referrer || null},
+      ${event.session_id || null})
   `
 }
 
@@ -279,44 +283,6 @@ export async function getStatsOverview(): Promise<StatsOverview> {
     evaluationsWeek: row(evalWeek[0] as Record<string, unknown>, 'week'),
     evaluationsMonth: row(evalMonth[0] as Record<string, unknown>, 'month'),
     remainingCredits,
-  }
-}
-
-// ── Query: Funnel ──
-
-export interface FunnelData {
-  pageViews: number
-  searches: number
-  evaluateStarts: number
-  paywallViews: number
-  paywallClicks: number
-  purchases: number
-}
-
-export async function getFunnel(days: number): Promise<FunnelData> {
-  const useDb = await initDb()
-  if (!useDb || !sql) {
-    return { pageViews: 0, searches: 0, evaluateStarts: 0, paywallViews: 0, paywallClicks: 0, purchases: 0 }
-  }
-  const since = new Date(Date.now() - days * 86400000).toISOString()
-
-  const rows = await sql`
-    SELECT event_type, COUNT(*) as count
-    FROM analytics_events
-    WHERE created_at >= ${since}::timestamptz
-      AND event_type IN ('page_view', 'search', 'evaluate_start', 'paywall_view', 'paywall_click', 'purchase')
-    GROUP BY event_type
-  ` as Array<{ event_type: string; count: string }>
-
-  const map: Record<string, number> = {}
-  for (const r of rows) map[r.event_type] = Number(r.count)
-  return {
-    pageViews: map.page_view || 0,
-    searches: map.search || 0,
-    evaluateStarts: map.evaluate_start || 0,
-    paywallViews: map.paywall_view || 0,
-    paywallClicks: map.paywall_click || 0,
-    purchases: map.purchase || 0,
   }
 }
 
@@ -439,11 +405,14 @@ export async function getPVUV(): Promise<PVUVData> {
 
   const { todayStart, weekStart, monthStart } = shanghaiBoundaries()
 
+  // 用 session_id 做 UV 计数（ip_hash 在生产部署前可能为空）
+  const UV_COL = sql.unsafe('COALESCE(NULLIF(ip_hash, \'\'), session_id)')
+
   const [total, today, week, month] = await Promise.all([
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view'`,
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ip_hash) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view'`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
+    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
   ]) as Array<Array<{ pv: string; uv: string }>>
 
   const num = (r: { pv: string; uv: string }) => ({ pv: Number(r.pv), uv: Number(r.uv) })
@@ -518,10 +487,11 @@ export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
   try {
+    const UV_COL = sql.unsafe('COALESCE(NULLIF(ip_hash, \'\'), session_id)')
     const rows = await sql`
       SELECT
         COALESCE(NULLIF(referrer, ''), '直接访问') as source,
-        COUNT(DISTINCT ip_hash) as visitors
+        COUNT(DISTINCT ${UV_COL}) as visitors
       FROM analytics_events
       WHERE event_type = 'page_view'
         AND created_at >= ${since}::timestamptz
