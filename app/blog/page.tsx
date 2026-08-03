@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/blog'
-import { Calendar, Clock, Tag } from 'lucide-react'
+import { Calendar, Clock } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'TokValue Blog — TikTok Creator Economy Insights & Analytics',
