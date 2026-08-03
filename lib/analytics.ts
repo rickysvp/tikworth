@@ -305,14 +305,17 @@ export async function getRevenueByDay(days: number): Promise<DailyRevenue[]> {
   if (!useDb || !sql) return []
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
-  // 按 Asia/Shanghai 时区的日期聚合（date_trunc + AT TIME ZONE）
+  // 按 Asia/Shanghai 时区的日期聚合（子查询先算日期，避免 GROUP BY 表达式不一致）
   const rows = await sql`
-    SELECT
-      TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date,
-      COALESCE(SUM(${sql.unsafe(AMOUNT_EXPR)}), 0) as amount
-    FROM analytics_events
-    WHERE event_type = 'purchase' AND created_at >= ${since}::timestamptz
-    GROUP BY (created_at AT TIME ZONE ${TIMEZONE})::date
+    SELECT date, COALESCE(SUM(amount), 0) as amount
+    FROM (
+      SELECT
+        TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date,
+        ${sql.unsafe(AMOUNT_EXPR)} as amount
+      FROM analytics_events
+      WHERE event_type = 'purchase' AND created_at >= ${since}::timestamptz
+    ) sub
+    GROUP BY date
     ORDER BY date
   ` as Array<{ date: string; amount: string }>
   return rows.map(r => ({ date: String(r.date), amount: Number(r.amount) }))
