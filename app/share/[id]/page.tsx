@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Evaluation } from '@/types'
+import { ScoreGauge } from '@/components/ScoreGauge'
 import {
   Radar,
   RadarChart as ReRadarChart,
@@ -242,7 +243,7 @@ export default function SharePage() {
           <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#FF0050]/5 rounded-full blur-3xl" />
 
           <div className="relative p-6 sm:p-8">
-            {/* Top row: Shared Report badge (left) + Tier grade (right) */}
+            {/* Top badge: Shared Report */}
             <div className="flex items-center justify-between mb-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#00F2EA]/20 bg-[#00F2EA]/5 text-[#00F2EA] text-xs font-medium">
                 <Share2 className="h-3 w-3" />
@@ -253,41 +254,54 @@ export default function SharePage() {
                 style={{ backgroundColor: valueTier.bgColor, color: valueTier.color, border: `1px solid ${valueTier.borderColor}` }}
               >
                 <TierIcon className="h-3.5 w-3.5" />
-                {result.tier} Tier
+                {valueTier.label}
               </div>
             </div>
 
-            {/* Account info */}
+            {/* Account info + ScoreGauge (与首页评估报告样式保持一致) */}
             <div className="flex items-start gap-4 mb-5">
-              {result.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={result.avatar} alt={result.nickname} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-neutral-700 shrink-0" />
-              ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold text-neutral-400 shrink-0">
-                  {result.nickname.charAt(0)}
-                </div>
-              )}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-white">{result.nickname}</h1>
-                  {result.verified && <span className="text-[#00F2EA] text-base">✓</span>}
-                  {result.region && (
-                    <span className="inline-flex items-center gap-1 text-xs text-neutral-400">
-                      <MapPin className="h-3 w-3" /> {result.region}
-                    </span>
+                <div className="flex items-start gap-4">
+                  {result.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={result.avatar} alt={result.nickname} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-neutral-700 shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold text-neutral-400 shrink-0">
+                      {result.nickname.charAt(0)}
+                    </div>
                   )}
-                </div>
-                <p className="text-neutral-400 text-sm">@{result.username}</p>
-                {result.bio && (
-                  <p className="text-neutral-300 text-sm mt-1.5 line-clamp-2">{result.bio}</p>
-                )}
-                <div className="flex items-center gap-4 mt-2 text-sm text-neutral-300 flex-wrap">
-                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followerCount)} followers</span>
-                  <span className="flex items-center gap-1"><UserCheck className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followingCount)} following</span>
-                  <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.totalLikes)} likes</span>
-                  <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5 text-neutral-500" /> {result.videoCount} videos</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl font-bold text-white">{result.nickname}</h1>
+                      {result.verified && <span className="text-[#00F2EA] text-base">✓</span>}
+                      {result.region && (
+                        <span className="inline-flex items-center gap-1 text-xs text-neutral-400">
+                          <MapPin className="h-3 w-3" /> {result.region}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-neutral-400 text-sm">@{result.username}</p>
+                    {result.bio && (
+                      <p className="text-neutral-300 text-sm mt-1.5 line-clamp-2">{result.bio}</p>
+                    )}
+                    <div className="flex items-center gap-4 mt-2 text-sm text-neutral-300 flex-wrap">
+                      <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followerCount)} followers</span>
+                      <span className="flex items-center gap-1"><UserCheck className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.followingCount)} following</span>
+                      <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5 text-neutral-500" /> {fmt(result.totalLikes)} likes</span>
+                      <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5 text-neutral-500" /> {result.videoCount} videos</span>
+                    </div>
+                  </div>
                 </div>
               </div>
+              {/* Right: ScoreGauge 大圆圈 (与首页评估报告一致) */}
+              <div className="shrink-0 hidden sm:block">
+                <ScoreGauge score={result.score} tier={result.tier} size={120} showLabel />
+              </div>
+            </div>
+
+            {/* Mobile: ScoreGauge 居中显示 */}
+            <div className="sm:hidden flex justify-center mb-5">
+              <ScoreGauge score={result.score} tier={result.tier} size={100} showLabel />
             </div>
 
             {/* Account Profile tags — personaType / categories / postingRhythm / contentStyle / audienceRegion */}

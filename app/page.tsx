@@ -35,6 +35,7 @@ import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCre
 import { ParticleBackground } from '@/components/ParticleBackground'
 import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 import { ShareModal } from '@/components/ShareModal'
+import { RecentEvaluations } from '@/components/RecentEvaluations'
 
 // Client-side analytics tracking helper
 // 注意：page_view 由 components/PageViewTracker.tsx 统一发送，本函数只负责行为事件
@@ -523,6 +524,9 @@ function HomePageContent() {
               </div>
             </div>
           </section>
+
+          {/* Recently Evaluated Accounts */}
+          <RecentEvaluations onSelect={(name) => { setUsername(name); handleEvaluate(name) }} />
 
           {/* Use Cases */}
           <section className="border-b border-neutral-800 py-16">
