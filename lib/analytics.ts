@@ -394,42 +394,6 @@ export async function getPayersByDay(days: number): Promise<DailyPayers[]> {
   return result
 }
 
-// ── Query: Evaluations by Day (daily count) ──
-
-export interface DailyEvaluations {
-  date: string
-  count: number
-}
-
-/**
- * 每日评估次数：基于 evaluations 表 computed_at 聚合，缺失日期填 0。
- */
-export async function getEvaluationsByDay(days: number): Promise<DailyEvaluations[]> {
-  const useDb = await initDb()
-  if (!useDb || !sql) return []
-  const since = new Date(Date.now() - days * 86400000).toISOString()
-
-  const rows = await sql`
-    SELECT TO_CHAR((computed_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date, COUNT(*) as count
-    FROM evaluations
-    WHERE computed_at >= ${since}::timestamptz
-    GROUP BY date
-  ` as Array<{ date: string; count: string }>
-
-  const valueByDate: Record<string, number> = {}
-  for (const r of rows) valueByDate[String(r.date)] = Number(r.count)
-
-  const now = new Date()
-  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
-  const result: DailyEvaluations[] = []
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    result.push({ date: dateStr, count: Number(valueByDate[dateStr] || 0) })
-  }
-  return result
-}
-
 // ── Query: PV/UV by Day (daily timeseries) ──
 
 export interface DailyPvUv {
@@ -439,40 +403,45 @@ export interface DailyPvUv {
 }
 
 /**
- * 每日 PV/UV 时序：用 session_id（回退 ip_hash）做 UV 去重，缺失日期填 0。
+ * 每日 PV/UV 时序：用 session_id 做 UV 去重，缺失日期填 0。
  */
 export async function getPvuvByDay(days: number): Promise<DailyPvUv[]> {
   const useDb = await initDb()
   if (!useDb || !sql) return []
   const since = new Date(Date.now() - days * 86400000).toISOString()
-  const UV_COL = sql.unsafe('COALESCE(NULLIF(ip_hash, \'\'), session_id)')
+  const UV_COL = sql.unsafe('session_id')
 
-  const rows = await sql`
-    SELECT date, COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv
-    FROM (
-      SELECT
-        TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date,
-        ${UV_COL} as uv_id
-      FROM analytics_events
-      WHERE event_type = 'page_view' AND created_at >= ${since}::timestamptz
-    ) sub
-    GROUP BY date
-    ORDER BY date
-  ` as Array<{ date: string; pv: string; uv: string }>
+  try {
+    const rows = await sql`
+      SELECT date, COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv
+      FROM (
+        SELECT
+          TO_CHAR((created_at AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') as date,
+          ${UV_COL} as uv_id
+        FROM analytics_events
+        WHERE event_type = 'page_view' AND created_at >= ${since}::timestamptz
+      ) sub
+      GROUP BY date
+      ORDER BY date
+    ` as Array<{ date: string; pv: string; uv: string }>
 
-  const valueByDate: Record<string, { pv: number; uv: number }> = {}
-  for (const r of rows) valueByDate[String(r.date)] = { pv: Number(r.pv), uv: Number(r.uv) }
+    const valueByDate: Record<string, { pv: number; uv: number }> = {}
+    for (const r of rows) valueByDate[String(r.date)] = { pv: Number(r.pv), uv: Number(r.uv) }
 
-  const now = new Date()
-  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
-  const result: DailyPvUv[] = []
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const v = valueByDate[dateStr] || { pv: 0, uv: 0 }
-    result.push({ date: dateStr, pv: v.pv, uv: v.uv })
+    const now = new Date()
+    const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }))
+    const result: DailyPvUv[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const v = valueByDate[dateStr] || { pv: 0, uv: 0 }
+      result.push({ date: dateStr, pv: v.pv, uv: v.uv })
+    }
+    return result
+  } catch (err) {
+    console.error('[analytics] getPvuvByDay query failed:', err instanceof Error ? err.message : String(err))
+    return []
   }
-  return result
 }
 
 // ── Query: Package Distribution ──
@@ -609,24 +578,29 @@ export async function getPVUV(): Promise<PVUVData> {
 
   const { todayStart, weekStart, monthStart } = shanghaiBoundaries()
 
-  // 用 session_id 做 UV 计数（ip_hash 在生产部署前可能为空）
-  const UV_COL = sql.unsafe('COALESCE(NULLIF(ip_hash, \'\'), session_id)')
+  // UV 用 session_id 去重（客户端 sessionStorage 生成，稳定且不依赖 ip_hash 列是否存在）
+  const UV_COL = sql.unsafe('session_id')
 
-  const [total, today, week, month] = await Promise.all([
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view'`,
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
-    sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
-  ]) as Array<Array<{ pv: string; uv: string }>>
+  try {
+    const [total, today, week, month] = await Promise.all([
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view'`,
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${todayStart}::timestamptz`,
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${weekStart}::timestamptz`,
+      sql`SELECT COUNT(*) as pv, COUNT(DISTINCT ${UV_COL}) as uv FROM analytics_events WHERE event_type = 'page_view' AND created_at >= ${monthStart}::timestamptz`,
+    ]) as Array<Array<{ pv: string; uv: string }>>
 
-  const num = (r: { pv: string; uv: string }) => ({ pv: Number(r.pv), uv: Number(r.uv) })
-  const t = num(total[0]), td = num(today[0]), tw = num(week[0]), tm = num(month[0])
+    const num = (r: { pv: string; uv: string }) => ({ pv: Number(r.pv), uv: Number(r.uv) })
+    const t = num(total[0]), td = num(today[0]), tw = num(week[0]), tm = num(month[0])
 
-  return {
-    totalPV: t.pv, totalUV: t.uv,
-    pvToday: td.pv, uvToday: td.uv,
-    pvWeek: tw.pv, uvWeek: tw.uv,
-    pvMonth: tm.pv, uvMonth: tm.uv,
+    return {
+      totalPV: t.pv, totalUV: t.uv,
+      pvToday: td.pv, uvToday: td.uv,
+      pvWeek: tw.pv, uvWeek: tw.uv,
+      pvMonth: tm.pv, uvMonth: tm.uv,
+    }
+  } catch (err) {
+    console.error('[analytics] getPVUV query failed:', err instanceof Error ? err.message : String(err))
+    return { totalPV: 0, totalUV: 0, pvToday: 0, uvToday: 0, pvWeek: 0, uvWeek: 0, pvMonth: 0, uvMonth: 0 }
   }
 }
 
@@ -691,7 +665,7 @@ export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
   try {
-    const UV_COL = sql.unsafe('COALESCE(NULLIF(ip_hash, \'\'), session_id)')
+    const UV_COL = sql.unsafe('session_id')
     const rows = await sql`
       SELECT
         COALESCE(NULLIF(referrer, ''), '直接访问') as source,

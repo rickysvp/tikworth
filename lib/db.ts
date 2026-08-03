@@ -284,6 +284,57 @@ export async function getEvaluationStats(): Promise<{ count: number; totalValueA
   return { count, totalValueAssessed }
 }
 
+/**
+ * 每日评估次数时序：基于 evaluations 表 computed_at 聚合，缺失日期填 0。
+ * 必须在 db.ts 中（调用 initStore 确保 evaluations 表已创建），不能走 analytics.ts 的 initDb。
+ */
+export async function getEvaluationsByDay(days: number): Promise<Array<{ date: string; count: number }>> {
+  const type = await initStore()
+  if (type !== 'postgres') {
+    // file / memory 模式下手动按日聚合
+    const store = type === 'file' ? readFileStore() : memoryFallback
+    const since = Date.now() - days * 86400000
+    const byDate = new Map<string, number>()
+    for (const e of store) {
+      const ts = new Date(e.computedAt).getTime()
+      if (ts < since) continue
+      const d = new Date(e.computedAt)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      byDate.set(dateStr, (byDate.get(dateStr) || 0) + 1)
+    }
+    const result: Array<{ date: string; count: number }> = []
+    const now = new Date()
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      result.push({ date: dateStr, count: byDate.get(dateStr) || 0 })
+    }
+    return result
+  }
+
+  const TZ = 'Asia/Shanghai'
+  const since = new Date(Date.now() - days * 86400000).toISOString()
+  const rows = await getSql()`
+    SELECT TO_CHAR((computed_at AT TIME ZONE ${TZ})::date, 'YYYY-MM-DD') as date, COUNT(*) as count
+    FROM evaluations
+    WHERE computed_at >= ${since}::timestamptz
+    GROUP BY date
+  ` as Array<{ date: string; count: string }>
+
+  const valueByDate: Record<string, number> = {}
+  for (const r of rows) valueByDate[String(r.date)] = Number(r.count)
+
+  const now = new Date()
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: TZ }))
+  const result: Array<{ date: string; count: number }> = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(shanghaiNow.getFullYear(), shanghaiNow.getMonth(), shanghaiNow.getDate() - i)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    result.push({ date: dateStr, count: Number(valueByDate[dateStr] || 0) })
+  }
+  return result
+}
+
 function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
   const defaultMetrics = {
     engagementRate: 0,
