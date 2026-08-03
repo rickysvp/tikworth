@@ -28,8 +28,9 @@
 2. Trust Bar（替代旧退款横幅）— 3 个信任标识横排
 3. Pricing Cards（3 张套餐卡，并列）
 4. All Plans Include（统一权益清单，单次展示）
-5. TokValue vs Alternatives 对比表
-6. Footer（保留现有）
+5. Footer（保留现有）
+
+> **注**：原 TokValue vs Alternatives 对比表已删除 —— 无法核实 HypeAuditor/Modash 等竞品功能细节，避免虚构。
 
 ### Trust Bar
 

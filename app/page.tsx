@@ -8,7 +8,7 @@ import { Evaluation } from '@/types'
 import { ScoreGauge } from '@/components/ScoreGauge'
 import { RadarChart } from '@/components/RadarChart'
 import { RiskList } from '@/components/RiskList'
-import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, BookOpen, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet, Share2 } from 'lucide-react'
+import { Search, Loader2, History, Download, TrendingUp, Shield, Users, DollarSign, ThumbsUp, AlertTriangle, Lightbulb, Target, BadgeCheck, MapPin, Star, Briefcase, Film, Zap, Tag, Clock, UserCheck, BarChart3, Building2, BookmarkPlus, BookOpen, FileText, Image as ImageIcon, ChevronDown, Activity, Play, Gift, ShoppingBag, CheckCircle2, User, Rocket, FileDown, Mail, Flame, ArrowRight, Eye, Globe, Layers, LineChart, MessageCircle, Radio, RefreshCw, Scale, Sparkles, Trophy, Wallet, Share2, CreditCard } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { GrowthPlanSection } from '@/components/sections/GrowthPlanSection'
 import { IncomeBreakdownSection } from '@/components/sections/IncomeBreakdownSection'
@@ -800,17 +800,24 @@ function HomePageContent() {
                 <p className="mt-4 max-w-xl mx-auto text-neutral-400">{dict.home.pricing.subtitle}</p>
               </div>
 
-              {/* Money-back guarantee */}
-              <div className="flex items-center justify-center gap-2 mb-12 text-sm">
-                <div className="flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/5 px-4 py-2">
-                  <Shield className="h-4 w-4 text-green-400" />
-                  <span className="text-green-300 font-medium">{dict.home.pricing.guarantee}</span>
-                  <span className="hidden sm:inline text-neutral-500">— {dict.home.pricing.guaranteeDesc}</span>
-                </div>
+              {/* Trust Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-12 max-w-3xl mx-auto">
+                {dict.home.pricing.trustBar.map((item: { icon: string; title: string; desc: string }) => {
+                  const Icon = item.icon === 'zap' ? Zap : item.icon === 'mail' ? Mail : CreditCard
+                  return (
+                    <div key={item.title} className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-[#0a0a0a] px-4 py-3">
+                      <Icon className="h-5 w-5 text-[#00F2EA] shrink-0" />
+                      <div>
+                        <div className="text-sm font-semibold text-white">{item.title}</div>
+                        <div className="text-xs text-neutral-500">{item.desc}</div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Plans */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                 {CREDIT_PACKAGES.map(pkg => {
                   const plan = (dict.home.pricing.plans as unknown as Array<{
                     id: string
@@ -818,7 +825,6 @@ function HomePageContent() {
                     desc: string
                     highlight: boolean
                     badge?: string
-                    includes: string[]
                   }>).find(p => p.id === pkg.id)
 
                   return (
@@ -867,82 +873,24 @@ function HomePageContent() {
                       >
                         {dict.common.getStarted}
                       </button>
-
-                      {/* Features */}
-                      {plan && (
-                        <ul className="mt-6 space-y-2.5">
-                          {plan.includes.map(f => (
-                            <li key={f} className="flex items-start gap-2.5 text-sm">
-                              <CheckCircle2 className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
-                              <span className="text-neutral-300">{dict.home.pricing.features[f as keyof typeof dict.home.pricing.features] ?? f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
                     </div>
                   )
                 })}
               </div>
 
-              {/* Comparison table */}
+              {/* All plans include */}
               <div className="mb-12">
-                <h3 className="text-xl font-bold text-center mb-2">{dict.home.pricing.compareTitle}</h3>
-                <p className="text-neutral-500 text-center text-sm mb-8">{dict.home.pricing.compareSubtitle}</p>
-
-                <div className="overflow-x-auto rounded-xl border border-neutral-800">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-neutral-800">
-                        <th className="text-left px-5 py-3 font-medium text-neutral-400">Feature</th>
-                        <th className="text-center px-5 py-3 font-medium text-neutral-400">Starter</th>
-                        <th className="text-center px-5 py-3 font-medium text-[#FF0050] bg-[#FF0050]/[0.04]">Popular</th>
-                        <th className="text-center px-5 py-3 font-medium text-neutral-400">Pro</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {([
-                        { feat: 'scoring', starter: true, popular: true, pro: true },
-                        { feat: 'brandDeal', starter: true, popular: true, pro: true },
-                        { feat: 'report', starter: true, popular: true, pro: true },
-                        { feat: 'history', starter: true, popular: true, pro: true },
-                        { feat: 'monetization', starter: false, popular: true, pro: true },
-                        { feat: 'benchmark', starter: false, popular: true, pro: true },
-                        { feat: 'growth', starter: false, popular: true, pro: true },
-                        { feat: 'commerce', starter: false, popular: true, pro: true },
-                        { feat: 'risk', starter: false, popular: true, pro: true },
-                        { feat: 'ip', starter: false, popular: false, pro: true },
-                        { feat: 'content', starter: false, popular: false, pro: true },
-                        { feat: 'api', starter: false, popular: false, pro: true },
-                      ] as Array<{ feat: string; starter: boolean; popular: boolean; pro: boolean }>).map(row => (
-                        <tr key={row.feat} className="border-b border-neutral-800/50">
-                          <td className="px-5 py-3 text-neutral-300">
-                            {dict.home.pricing.features[row.feat as keyof typeof dict.home.pricing.features] ?? row.feat}
-                          </td>
-                          <td className="text-center px-5 py-3">
-                            {row.starter ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-400 mx-auto" />
-                            ) : (
-                              <span className="text-neutral-700">—</span>
-                            )}
-                          </td>
-                          <td className="text-center px-5 py-3 bg-[#FF0050]/[0.04]">
-                            {row.popular ? (
-                              <CheckCircle2 className="h-4 w-4 text-[#FF0050] mx-auto" />
-                            ) : (
-                              <span className="text-neutral-700">—</span>
-                            )}
-                          </td>
-                          <td className="text-center px-5 py-3">
-                            {row.pro ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-400 mx-auto" />
-                            ) : (
-                              <span className="text-neutral-700">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2">{dict.home.pricing.allPlansInclude.title}</h3>
+                  <p className="text-sm text-neutral-500 max-w-xl mx-auto">{dict.home.pricing.allPlansInclude.subtitle}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 max-w-3xl mx-auto">
+                  {dict.home.pricing.allPlansInclude.list.map((f: string) => (
+                    <div key={f} className="flex items-center gap-2.5 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-[#00F2EA] shrink-0" />
+                      <span className="text-neutral-300">{dict.home.pricing.allPlansInclude.features[f as keyof typeof dict.home.pricing.allPlansInclude.features]}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
