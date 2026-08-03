@@ -25,6 +25,7 @@ import { EvaluatingModal, type EvaluatingStatus } from '@/components/EvaluatingM
 import { DeepAnalysisSection } from '@/components/DeepAnalysisSection'
 import { SectionHeader } from '@/components/SectionHeader'
 import { SiteFooter } from '@/components/SiteFooter'
+import { StaticLanding } from '@/components/StaticLanding'
 import { saveToTracker, getTrackedByUsername } from '@/lib/tracker'
 import { downloadPdf } from '@/lib/export-pdf'
 import { formatNumber } from '@/lib/format'
@@ -227,6 +228,15 @@ function HomePageContent() {
     const target = (name ?? username).trim()
     if (!target) return
 
+    // 鉴权前置：未登录（未验证邮箱）直接弹付费墙，不发请求
+    const token = getSessionToken()
+    if (!token) {
+      pendingUsername.current = target
+      setNeedPurchase(true)
+      setShowPaidWallModal(true)
+      return
+    }
+
     setLoading(true)
     setError('')
     setResult(null)
@@ -242,12 +252,11 @@ function HomePageContent() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 45000)
 
-      const token = getSessionToken()
       const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ username: target }),
         signal: controller.signal,
@@ -1517,7 +1526,7 @@ function CapFeature({ icon, color, title, items }: {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<StaticLanding />}>
       <HomePageContent />
     </Suspense>
   )
