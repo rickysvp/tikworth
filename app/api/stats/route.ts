@@ -8,8 +8,7 @@ export async function GET() {
   try {
     const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
     if (!DATABASE_URL) {
-      // No DB — return zeros
-      return NextResponse.json({ accountsEvaluated: 0, totalValueAssessed: 0, paidUsers: 0 })
+      return NextResponse.json({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
     }
 
     const sql = neon(DATABASE_URL)
@@ -26,13 +25,27 @@ export async function GET() {
     `
     const totalValueAssessed = Number(valueRows[0]?.total || 0)
 
-    // 3. Unique visitors (UV) from analytics_events
+    // 3. Unique visitors — ensure table exists first, then query
     let uniqueVisitors = 0
     try {
-      const uvRows = await sql`SELECT COUNT(DISTINCT ip_hash) as count FROM analytics_events WHERE event_type = 'page_view'`
+      await sql`
+        CREATE TABLE IF NOT EXISTS analytics_events (
+          id SERIAL PRIMARY KEY,
+          event_type TEXT,
+          path TEXT,
+          username TEXT,
+          email TEXT,
+          metadata JSONB,
+          ip_hash TEXT,
+          user_agent TEXT,
+          referrer TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `
+      const uvRows = await sql`SELECT COUNT(DISTINCT ip_hash) as count FROM analytics_events WHERE event_type = 'page_view' AND ip_hash IS NOT NULL`
       uniqueVisitors = Number(uvRows[0]?.count || 0)
-    } catch {
-      // analytics_events table might not exist yet
+    } catch (e) {
+      console.error('[stats] analytics query failed:', e instanceof Error ? e.message : String(e))
     }
 
     return NextResponse.json({
