@@ -289,183 +289,281 @@ function inferRegionFromContent(bio: string, nickname: string, posts: Post[]): s
   return bestMatch && bestMatch.score >= 5 ? bestMatch.region : undefined
 }
 
-// 新 API 统一用 POST + JSON body
-// 支持：多 provider 轮转 + 指数退避重试 + 限流自动切换 provider
-async function apiPost<T = unknown>(
+// ========== 通用 HTTP 请求（单个 provider，支持 GET/POST） ==========
+
+async function apiCallSingle(
+  provider: ProviderConfig,
+  method: 'GET' | 'POST',
   path: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown> | undefined,
   label: string,
   options: { timeoutMs?: number; throwOnError?: boolean } = {}
-): Promise<T> {
+): Promise<Record<string, unknown>> {
+  const { host, apiKey } = provider
   const { timeoutMs = 15000, throwOnError = true } = options
-  const providers = getProviders()
+  const url = `https://${host}${path}`
+  const providerTag = host
 
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const start = Date.now()
+    let res: Response
+    try {
+      const opts: RequestInit = {
+        method,
+        headers: apiHeaders(host, apiKey),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(timeoutMs),
+      }
+      if (method === 'POST' && body) {
+        opts.body = JSON.stringify(body)
+      }
+      res = await fetch(url, opts)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
+      const isNetwork = isTimeout || msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.includes('EAI_AGAIN') || msg.includes('EPIPE')
+
+      if (isNetwork) {
+        const code = isTimeout ? 'Request timed out' : `Network error: ${msg}`
+        console.warn(`[tiktok] ${label} ${providerTag} attempt#${attempt + 1} network error: ${msg}`)
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAYS[attempt])
+          continue
+        }
+        throw new TikTokApiError(code, 'NETWORK_ERROR', 502)
+      }
+      throw err  // 未知异常不重试
+    }
+
+    // 限流/配额：抛错，由上层切换 provider
+    if (res.status === 429 || res.status === 403) {
+      console.warn(`[tiktok] ${label} ${providerTag} attempt#${attempt + 1} HTTP ${res.status} (rate/quota)`)
+      throw new TikTokApiError('Rate limited', 'RATE_LIMIT', 429)
+    }
+
+    const text = await res.text()
+    const duration = Date.now() - start
+
+    if (!res.ok) {
+      console.error(`[tiktok] ${label} ${providerTag} HTTP ${res.status} (${duration}ms):`, text.slice(0, 300))
+      // 5xx 服务端错误可重试
+      if (res.status >= 500 && attempt < MAX_RETRIES) {
+        await sleep(RETRY_DELAYS[attempt])
+        continue
+      }
+      if (!throwOnError) return {}
+      throw new TikTokApiError(`API HTTP ${res.status}`, 'API_ERROR', 500)
+    }
+
+    let json: unknown
+    try {
+      json = JSON.parse(text)
+    } catch {
+      console.error(`[tiktok] ${label} ${providerTag} invalid JSON (${duration}ms):`, text.slice(0, 200))
+      if (attempt < MAX_RETRIES) {
+        await sleep(RETRY_DELAYS[attempt])
+        continue
+      }
+      if (!throwOnError) return {}
+      throw new TikTokApiError('Invalid API response', 'API_ERROR', 500)
+    }
+
+    const root = json as Record<string, unknown>
+
+    // 错误格式：{ detail: "User xxx does not exist" } 或 { message: "..." }
+    const detailMsg = typeof root.detail === 'string' ? root.detail : ''
+    const errMsg = typeof root.message === 'string' ? root.message : detailMsg
+
+    if (errMsg) {
+      if (/does not exist|not found|no user|user not found|invalid/i.test(errMsg)) {
+        if (!throwOnError) return {}
+        throw new TikTokApiError(errMsg, 'USER_NOT_FOUND', 404)
+      }
+      if (/rate limit|quota|too many/i.test(errMsg)) {
+        console.warn(`[tiktok] ${label} ${providerTag} response rate limit`)
+        throw new TikTokApiError(errMsg, 'RATE_LIMIT', 429)
+      }
+      if (/endpoint.*does not exist/i.test(errMsg)) {
+        console.error(`[tiktok] ${label} ${providerTag} endpoint error:`, errMsg)
+        if (!throwOnError) return {}
+        throw new TikTokApiError(errMsg, 'API_ERROR', 500)
+      }
+    }
+
+    console.log(`[tiktok] ${label} ${providerTag} OK (${duration}ms)`)
+    return root
+  }
+
+  throw new TikTokApiError('Request failed after retries', 'API_ERROR', 500)
+}
+
+// ========== Provider 适配器 ==========
+
+interface ProviderAdapter {
+  name: string
+  /** 获取用户资料（含视频），返回标准 RawProfile */
+  fetchProfile(username: string, provider: ProviderConfig): Promise<RawProfile>
+}
+
+// --- tiktok-api6 适配器（POST 请求，当前默认） ---
+const API6_ADAPTER: ProviderAdapter = {
+  name: 'tiktok-api6',
+  async fetchProfile(username, provider) {
+    const [info, posts] = await Promise.all([
+      apiCallSingle(provider, 'POST', '/user/details', { username }, 'user/details', { timeoutMs: 20000 }),
+      fetchPostsApi6(username, provider),
+    ])
+
+    const followerCount = toNumber(pickField(info, 'followers', 'follower_count', 'followerCount'))
+    const videoCount = toNumber(pickField(info, 'total_videos', 'video_count', 'videoCount'))
+    const totalLikes = toNumber(pickField(info, 'total_heart', 'heart_count', 'total_favorited'))
+    const nickname = String(pickField(info, 'nickname', 'username') || username)
+    const secUid = String(pickField(info, 'secondary_id', 'sec_uid', 'secUid') || '')
+
+    if (!followerCount && !videoCount && !nickname) {
+      throw new TikTokApiError('User has empty stats', 'USER_NOT_FOUND', 404)
+    }
+
+    const postsFetched = posts.length > 0
+    return {
+      username, nickname, followerCount,
+      followingCount: toNumber(pickField(info, 'following', 'following_count', 'followingCount')),
+      totalLikes, videoCount, secUid,
+      region: info.region ? String(info.region) : inferRegionFromContent(nickname, String(pickField(info, 'description', 'signature') || ''), posts),
+      avatar: String(pickField(info, 'profile_image', 'avatar_larger', 'avatar_medium', 'avatar_thumb') || ''),
+      bio: String(pickField(info, 'description', 'signature') || ''),
+      posts,
+      dataQuality: postsFetched ? 'full' as const : 'partial' as const,
+      postsFetchError: postsFetched ? undefined : 'Video data unavailable — evaluation may be less accurate',
+    }
+  },
+}
+
+// --- tiktok-api23 适配器（GET 请求） ---
+const API23_ADAPTER: ProviderAdapter = {
+  name: 'tiktok-api23',
+  async fetchProfile(username, provider) {
+    const path = `/api/user/info?uniqueId=${encodeURIComponent(username)}`
+    const root = await apiCallSingle(provider, 'GET', path, undefined, 'user/info', { timeoutMs: 20000 })
+    const userInfo = root.userInfo as Record<string, unknown> | undefined
+    if (!userInfo) throw new TikTokApiError('Empty response', 'API_ERROR', 500)
+    const user = (userInfo.user as Record<string, unknown>) || {}
+    const stats = (userInfo.stats as Record<string, unknown>) || {}
+
+    const followerCount = toNumber(stats.followerCount ?? stats.follower_count)
+    const videoCount = toNumber(stats.videoCount ?? stats.video_count)
+    const totalLikes = toNumber(stats.heart ?? stats.heartCount ?? stats.likeCount)
+    const nickname = String(user.nickname || username)
+    const secUid = String(user.secUid ?? (user.sec_uid || ''))
+
+    if (!followerCount && !videoCount && !nickname) {
+      throw new TikTokApiError('User has empty stats', 'USER_NOT_FOUND', 404)
+    }
+
+    // 视频端点需要 secUid
+    const posts = await fetchPostsApi23(username, secUid, provider)
+    const postsFetched = posts.length > 0
+    return {
+      username, nickname, followerCount,
+      followingCount: toNumber(stats.followingCount ?? stats.following_count),
+      totalLikes, videoCount, secUid,
+      region: inferRegionFromContent(nickname, String(user.signature || ''), posts),
+      avatar: String(user.avatarLarger ?? (user.avatar_larger ?? (user.avatarThumb || ''))),
+      bio: String(user.signature || ''),
+      posts,
+      dataQuality: postsFetched ? 'full' as const : 'partial' as const,
+      postsFetchError: postsFetched ? undefined : 'Video data unavailable — evaluation may be less accurate',
+    }
+  },
+}
+
+// --- tiktok-scraper7 适配器（GET 请求） ---
+const SCRAPER7_ADAPTER: ProviderAdapter = {
+  name: 'tiktok-scraper7',
+  async fetchProfile(username, provider) {
+    const path = `/user/info?unique_id=${encodeURIComponent(username)}`
+    const root = await apiCallSingle(provider, 'GET', path, undefined, 'user/info', { timeoutMs: 20000 })
+    const data = root.data as Record<string, unknown> | undefined
+    if (!data) throw new TikTokApiError('Empty response', 'API_ERROR', 500)
+    const user = (data.user as Record<string, unknown>) || {}
+    const stats = (data.stats as Record<string, unknown>) || {}
+
+    const followerCount = toNumber(stats.followerCount ?? stats.follower_count)
+    const videoCount = toNumber(stats.videoCount ?? stats.video_count)
+    const totalLikes = toNumber(stats.heart ?? stats.heartCount)
+    const nickname = String(user.nickname || username)
+    const secUid = String(user.secUid ?? (user.sec_uid || ''))
+
+    if (!followerCount && !videoCount && !nickname) {
+      throw new TikTokApiError('User has empty stats', 'USER_NOT_FOUND', 404)
+    }
+
+    const posts = await fetchPostsScraper7(username, provider)
+    const postsFetched = posts.length > 0
+    return {
+      username, nickname, followerCount,
+      followingCount: toNumber(stats.followingCount ?? stats.following_count),
+      totalLikes, videoCount, secUid,
+      region: inferRegionFromContent(nickname, String(user.signature || ''), posts),
+      avatar: String(user.avatarLarger ?? (user.avatar_thumb || '')),
+      bio: String(user.signature || ''),
+      posts,
+      dataQuality: postsFetched ? 'full' as const : 'partial' as const,
+      postsFetchError: postsFetched ? undefined : 'Video data unavailable — evaluation may be less accurate',
+    }
+  },
+}
+
+// Host → 适配器映射
+const ADAPTERS: Record<string, ProviderAdapter> = {
+  'tiktok-api6.p.rapidapi.com': API6_ADAPTER,
+  'tiktok-api23.p.rapidapi.com': API23_ADAPTER,
+  'tiktok-scraper7.p.rapidapi.com': SCRAPER7_ADAPTER,
+}
+
+// ========== fetchProfile：多 provider 遍历 ==========
+
+export async function fetchProfile(inputUsername: string): Promise<RawProfile> {
+  const username = normalizeUsername(inputUsername)
+  if (!username) throw new TikTokApiError('Empty username', 'INVALID_USERNAME', 400)
+
+  const providers = getProviders()
   if (providers.length === 0) {
     throw new TikTokApiError('RAPIDAPI_KEY not configured', 'MISSING_API_KEY', 503)
   }
 
   let lastError: unknown = null
 
-  // 遍历所有 provider（host+key 组合），每个 provider 重试 MAX_RETRIES 次
-  for (let pIdx = 0; pIdx < providers.length; pIdx++) {
-    const { host, apiKey } = providers[pIdx]
-    const url = `https://${host}${path}`
-    const providerTag = providers.length > 1 ? `provider#${pIdx + 1}(${host})` : ''
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const start = Date.now()
-      let res: Response
-      try {
-        res = await fetch(url, {
-          method: 'POST',
-          headers: apiHeaders(host, apiKey),
-          body: JSON.stringify(body),
-          cache: 'no-store',
-          signal: AbortSignal.timeout(timeoutMs),
-        })
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err)
-        const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
-        const isNetwork = isTimeout || msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.includes('EAI_AGAIN') || msg.includes('EPIPE')
-
-        if (isNetwork) {
-          const code = isTimeout ? 'Request timed out' : `Network error: ${msg}`
-          lastError = new TikTokApiError(code, 'NETWORK_ERROR', 502)
-          console.warn(`[tiktok] ${label} ${providerTag} attempt#${attempt + 1} network error: ${msg}`)
-          if (attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAYS[attempt])
-            continue
-          }
-          break  // 同 provider 重试耗尽，切到下一个 provider
-        }
-        throw err  // 未知异常不重试
-      }
-
-      // 限流/配额：切下一个 provider，不重试当前 provider
-      if (res.status === 429 || res.status === 403) {
-        console.warn(`[tiktok] ${label} ${providerTag} attempt#${attempt + 1} HTTP ${res.status} (rate/quota), switching provider...`)
-        lastError = new TikTokApiError('Rate limited', 'RATE_LIMIT', 429)
-        break
-      }
-
-      const text = await res.text()
-      const duration = Date.now() - start
-
-      if (!res.ok) {
-        console.error(`[tiktok] ${label} ${providerTag} HTTP ${res.status} (${duration}ms):`, text.slice(0, 300))
-        lastError = new TikTokApiError(`API HTTP ${res.status}`, 'API_ERROR', 500)
-        // 5xx 服务端错误可重试
-        if (res.status >= 500 && attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAYS[attempt])
-          continue
-        }
-        if (!throwOnError) return undefined as T
-        break
-      }
-
-      let json: unknown
-      try {
-        json = JSON.parse(text)
-      } catch {
-        console.error(`[tiktok] ${label} ${providerTag} invalid JSON (${duration}ms):`, text.slice(0, 200))
-        lastError = new TikTokApiError('Invalid API response', 'API_ERROR', 500)
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAYS[attempt])
-          continue
-        }
-        if (!throwOnError) return undefined as T
-        break
-      }
-
-      const root = json as Record<string, unknown>
-
-      // 错误格式：{ detail: "User xxx does not exist" } 或 { message: "..." }
-      const detailMsg = typeof root.detail === 'string' ? root.detail : ''
-      const errMsg = typeof root.message === 'string' ? root.message : detailMsg
-
-      if (errMsg) {
-        if (/does not exist|not found|no user|user not found|invalid/i.test(errMsg)) {
-          if (!throwOnError) return undefined as T
-          throw new TikTokApiError(errMsg, 'USER_NOT_FOUND', 404)
-        }
-        if (/rate limit|quota|too many/i.test(errMsg)) {
-          console.warn(`[tiktok] ${label} ${providerTag} response rate limit, switching provider...`)
-          lastError = new TikTokApiError(errMsg, 'RATE_LIMIT', 429)
-          break  // 切下一个 provider
-        }
-        if (/endpoint.*does not exist/i.test(errMsg)) {
-          console.error(`[tiktok] ${label} ${providerTag} endpoint error:`, errMsg)
-          lastError = new TikTokApiError(errMsg, 'API_ERROR', 500)
-          if (!throwOnError) return undefined as T
-          break
-        }
-      }
-
-      console.log(`[tiktok] ${label} ${providerTag} OK (${duration}ms)`)
-      return root as T
+  for (const provider of providers) {
+    const adapter = ADAPTERS[provider.host]
+    if (!adapter) {
+      console.warn(`[tiktok] no adapter for host ${provider.host}, skipping`)
+      continue
+    }
+    try {
+      console.log(`[tiktok] trying ${adapter.name} (${provider.host})`)
+      return await adapter.fetchProfile(username, provider)
+    } catch (err) {
+      // USER_NOT_FOUND 不切换 provider
+      if (err instanceof TikTokApiError && err.code === 'USER_NOT_FOUND') throw err
+      lastError = err
+      console.warn(`[tiktok] ${adapter.name} failed: ${err instanceof Error ? err.message : err}, trying next provider...`)
     }
   }
 
-  // 所有 provider 都失败
-  if (!throwOnError) return undefined as T
-  throw lastError || new TikTokApiError('All API keys exhausted', 'API_ERROR', 500)
+  throw lastError || new TikTokApiError('All providers exhausted', 'API_ERROR', 500)
 }
 
-export async function fetchProfile(inputUsername: string): Promise<RawProfile> {
-  const username = normalizeUsername(inputUsername)
-  if (!username) throw new TikTokApiError('Empty username', 'INVALID_USERNAME', 400)
+// ========== 各 host 的视频获取函数 ==========
 
-  // 并行获取用户详情和视频；视频失败时不阻断整体评估
-  const [info, posts] = await Promise.all([
-    apiPost<Record<string, unknown>>('/user/details', { username }, 'user/details', { timeoutMs: 20000 }),
-    fetchPosts(username),
-  ])
-
-  const followerCount = toNumber(pickField(info, 'followers', 'follower_count', 'followerCount'))
-  const videoCount = toNumber(pickField(info, 'total_videos', 'video_count', 'videoCount'))
-  const totalLikes = toNumber(pickField(info, 'total_heart', 'heart_count', 'total_favorited'))
-  const nickname = String(pickField(info, 'nickname', 'username') || username)
-  const secUid = String(pickField(info, 'secondary_id', 'sec_uid', 'secUid') || '')
-
-  if (!followerCount && !videoCount && !nickname) {
-    throw new TikTokApiError('User has empty stats', 'USER_NOT_FOUND', 404)
-  }
-
-  const postsFetched = posts.length > 0
-
-  return {
-    username,
-    nickname,
-    followerCount,
-    followingCount: toNumber(pickField(info, 'following', 'following_count', 'followingCount')),
-    totalLikes,
-    videoCount,
-    secUid,
-    region: info.region ? String(info.region) : inferRegionFromContent(nickname, String(pickField(info, 'description', 'signature') || ''), posts),
-    avatar: String(pickField(info, 'profile_image', 'avatar_larger', 'avatar_medium', 'avatar_thumb') || ''),
-    bio: String(pickField(info, 'description', 'signature') || ''),
-    posts,
-    dataQuality: postsFetched ? 'full' as const : 'partial' as const,
-    postsFetchError: postsFetched ? undefined : 'Video data unavailable — evaluation may be less accurate',
-  }
-}
-
-async function fetchPosts(username: string): Promise<Post[]> {
+// tiktok-api6: POST /user/videos
+async function fetchPostsApi6(username: string, provider: ProviderConfig): Promise<Post[]> {
   try {
-    const root = await apiPost<Record<string, unknown>>(
-      '/user/videos',
-      { username, count: 30, cursor: 0 },
-      'user/videos',
-      { timeoutMs: 12000 }
-    )
-
+    const root = await apiCallSingle(provider, 'POST', '/user/videos', { username, count: 30, cursor: 0 }, 'user/videos', { timeoutMs: 12000 })
     const items = Array.isArray(root.videos) ? root.videos : []
-
-    const posts: Post[] = items.map((v: unknown): Post => {
+    return items.map((v: unknown): Post => {
       const item = (v && typeof v === 'object') ? (v as Record<string, unknown>) : {}
-      const stats = (item.statistics && typeof item.statistics === 'object')
-        ? (item.statistics as Record<string, unknown>)
-        : {}
+      const stats = (item.statistics && typeof item.statistics === 'object') ? (item.statistics as Record<string, unknown>) : {}
       return {
         id: String(item.video_id ?? item.aweme_id ?? item.id ?? ''),
         playCount: toNumber(pickField(stats, 'number_of_plays', 'play_count', 'playCount')),
@@ -476,44 +574,102 @@ async function fetchPosts(username: string): Promise<Post[]> {
         desc: String(item.description ?? item.desc ?? item.title ?? ''),
       }
     }).filter(p => p.id)
-
-    return posts
   } catch (err) {
-    console.warn('[tiktok] user/videos failed, continuing without posts:', err instanceof Error ? err.message : err)
+    console.warn(`[tiktok] ${provider.host} user/videos failed:`, err instanceof Error ? err.message : err)
     return []
   }
 }
 
-// 新 API 没有专门的用户搜索端点，用 /search/general/query 搜索视频，从中提取作者去重
-export async function searchUsers(keywords: string, count = 10): Promise<SearchUserResult[]> {
+// tiktok-api23: GET /api/user/posts?uniqueId=xxx&secUid=yyy
+async function fetchPostsApi23(username: string, secUid: string, provider: ProviderConfig): Promise<Post[]> {
+  if (!secUid) return []
   try {
-    const root = await apiPost<Record<string, unknown>>(
-      '/search/general/query',
-      { query: keywords, cursor: 0, sort_type: '0' },
-      'search/general/query'
-    )
-
-    const videos = Array.isArray(root.videos) ? root.videos : []
-    const seen = new Set<string>()
-    const results: SearchUserResult[] = []
-
-    for (const v of videos) {
+    const path = `/api/user/posts?uniqueId=${encodeURIComponent(username)}&secUid=${encodeURIComponent(secUid)}&count=30`
+    const root = await apiCallSingle(provider, 'GET', path, undefined, 'user/posts', { timeoutMs: 12000 })
+    const rootData = root.data as Record<string, unknown> | undefined
+    const items: unknown[] = Array.isArray(root.videos) ? root.videos : (Array.isArray(rootData?.videos) ? rootData!.videos : [])
+    return items.map((v: unknown): Post => {
       const item = (v && typeof v === 'object') ? (v as Record<string, unknown>) : {}
-      const username = normalizeUsername(String(item.author || ''))
-      if (!username || seen.has(username)) continue
-      seen.add(username)
-      results.push({
-        username,
-        nickname: String(item.author_name || ''),
-        followerCount: 0, // 搜索结果不含粉丝数，需点击评估时拉取
-        avatar: String(item.avatar_thumb || ''),
-      })
-      if (results.length >= count) break
-    }
-
-    return results
+      const stats = (item.stats && typeof item.stats === 'object') ? (item.stats as Record<string, unknown>) : {}
+      return {
+        id: String(item.id ?? item.aweme_id ?? item.video_id ?? ''),
+        playCount: toNumber(pickField(stats, 'playCount', 'play_count')),
+        likeCount: toNumber(pickField(stats, 'diggCount', 'digg_count')),
+        commentCount: toNumber(pickField(stats, 'commentCount', 'comment_count')),
+        shareCount: toNumber(pickField(stats, 'shareCount', 'share_count')),
+        createTime: toNumber(item.createTime ?? item.create_time),
+        desc: String(item.desc ?? item.description ?? item.title ?? ''),
+      }
+    }).filter(p => p.id)
   } catch (err) {
-    console.warn('[tiktok] search/general/query failed:', err instanceof Error ? err.message : err)
+    console.warn(`[tiktok] ${provider.host} user/posts failed:`, err instanceof Error ? err.message : err)
     return []
   }
+}
+
+// tiktok-scraper7: GET /user/posts?unique_id=xxx
+async function fetchPostsScraper7(username: string, provider: ProviderConfig): Promise<Post[]> {
+  try {
+    const path = `/user/posts?unique_id=${encodeURIComponent(username)}&count=30`
+    const root = await apiCallSingle(provider, 'GET', path, undefined, 'user/posts', { timeoutMs: 12000 })
+    const rootData = root.data as Record<string, unknown> | undefined
+    const items: unknown[] = Array.isArray(rootData?.videos) ? rootData!.videos : []
+    return items.map((v: unknown): Post => {
+      const item = (v && typeof v === 'object') ? (v as Record<string, unknown>) : {}
+      // scraper7 的字段直接在根对象上
+      return {
+        id: String(item.aweme_id ?? item.video_id ?? item.id ?? ''),
+        playCount: toNumber(item.play_count ?? item.playCount),
+        likeCount: toNumber(item.digg_count ?? item.diggCount),
+        commentCount: toNumber(item.comment_count ?? item.commentCount),
+        shareCount: toNumber(item.share_count ?? item.shareCount),
+        createTime: toNumber(item.create_time ?? item.createTime),
+        desc: String(item.title ?? item.content_desc ?? item.desc ?? ''),
+      }
+    }).filter(p => p.id)
+  } catch (err) {
+    console.warn(`[tiktok] ${provider.host} user/posts failed:`, err instanceof Error ? err.message : err)
+    return []
+  }
+}
+
+// ========== 搜索：仅 tiktok-api6 支持 ==========
+
+export async function searchUsers(keywords: string, count = 10): Promise<SearchUserResult[]> {
+  const providers = getProviders()
+  if (providers.length === 0) return []
+
+  // 只用支持搜索的 provider（当前仅 tiktok-api6）
+  for (const provider of providers) {
+    if (!ADAPTERS[provider.host] || provider.host !== 'tiktok-api6.p.rapidapi.com') continue
+    try {
+      const root = await apiCallSingle(
+        provider, 'POST', '/search/general/query',
+        { query: keywords, cursor: 0, sort_type: '0' },
+        'search/general/query'
+      )
+      const videos = Array.isArray(root.videos) ? root.videos : []
+      const seen = new Set<string>()
+      const results: SearchUserResult[] = []
+      for (const v of videos) {
+        const item = (v && typeof v === 'object') ? (v as Record<string, unknown>) : {}
+        const username = normalizeUsername(String(item.author || ''))
+        if (!username || seen.has(username)) continue
+        seen.add(username)
+        results.push({
+          username,
+          nickname: String(item.author_name || ''),
+          followerCount: 0,
+          avatar: String(item.avatar_thumb || ''),
+        })
+        if (results.length >= count) break
+      }
+      return results
+    } catch (err) {
+      console.warn(`[tiktok] ${provider.host} search failed:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  console.warn('[tiktok] no search-capable provider available')
+  return []
 }
