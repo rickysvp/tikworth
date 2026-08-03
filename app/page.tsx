@@ -95,11 +95,15 @@ function HomePageContent() {
   }, [])
 
   // Fetch real stats
-  useEffect(() => {
-    fetch('/api/stats').then(r => r.json()).then(data => {
+  const refreshStats = useCallback(() => {
+    fetch('/api/stats', { cache: 'no-store' }).then(r => r.json()).then(data => {
       if (data) setStats(data)
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    refreshStats()
+  }, [refreshStats])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -238,6 +242,7 @@ function HomePageContent() {
         }
       } else {
         setResult(data)
+        refreshStats()
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
@@ -248,7 +253,7 @@ function HomePageContent() {
     } finally {
       setLoading(false)
     }
-  }, [username, dict.errors.networkError, dict.errors.requestTimeout, dict.errors.evaluationFailed])
+  }, [username, dict.errors.networkError, dict.errors.requestTimeout, dict.errors.evaluationFailed, refreshStats])
 
   // Handle URL params: ?paid=success (Creem callback) and ?u=username (client navigation)
   useEffect(() => {

@@ -47,28 +47,21 @@ async function initDb(): Promise<boolean> {
     try {
       const { neon } = await import('@neondatabase/serverless')
       sql = neon(DATABASE_URL)
+      // Single statement — avoids multi-statement failure cascade in serverless
       await sql`
         CREATE TABLE IF NOT EXISTS analytics_events (
           id SERIAL PRIMARY KEY,
-          event_type TEXT NOT NULL,
+          event_type TEXT,
           path TEXT,
           username TEXT,
           email TEXT,
           metadata JSONB,
           ip_hash TEXT,
           user_agent TEXT,
+          referrer TEXT,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `
-      // Migration: add event_type column if table was created with older schema
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS event_type TEXT`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS path TEXT`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS username TEXT`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS email TEXT`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS metadata JSONB`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
-      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer TEXT`
       await sql`
         CREATE TABLE IF NOT EXISTS admin_audit_log (
           id SERIAL PRIMARY KEY,
@@ -89,8 +82,6 @@ async function initDb(): Promise<boolean> {
           verified_at BIGINT NOT NULL DEFAULT 0
         )
       `
-      await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
       dbReady = true
       return true
     } catch (err) {

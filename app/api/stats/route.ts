@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 300 // 5 min cache
 
 export async function GET() {
   try {
     const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
     if (!DATABASE_URL) {
-      return NextResponse.json({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
+      return NextResponse.json(
+        { accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 },
+        { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+      )
     }
 
     const sql = neon(DATABASE_URL)
@@ -48,13 +50,15 @@ export async function GET() {
       console.error('[stats] analytics query failed:', e instanceof Error ? e.message : String(e))
     }
 
-    return NextResponse.json({
-      accountsEvaluated,
-      totalValueAssessed,
-      uniqueVisitors,
-    })
+    return NextResponse.json(
+      { accountsEvaluated, totalValueAssessed, uniqueVisitors },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
   } catch (err) {
     console.error('[stats] error:', err)
-    return NextResponse.json({ accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 })
+    return NextResponse.json(
+      { accountsEvaluated: 0, totalValueAssessed: 0, uniqueVisitors: 0 },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
   }
 }
