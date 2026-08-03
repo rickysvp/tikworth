@@ -18,6 +18,7 @@ import {
   Target, Zap, Award, Users, Heart, Video, BarChart3, ArrowRight,
   Sparkles, Trophy, Flame, ShoppingBag, Gift, Info, X,
   MapPin, UserCheck, BadgeCheck, Tag, Clock, Globe, Film,
+  Lock, Shield,
 } from 'lucide-react'
 
 // ── Helpers ──
@@ -103,6 +104,7 @@ export default function SharePage() {
   const [copied, setCopied] = useState(false)
   const [showStickyCta, setShowStickyCta] = useState(false)
   const [showDimensionInfo, setShowDimensionInfo] = useState(false)
+  const [showSummaryBanner, setShowSummaryBanner] = useState(false)
 
   useEffect(() => {
     fetch(`/api/share?id=${id}`)
@@ -122,6 +124,21 @@ export default function SharePage() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Show summary banner unless dismissed (localStorage)
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem('share-summary-banner-dismissed')
+      if (!dismissed) setShowSummaryBanner(true)
+    } catch {
+      setShowSummaryBanner(true)
+    }
+  }, [])
+
+  const dismissBanner = () => {
+    setShowSummaryBanner(false)
+    try { localStorage.setItem('share-summary-banner-dismissed', '1') } catch {}
+  }
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href)
@@ -306,13 +323,137 @@ export default function SharePage() {
           </div>
         </div>
 
-        {/* ═══ Soft CTA #1 ═══ */}
-        <div className="flex items-center justify-center gap-2 py-3 mb-6">
-          <p className="text-sm text-neutral-500">Wondering what <span className="text-[#00F2EA] font-medium">your</span> TikTok is worth?</p>
-          <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-[#00F2EA] hover:underline whitespace-nowrap">
-            Check now <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        {/* ═══ Summary Banner (top notice) ═══ */}
+        {showSummaryBanner && result && (
+          <div className="mb-6 rounded-xl border border-[#00F2EA]/30 bg-[#00F2EA]/5 p-3 sm:p-4 flex items-center gap-3">
+            <Info className="h-5 w-5 text-[#00F2EA] shrink-0" />
+            <p className="flex-1 text-sm text-neutral-300">
+              This is a <span className="text-[#00F2EA] font-semibold">shared summary</span>. The full report contains{' '}
+              <span className="text-white font-semibold">10 modules</span> — you&apos;re viewing{' '}
+              <span className="text-white font-semibold">4</span>.
+            </p>
+            <Link
+              href={`/?u=${encodeURIComponent(result.username)}`}
+              className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-[#00F2EA] hover:underline whitespace-nowrap"
+            >
+              View full report <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <button
+              onClick={dismissBanner}
+              className="shrink-0 p-1 rounded hover:bg-[#00F2EA]/10 text-neutral-500 hover:text-neutral-300"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ═══ What's in the full report? — Module Checklist ═══ */}
+        {result && (
+          <div className="mb-6 rounded-2xl border border-neutral-800 bg-[#0f0f0f] p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-bold text-white">What&apos;s in the full report?</h2>
+              <span className="text-xs text-neutral-500">4 visible · 6 locked</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 mb-5">
+              {/* 1. Income Breakdown — visible */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#22c55e]/20 flex items-center justify-center">
+                  <Check className="h-3 w-3 text-[#22c55e]" />
+                </span>
+                <DollarSign className="h-3.5 w-3.5 text-neutral-500 shrink-0" />
+                <span className="text-sm text-neutral-300">5-Channel Income Breakdown</span>
+              </div>
+              {/* 2. Revenue Roadmap — locked */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center">
+                  <Lock className="h-2.5 w-2.5 text-neutral-500" />
+                </span>
+                <TrendingUp className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                <span className="text-sm text-neutral-500">12-Month Revenue Roadmap</span>
+              </div>
+              {/* 3. Growth Plan — partial */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#f59e0b]/20 flex items-center justify-center">
+                  <span className="text-[10px] text-[#f59e0b] font-bold">½</span>
+                </span>
+                <Zap className="h-3.5 w-3.5 text-neutral-500 shrink-0" />
+                <span className="text-sm text-neutral-300">Growth Action Plan <span className="text-xs text-neutral-500">(partial)</span></span>
+              </div>
+              {/* 4. Risk Scan — locked */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center">
+                  <Lock className="h-2.5 w-2.5 text-neutral-500" />
+                </span>
+                <Shield className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                <span className="text-sm text-neutral-500">10-Dimension Risk Scan</span>
+              </div>
+              {/* 5. Peer Ranking — partial */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#f59e0b]/20 flex items-center justify-center">
+                  <span className="text-[10px] text-[#f59e0b] font-bold">½</span>
+                </span>
+                <BarChart3 className="h-3.5 w-3.5 text-neutral-500 shrink-0" />
+                <span className="text-sm text-neutral-300">Peer Percentile Ranking <span className="text-xs text-neutral-500">(partial)</span></span>
+              </div>
+              {/* 6. Brand Matching — partial */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#f59e0b]/20 flex items-center justify-center">
+                  <span className="text-[10px] text-[#f59e0b] font-bold">½</span>
+                </span>
+                <Award className="h-3.5 w-3.5 text-neutral-500 shrink-0" />
+                <span className="text-sm text-neutral-300">Brand Matching <span className="text-xs text-neutral-500">(partial)</span></span>
+              </div>
+              {/* 7. Content Strategy — locked */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center">
+                  <Lock className="h-2.5 w-2.5 text-neutral-500" />
+                </span>
+                <Target className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                <span className="text-sm text-neutral-500">Content Strategy Guide</span>
+              </div>
+              {/* 8. Trend Analysis — locked */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center">
+                  <Lock className="h-2.5 w-2.5 text-neutral-500" />
+                </span>
+                <Flame className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                <span className="text-sm text-neutral-500">Trend Analysis</span>
+              </div>
+              {/* 9. Monetization Paths — locked */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center">
+                  <Lock className="h-2.5 w-2.5 text-neutral-500" />
+                </span>
+                <ShoppingBag className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                <span className="text-sm text-neutral-500">Monetization Paths</span>
+              </div>
+              {/* 10. Deep Analysis — locked */}
+              <div className="flex items-center gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center">
+                  <Lock className="h-2.5 w-2.5 text-neutral-500" />
+                </span>
+                <Sparkles className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                <span className="text-sm text-neutral-500">Deep Analysis</span>
+              </div>
+            </div>
+            {/* Dual CTA */}
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <Link
+                href="/"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#00F2EA]/30 bg-[#00F2EA]/10 text-[#00F2EA] text-sm font-semibold hover:bg-[#00F2EA]/15 transition-colors"
+              >
+                Evaluate Your Account <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href={`/?u=${encodeURIComponent(result.username)}`}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#FF0050] to-[#00F2EA] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                View This Account&apos;s Full Report <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* ═══════════════════════════════════════
             Business Value Breakdown
@@ -598,6 +739,14 @@ export default function SharePage() {
                   </div>
                 </div>
               ))}
+              {result.growthPlan.items.length > 4 && (
+                <Link
+                  href={`/?u=${encodeURIComponent(result.username)}`}
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-neutral-700 text-xs text-neutral-500 hover:text-[#00F2EA] hover:border-[#00F2EA]/30 transition-colors"
+                >
+                  +{result.growthPlan.items.length - 4} more actions in full report <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
             </div>
           </section>
         )}
@@ -626,6 +775,14 @@ export default function SharePage() {
                   </div>
                 </div>
               ))}
+              {result.brandMatching.matches.length > 4 && (
+                <Link
+                  href={`/?u=${encodeURIComponent(result.username)}`}
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-neutral-700 text-xs text-neutral-500 hover:text-[#00F2EA] hover:border-[#00F2EA]/30 transition-colors sm:col-span-2"
+                >
+                  +{result.brandMatching.matches.length - 4} more matches in full report <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
             </div>
           </section>
         )}
@@ -661,6 +818,14 @@ export default function SharePage() {
                       <span className="text-xs text-white font-medium w-16 text-right">{item.value}</span>
                     </div>
                   ))}
+                  {result.peerRanking.rankingBreakdown.length > 5 && (
+                    <Link
+                      href={`/?u=${encodeURIComponent(result.username)}`}
+                      className="flex items-center justify-center gap-1.5 mt-2 py-2 rounded-lg border border-dashed border-neutral-700 text-xs text-neutral-500 hover:text-[#00F2EA] hover:border-[#00F2EA]/30 transition-colors"
+                    >
+                      +{result.peerRanking.rankingBreakdown.length - 5} more metrics in full report <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -680,6 +845,52 @@ export default function SharePage() {
             Get your full report <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
+
+        {/* ═══════════════════════════════════════
+            Locked Modules — 6 premium sections not shown in share view
+        ═══════════════════════════════════════ */}
+        {result && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Lock className="h-4 w-4 text-neutral-500" />
+              <h2 className="text-base sm:text-lg font-bold text-white">Available in the full report</h2>
+              <span className="text-xs text-neutral-500">6 more modules</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { icon: Shield, title: 'Risk Scan', desc: '10-dimension risk assessment — shadowban, fake followers, growth anomalies' },
+                { icon: TrendingUp, title: '12-Month Revenue Forecast', desc: 'Month-by-month revenue projection with milestones' },
+                { icon: Target, title: 'Content Strategy', desc: 'Content pillars, hashtags, optimal posting schedule' },
+                { icon: Flame, title: 'Trend Analysis', desc: 'Trending topics, sounds, content predictions' },
+                { icon: ShoppingBag, title: 'Monetization Paths', desc: 'Eligible programs, nearest thresholds, action steps' },
+                { icon: Sparkles, title: 'Deep Analysis', desc: 'AI-powered in-depth account diagnosis' },
+              ].map((mod, i) => {
+                const ModIcon = mod.icon
+                return (
+                  <Link
+                    key={i}
+                    href={`/?u=${encodeURIComponent(result.username)}`}
+                    className="group relative rounded-xl border border-dashed border-neutral-700 bg-[#0f0f0f]/50 p-4 hover:border-[#00F2EA]/40 hover:bg-[#0f0f0f] transition-all"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="shrink-0 w-9 h-9 rounded-lg bg-neutral-800/50 border border-neutral-700 flex items-center justify-center group-hover:bg-[#00F2EA]/10 group-hover:border-[#00F2EA]/30 transition-colors">
+                        <ModIcon className="h-4 w-4 text-neutral-500 group-hover:text-[#00F2EA] transition-colors" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Lock className="h-3 w-3 text-neutral-600" />
+                          <h3 className="text-sm font-semibold text-neutral-300 group-hover:text-white transition-colors">{mod.title}</h3>
+                        </div>
+                        <p className="text-xs text-neutral-500 leading-relaxed">{mod.desc}</p>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-neutral-600 group-hover:text-[#00F2EA] transition-colors shrink-0 mt-1" />
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ═══════════════════════════════════════
             Final CTA
