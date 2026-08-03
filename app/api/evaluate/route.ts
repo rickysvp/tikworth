@@ -104,7 +104,19 @@ export async function POST(req: NextRequest) {
 
     normalized = username.replace(/^@/, '').toLowerCase()
 
+    // 认证校验（前置）：评估必须先登录（即邮箱已验证），无论是否命中缓存
+    const token = getBearerToken(req)
+    if (!token) {
+      return NextResponse.json({ error: getServerDict().api.errors.NO_CREDITS, code: 'NO_CREDITS' }, { status: 402 })
+    }
+    const payload = await verifySessionToken(token)
+    if (!payload) {
+      return NextResponse.json({ error: getServerDict().api.errors.SESSION_EXPIRED, code: 'NO_CREDITS' }, { status: 402 })
+    }
+    userEmail = payload.email
+
     // 24h cache to save RapidAPI quota
+    // 缓存命中时不扣减额度（节省 RapidAPI 配额），但鉴权必须通过（已在上文校验）
     if (await isCacheValid(normalized, 24)) {
       const cached = await findEvaluation(normalized)
       if (cached) {
@@ -118,18 +130,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 认证校验：评估消耗 1 次额度
-    const token = getBearerToken(req)
-    if (!token) {
-      return NextResponse.json({ error: getServerDict().api.errors.NO_CREDITS, code: 'NO_CREDITS' }, { status: 402 })
-    }
-    const payload = await verifySessionToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: getServerDict().api.errors.SESSION_EXPIRED, code: 'NO_CREDITS' }, { status: 402 })
-    }
-    userEmail = payload.email
-
-    // 扣减 1 次额度
+    // 扣减 1 次额度（仅缓存未命中时消耗）
     const consumeResult = await consumeCredit(userEmail)
     if (!consumeResult.ok) {
       const msgs: Record<string, { msg: string; status: number }> = {
