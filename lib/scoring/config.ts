@@ -486,6 +486,73 @@ export const SHOP_OPERATIONAL_METRICS: Record<string, { aov: number; commission:
   'deals': { aov: 35, commission: 0.15, conversionRate: 0.004 },
 }
 
+/**
+ * Amazon Associates 联盟营销指标（按品类）
+ * 佣金率参考 Amazon Associates 实际费率（4-10%），AOV 偏高
+ */
+export const AMAZON_ASSOCIATES_METRICS: Record<string, { aov: number; commission: number; conversionRate: number }> = {
+  'Shopping & Deals': { aov: 45, commission: 0.045, conversionRate: 0.0035 },
+  'shopping': { aov: 45, commission: 0.045, conversionRate: 0.0035 },
+  'deals': { aov: 45, commission: 0.045, conversionRate: 0.0035 },
+  'Tech & Gadgets': { aov: 90, commission: 0.04, conversionRate: 0.0025 },
+  'tech': { aov: 90, commission: 0.04, conversionRate: 0.0025 },
+  'Beauty & Skincare': { aov: 28, commission: 0.06, conversionRate: 0.004 },
+  'beauty': { aov: 28, commission: 0.06, conversionRate: 0.004 },
+  'Fashion & Style': { aov: 40, commission: 0.08, conversionRate: 0.003 },
+  'fashion': { aov: 40, commission: 0.08, conversionRate: 0.003 },
+  'Fitness & Sports': { aov: 50, commission: 0.045, conversionRate: 0.0025 },
+  'fitness': { aov: 50, commission: 0.045, conversionRate: 0.0025 },
+  'Home & Living': { aov: 55, commission: 0.06, conversionRate: 0.003 },
+  'Lifestyle': { aov: 40, commission: 0.05, conversionRate: 0.0028 },
+  'lifestyle': { aov: 40, commission: 0.05, conversionRate: 0.0028 },
+  'default': { aov: 40, commission: 0.045, conversionRate: 0.003 },
+}
+
+/**
+ * Shopify DTC 自营电商指标（按品类）
+ * 无佣金分成（creator 保留全额利润），但需扣除利润率 margin
+ * AOV 与转化率高于 affiliate，因自有品牌信任度更高
+ */
+export const SHOPIFY_DTC_METRICS: Record<string, { aov: number; margin: number; conversionRate: number }> = {
+  'Shopping & Deals': { aov: 55, margin: 0.35, conversionRate: 0.0035 },
+  'shopping': { aov: 55, margin: 0.35, conversionRate: 0.0035 },
+  'deals': { aov: 55, margin: 0.35, conversionRate: 0.0035 },
+  'Tech & Gadgets': { aov: 120, margin: 0.3, conversionRate: 0.002 },
+  'tech': { aov: 120, margin: 0.3, conversionRate: 0.002 },
+  'Beauty & Skincare': { aov: 32, margin: 0.5, conversionRate: 0.0045 },
+  'beauty': { aov: 32, margin: 0.5, conversionRate: 0.0045 },
+  'Fashion & Style': { aov: 48, margin: 0.45, conversionRate: 0.0035 },
+  'fashion': { aov: 48, margin: 0.45, conversionRate: 0.0035 },
+  'Fitness & Sports': { aov: 65, margin: 0.35, conversionRate: 0.0025 },
+  'fitness': { aov: 65, margin: 0.35, conversionRate: 0.0025 },
+  'Home & Living': { aov: 70, margin: 0.4, conversionRate: 0.003 },
+  'Lifestyle': { aov: 50, margin: 0.4, conversionRate: 0.003 },
+  'lifestyle': { aov: 50, margin: 0.4, conversionRate: 0.003 },
+  'default': { aov: 50, margin: 0.38, conversionRate: 0.003 },
+}
+
+/**
+ * 直播带货 GMV 佣金指标（按品类）
+ * 直播转化率高于短视频，但需要直播频率支撑
+ * viewerRate = 粉丝中观看直播的比例
+ */
+export const LIVE_COMMERCE_METRICS: Record<string, { aov: number; commission: number; conversionRate: number; viewerRate: number }> = {
+  'Shopping & Deals': { aov: 35, commission: 0.15, conversionRate: 0.008, viewerRate: 0.06 },
+  'shopping': { aov: 35, commission: 0.15, conversionRate: 0.008, viewerRate: 0.06 },
+  'deals': { aov: 35, commission: 0.15, conversionRate: 0.008, viewerRate: 0.06 },
+  'Beauty & Skincare': { aov: 28, commission: 0.18, conversionRate: 0.01, viewerRate: 0.07 },
+  'beauty': { aov: 28, commission: 0.18, conversionRate: 0.01, viewerRate: 0.07 },
+  'Fashion & Style': { aov: 38, commission: 0.15, conversionRate: 0.007, viewerRate: 0.05 },
+  'fashion': { aov: 38, commission: 0.15, conversionRate: 0.007, viewerRate: 0.05 },
+  'Food & Cooking': { aov: 25, commission: 0.12, conversionRate: 0.006, viewerRate: 0.05 },
+  'food': { aov: 25, commission: 0.12, conversionRate: 0.006, viewerRate: 0.05 },
+  'Fitness & Sports': { aov: 45, commission: 0.12, conversionRate: 0.005, viewerRate: 0.04 },
+  'fitness': { aov: 45, commission: 0.12, conversionRate: 0.005, viewerRate: 0.04 },
+  'Lifestyle': { aov: 35, commission: 0.13, conversionRate: 0.006, viewerRate: 0.045 },
+  'lifestyle': { aov: 35, commission: 0.13, conversionRate: 0.006, viewerRate: 0.045 },
+  'default': { aov: 32, commission: 0.14, conversionRate: 0.006, viewerRate: 0.05 },
+}
+
 /** LIVE 礼物月收入系数（每粉 USD/月） */
 export const LIVE_GIFT_MULTIPLIERS = {
   nano: 0.01,
@@ -544,6 +611,9 @@ export const MONETIZATION_THRESHOLDS = {
   tiktokShopFollowers: 1000,             // Shop 1K 粉
   subscriptionFollowers: 1000,           // 订阅 1K 粉
   liveGiftFollowers: 1000,               // LIVE 礼物 1K 粉
+  amazonAssociatesFollowers: 5000,       // Amazon 联盟 5K 粉（需稳定流量才有 affiliate 转化）
+  shopifyDtcFollowers: 10000,            // Shopify DTC 10K 粉（需自有品牌/供应链）
+  liveCommerceFollowers: 50000,          // 直播带货 50K 粉（需规模粉丝支撑 GMV）
 } as const
 
 /**

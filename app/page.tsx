@@ -19,6 +19,7 @@ import { BrandMatchingSection } from '@/components/sections/BrandMatchingSection
 import { MonetizationChecklist } from '@/components/sections/MonetizationChecklist'
 import { TrendAnalysisSection } from '@/components/sections/TrendAnalysisSection'
 import { CommercializationSection } from '@/components/sections/CommercializationSection'
+import { CommerceReadinessSection } from '@/components/sections/CommerceReadinessSection'
 import { PaidWall } from '@/components/PaidWall'
 import { DeepAnalysisSection } from '@/components/DeepAnalysisSection'
 import { SectionHeader } from '@/components/SectionHeader'
@@ -1155,6 +1156,12 @@ function HomePageContent() {
               <SectionHeader step="09" title={dict.evaluation.sections.monetizationAdvice} icon={<DollarSign className="h-4 w-4" />} />
               <div className="mb-10">
                 <CommercializationSection advice={result.commercializationAdvice} />
+              </div>
+
+              {/* Section: Commerce Readiness */}
+              <SectionHeader step="10" title={dict.evaluation.sections.commerceReadiness} icon={<ShoppingBag className="h-4 w-4" />} />
+              <div className="mb-10">
+                <CommerceReadinessSection readiness={result.commerceReadiness} />
               </div>
 
               {/* Section: Deep Analysis */}

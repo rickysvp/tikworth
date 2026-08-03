@@ -499,6 +499,7 @@ const en = {
       contentStrategy: 'Content Strategy',
       trendAnalysis: 'Trend Analysis',
       monetizationAdvice: 'Monetization Advice',
+      commerceReadiness: 'Commerce Readiness',
       deepAnalysis: 'Deep Analysis',
     },
     stepLabels: {
@@ -658,6 +659,26 @@ const en = {
       lowPotential: 'Low Potential',
       prerequisites: 'Prerequisites',
       actionSteps: 'Action Steps',
+    },
+    // Commerce Readiness (带货能力分析)
+    commerceReadiness: {
+      title: 'Commerce Readiness',
+      overallScore: 'Commerce Readiness Score',
+      tierReady: 'Commerce-Ready',
+      tierEmerging: 'Emerging',
+      tierLimited: 'Limited',
+      commerceContentRatio: 'Commerce Content Ratio',
+      channelMatrix: 'Revenue Channel Matrix',
+      signalDetection: 'Commerce Signal Detection',
+      productMatch: 'Product Category Match',
+      recommendation: 'Recommendation',
+      fitScore: 'Fit',
+      eligible: 'Eligible',
+      notEligible: 'Not Eligible',
+      detected: 'Detected',
+      notDetected: 'Not Detected',
+      avgOrderValue: 'Avg. Order Value',
+      estMonthly: 'Est. Monthly',
     },
     // Deep Analysis
     deepAnalysis: {

@@ -17,7 +17,7 @@ import {
 import { computeDimensions } from './scoring/dimensions'
 import {
   pickCategoryCpm, pickRegionMultiplier, getEngagementMultiplier, getFollowerTier,
-  calcBrandDealValue, buildIncomeEstimate, buildBusinessValue, buildRevenueRoadmap,
+  calcBrandDealValue, buildIncomeEstimate, buildBusinessValue, buildRevenueRoadmap, buildCommerceReadiness,
 } from './scoring/valuation'
 import { tierFromScore, tierFromBusinessValue, buildPriceAdvice, buildVerdict, buildSummary } from './scoring/verdict'
 import { buildContentStrategy } from './scoring/content-strategy'
@@ -436,6 +436,7 @@ export function scoreProfile(profile: RawProfile, options?: ScoreOptions): Evalu
     brandMatching: buildBrandMatching(categories, categoryCpm, metrics.effectiveAvgPlays, engagementMult, regionMult),
     trendAnalysis: buildTrendAnalysis(metrics, cadence),
     commercializationAdvice: buildCommercializationAdvice(categories, dims, income, profile.followerCount),
+    commerceReadiness: buildCommerceReadiness({ profile, metrics, categories, income, cadence, dims }),
     computedAt: new Date().toISOString(), avatar: profile.avatar, bio: profile.bio,
     followerCount: profile.followerCount, followingCount: profile.followingCount, totalLikes: profile.totalLikes, videoCount: profile.videoCount,
     verified: profile.verified, region: profile.region, posts: profile.posts,

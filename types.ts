@@ -95,6 +95,7 @@ export interface Evaluation {
   brandMatching: BrandMatching
   trendAnalysis: TrendAnalysis
   commercializationAdvice: CommercializationAdvice
+  commerceReadiness: CommerceReadiness
   computedAt: string
   mock?: boolean
   cached?: boolean
@@ -244,7 +245,7 @@ export interface BusinessValue {
 }
 
 export interface IncomeSource {
-  source: 'brand_deals' | 'creator_program' | 'subscriptions' | 'tiktok_shop' | 'live_gifts'
+  source: 'brand_deals' | 'creator_program' | 'subscriptions' | 'tiktok_shop' | 'live_gifts' | 'amazon_associates' | 'shopify_dtc' | 'live_commerce'
   label: string
   icon: string
   monthlyAmount: { low: number; mid: number; high: number }
@@ -392,6 +393,44 @@ export interface CommercializationAdvice {
   secondaryRecommendation: string
   estimatedTotalMonthly: { low: number; mid: number; high: number }
   summary: string
+}
+
+// ========== Commerce Readiness (带货能力分析) ==========
+
+export interface CommerceChannelFit {
+  source: string
+  label: string
+  icon: string
+  monthlyAmount: { low: number; mid: number; high: number }
+  fitScore: number
+  eligible: boolean
+  reasoning: string
+}
+
+export interface CommerceSignal {
+  label: string
+  detected: boolean
+  weight: number
+  detail: string
+}
+
+export interface CommerceProductMatch {
+  category: string
+  icon: string
+  fitScore: number
+  avgOrderValue: number
+  reasoning: string
+}
+
+export interface CommerceReadiness {
+  overallScore: number
+  tier: 'Commerce-Ready' | 'Emerging' | 'Limited'
+  summary: string
+  channels: CommerceChannelFit[]
+  signals: CommerceSignal[]
+  productMatches: CommerceProductMatch[]
+  contentCommerceRatio: number
+  recommendation: string
 }
 
 export type ApiErrorCode = 'USER_NOT_FOUND' | 'RATE_LIMIT' | 'API_ERROR' | 'INVALID_USERNAME' | 'MISSING_API_KEY' | 'NETWORK_ERROR' | 'UNAUTHORIZED' | 'CONSUME_ERROR' | 'BALANCE_ERROR'

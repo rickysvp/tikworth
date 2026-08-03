@@ -2,6 +2,7 @@ import {
   RawProfile, Metrics, DimensionScores, RiskFlag, Post,
   IncomeEstimate, IncomeSource, BusinessValue, BusinessValueComponent,
   RevenueRoadmap, RevenueMilestone, ContentCadence,
+  CommerceReadiness, CommerceChannelFit, CommerceSignal, CommerceProductMatch,
 } from '../../types'
 import {
   CATEGORY_BRAND_CPM, CATEGORY_CREATOR_RPM, REGION_VALUE_MULTIPLIER,
@@ -19,6 +20,9 @@ import {
   // 保留旧配置（SUBSCRIPTION/SHOP/LIVE 用）
   SUBSCRIPTION_CONVERSION_RATES, SUBSCRIPTION_AVG_PRICE,
   SUBSCRIPTION_CREATOR_CUT, SHOP_OPERATIONAL_METRICS, LIVE_GIFT_MULTIPLIERS,
+  // 带货专属渠道配置
+  AMAZON_ASSOCIATES_METRICS, SHOPIFY_DTC_METRICS, LIVE_COMMERCE_METRICS,
+  COMMERCE_INTENT_KEYWORDS,
 } from './config'
 
 export type FollowerTier = 'nano' | 'micro' | 'mid' | 'macro' | 'mega'
@@ -441,6 +445,155 @@ export function calcLiveGiftIncome(
   }
 }
 
+/** 检测带货 storefront / affiliate 信号强度（0-1） */
+export function detectCommerceSignals(bio: string, posts: Post[]): { amazon: number; shopify: number; liveCommerce: number } {
+  const bioLower = (bio || '').toLowerCase()
+  const postsText = posts.slice(0, 20).map(p => (p.desc || '').toLowerCase()).join(' ')
+  const text = `${bioLower} ${postsText}`
+
+  const amazonSignals = ['amazon', 'affiliate', 'affiliate link', 'use my code', 'amazon finds', 'storefront', 'amazon storefront', '亚马逊', '好物清单']
+  const shopifySignals = ['shopify', 'my store', 'my shop', 'own brand', 'flagship', '旗舰店', '我的店铺', '自有品牌', '独立站']
+  const liveCommerceSignals = ['live shopping', 'live sale', 'tiktok shop live', '直播带货', '直播间', '带货直播', 'live commerce']
+
+  const countHits = (signals: string[]): number => {
+    let hits = 0
+    for (const s of signals) {
+      if (text.includes(s)) hits++
+    }
+    return Math.min(hits / 2, 1) // 2 个信号即满 1.0
+  }
+
+  return {
+    amazon: countHits(amazonSignals),
+    shopify: countHits(shopifySignals),
+    liveCommerce: countHits(liveCommerceSignals),
+  }
+}
+
+export interface AmazonAssociatesResult extends SimpleIncomeResult {
+  eligible: boolean
+}
+
+/** Amazon Associates 联盟营销收入 */
+export function calcAmazonAssociatesIncome(
+  followers: number,
+  categories: string[],
+  engagementRate: number,
+  commerceSignal: number
+): AmazonAssociatesResult {
+  const eligible = followers >= MONETIZATION_THRESHOLDS.amazonAssociatesFollowers
+  if (!eligible) {
+    return { low: 0, mid: 0, high: 0, eligible: false, detail: `Below Amazon Associates threshold (${MONETIZATION_THRESHOLDS.amazonAssociatesFollowers.toLocaleString()} followers)` }
+  }
+
+  let config = AMAZON_ASSOCIATES_METRICS.default
+  for (const cat of categories) {
+    const key = cat.toLowerCase()
+    if (AMAZON_ASSOCIATES_METRICS[key]) { config = AMAZON_ASSOCIATES_METRICS[key]; break }
+    if (AMAZON_ASSOCIATES_METRICS[cat]) { config = AMAZON_ASSOCIATES_METRICS[cat]; break }
+  }
+
+  const monthlyActiveFollowers = followers * 0.08
+  const erFactor = clamp(engagementRate / 3, 0.5, 1.5)
+  // 信号加成：无信号 0.4x（仍可做 affiliate），有强信号 1.0x
+  const signalMultiplier = 0.4 + commerceSignal * 0.6
+  const orders = monthlyActiveFollowers * config.conversionRate * erFactor * signalMultiplier
+  const mid = orders * config.aov * config.commission
+  const { low, high } = INCOME_LOW_HIGH_FACTORS
+  return {
+    low: Math.round(mid * low),
+    mid: Math.round(mid),
+    high: Math.round(mid * high),
+    eligible: true,
+    detail: `Est. ${Math.round(orders)} orders/mo × $${config.aov} AOV × ${(config.commission * 100).toFixed(1)}% commission (signal ${signalMultiplier.toFixed(2)}x)`,
+  }
+}
+
+export interface ShopifyDtcResult extends SimpleIncomeResult {
+  eligible: boolean
+}
+
+/** Shopify DTC 自营电商收入（需 storefront 信号） */
+export function calcShopifyDtcIncome(
+  followers: number,
+  categories: string[],
+  engagementRate: number,
+  commerceSignal: number
+): ShopifyDtcResult {
+  const eligible = followers >= MONETIZATION_THRESHOLDS.shopifyDtcFollowers && commerceSignal > 0
+  if (!eligible) {
+    const reason = followers < MONETIZATION_THRESHOLDS.shopifyDtcFollowers
+      ? `Below DTC threshold (${MONETIZATION_THRESHOLDS.shopifyDtcFollowers.toLocaleString()} followers)`
+      : 'No own-brand/storefront signal detected'
+    return { low: 0, mid: 0, high: 0, eligible: false, detail: reason }
+  }
+
+  let config = SHOPIFY_DTC_METRICS.default
+  for (const cat of categories) {
+    const key = cat.toLowerCase()
+    if (SHOPIFY_DTC_METRICS[key]) { config = SHOPIFY_DTC_METRICS[key]; break }
+    if (SHOPIFY_DTC_METRICS[cat]) { config = SHOPIFY_DTC_METRICS[cat]; break }
+  }
+
+  const monthlyActiveFollowers = followers * 0.06
+  const erFactor = clamp(engagementRate / 3, 0.5, 1.5)
+  const signalMultiplier = 0.5 + commerceSignal * 0.5
+  const orders = monthlyActiveFollowers * config.conversionRate * erFactor * signalMultiplier
+  // DTC 收入 = 订单 × AOV × 利润率（creator 保留全额利润）
+  const mid = orders * config.aov * config.margin
+  const { low, high } = INCOME_LOW_HIGH_FACTORS
+  return {
+    low: Math.round(mid * low),
+    mid: Math.round(mid),
+    high: Math.round(mid * high),
+    eligible: true,
+    detail: `Est. ${Math.round(orders)} orders/mo × $${config.aov} AOV × ${(config.margin * 100).toFixed(0)}% margin (signal ${signalMultiplier.toFixed(2)}x)`,
+  }
+}
+
+export interface LiveCommerceResult extends SimpleIncomeResult {
+  eligible: boolean
+}
+
+/** 直播带货 GMV 佣金收入 */
+export function calcLiveCommerceGmv(
+  followers: number,
+  categories: string[],
+  engagementRate: number,
+  postsPerWeek: number,
+  commerceSignal: number
+): LiveCommerceResult {
+  const liveFrequency = postsPerWeek * 0.3
+  const eligible = followers >= MONETIZATION_THRESHOLDS.liveCommerceFollowers && liveFrequency >= 0.5
+  if (!eligible) {
+    const reason = followers < MONETIZATION_THRESHOLDS.liveCommerceFollowers
+      ? `Below live commerce threshold (${MONETIZATION_THRESHOLDS.liveCommerceFollowers.toLocaleString()} followers)`
+      : 'Insufficient live frequency for commerce'
+    return { low: 0, mid: 0, high: 0, eligible: false, detail: reason }
+  }
+
+  let config = LIVE_COMMERCE_METRICS.default
+  for (const cat of categories) {
+    const key = cat.toLowerCase()
+    if (LIVE_COMMERCE_METRICS[key]) { config = LIVE_COMMERCE_METRICS[key]; break }
+    if (LIVE_COMMERCE_METRICS[cat]) { config = LIVE_COMMERCE_METRICS[cat]; break }
+  }
+
+  const liveViewers = followers * config.viewerRate
+  const erFactor = clamp(engagementRate / 3, 0.5, 1.5)
+  const signalMultiplier = 0.6 + commerceSignal * 0.4
+  const orders = liveViewers * config.conversionRate * erFactor * signalMultiplier * Math.min(liveFrequency, 4)
+  const mid = orders * config.aov * config.commission
+  const { low, high } = INCOME_LOW_HIGH_FACTORS
+  return {
+    low: Math.round(mid * low),
+    mid: Math.round(mid),
+    high: Math.round(mid * high),
+    eligible: true,
+    detail: `${Math.round(liveViewers).toLocaleString()} live viewers × ${(config.conversionRate * 100).toFixed(1)}% CR × $${config.aov} AOV × ${(config.commission * 100).toFixed(0)}% commission × ${Math.min(liveFrequency, 4).toFixed(1)} sessions/mo`,
+  }
+}
+
 export interface ContentAssetResult {
   value: number
   detail: string
@@ -593,6 +746,12 @@ export function buildIncomeEstimate(input: BuildIncomeInput): IncomeEstimate {
   const shop = calcTikTokShopIncome(profile.followerCount, categories, metrics.engagementRate)
   const live = calcLiveGiftIncome(profile.followerCount, cadence.avgPostsPerWeek)
 
+  // 带货专属渠道（Amazon Associates / Shopify DTC / Live Commerce）
+  const commerceSignals = detectCommerceSignals(profile.bio || '', profile.posts)
+  const amazon = calcAmazonAssociatesIncome(profile.followerCount, categories, metrics.engagementRate, commerceSignals.amazon)
+  const shopify = calcShopifyDtcIncome(profile.followerCount, categories, metrics.engagementRate, commerceSignals.shopify)
+  const liveCommerce = calcLiveCommerceGmv(profile.followerCount, categories, metrics.engagementRate, cadence.avgPostsPerWeek, commerceSignals.liveCommerce)
+
   const fundEligible = profile.followerCount >= MONETIZATION_THRESHOLDS.creatorFundFollowers
 
   const breakdown: IncomeSource[] = [
@@ -623,6 +782,27 @@ export function buildIncomeEstimate(input: BuildIncomeInput): IncomeEstimate {
       percentage: 0,
       confidence: shop.eligible ? 'medium' : 'low',
       detail: shop.detail,
+    },
+    {
+      source: 'amazon_associates', label: 'Amazon Associates', icon: '📦',
+      monthlyAmount: { low: amazon.low, mid: amazon.mid, high: amazon.high },
+      percentage: 0,
+      confidence: amazon.eligible ? (commerceSignals.amazon > 0 ? 'medium' : 'low') : 'low',
+      detail: amazon.detail,
+    },
+    {
+      source: 'shopify_dtc', label: 'Shopify DTC', icon: '🏷️',
+      monthlyAmount: { low: shopify.low, mid: shopify.mid, high: shopify.high },
+      percentage: 0,
+      confidence: shopify.eligible ? 'medium' : 'low',
+      detail: shopify.detail,
+    },
+    {
+      source: 'live_commerce', label: 'Live Commerce', icon: '📺',
+      monthlyAmount: { low: liveCommerce.low, mid: liveCommerce.mid, high: liveCommerce.high },
+      percentage: 0,
+      confidence: liveCommerce.eligible ? 'medium' : 'low',
+      detail: liveCommerce.detail,
     },
     {
       source: 'live_gifts', label: 'LIVE Gifts', icon: '🎁',
@@ -876,5 +1056,240 @@ export function buildRevenueRoadmap(input: BuildRoadmapInput): RevenueRoadmap {
     projections,
     total12Month,
     summary,
+  }
+}
+
+// ========== Commerce Readiness (带货能力分析) ==========
+
+/** 品类 → 推荐带货商品品类映射 */
+const CATEGORY_PRODUCT_MAP: Record<string, { category: string; icon: string; aov: number }[]> = {
+  'shopping & deals': [
+    { category: 'Home & Kitchen', icon: '🏠', aov: 35 },
+    { category: 'Tech Gadgets', icon: '📱', aov: 65 },
+    { category: 'Beauty & Personal Care', icon: '💄', aov: 25 },
+  ],
+  'beauty & skincare': [
+    { category: 'Skincare Sets', icon: '🧴', aov: 32 },
+    { category: 'Makeup Collections', icon: '💄', aov: 24 },
+    { category: 'Beauty Tools', icon: '✨', aov: 38 },
+  ],
+  'tech & gadgets': [
+    { category: 'Smart Home', icon: '📱', aov: 85 },
+    { category: 'Accessories', icon: '🔌', aov: 28 },
+    { category: 'Audio Gear', icon: '🎧', aov: 95 },
+  ],
+  'fashion & style': [
+    { category: 'Apparel', icon: '👗', aov: 42 },
+    { category: 'Accessories', icon: '👜', aov: 35 },
+    { category: 'Footwear', icon: '👟', aov: 58 },
+  ],
+  'fitness & sports': [
+    { category: 'Supplements', icon: '💊', aov: 38 },
+    { category: 'Workout Gear', icon: '🏋️', aov: 48 },
+    { category: 'Recovery Tools', icon: '🧘', aov: 42 },
+  ],
+  'food & cooking': [
+    { category: 'Kitchen Tools', icon: '🍳', aov: 32 },
+    { category: 'Gourmet Food', icon: '🍜', aov: 28 },
+    { category: 'Cookware', icon: '🥘', aov: 55 },
+  ],
+  'lifestyle': [
+    { category: 'Home Decor', icon: '🛋️', aov: 45 },
+    { category: 'Self-Care', icon: '🧖', aov: 30 },
+    { category: 'Organization', icon: '📦', aov: 28 },
+  ],
+  'default': [
+    { category: 'Lifestyle Products', icon: '🛍️', aov: 35 },
+    { category: 'Trending Items', icon: '🔥', aov: 30 },
+    { category: 'Seasonal Picks', icon: '🎄', aov: 32 },
+  ],
+}
+
+export interface BuildCommerceReadinessInput {
+  profile: RawProfile
+  metrics: Metrics
+  categories: string[]
+  income: IncomeEstimate
+  cadence: ContentCadence
+  dims: DimensionScores
+}
+
+export function buildCommerceReadiness(input: BuildCommerceReadinessInput): CommerceReadiness {
+  const { profile, metrics, categories, income, dims } = input
+
+  // 1. 检测带货信号
+  const commerceSignals = detectCommerceSignals(profile.bio || '', profile.posts)
+
+  // 2. 计算带货内容占比
+  const allCommerceKeywords = [
+    ...COMMERCE_INTENT_KEYWORDS.en,
+    ...COMMERCE_INTENT_KEYWORDS.zh,
+  ]
+  const postsWithCommerce = profile.posts.filter(p => {
+    const desc = (p.desc || '').toLowerCase()
+    return allCommerceKeywords.some(kw => desc.includes(kw.toLowerCase()))
+  })
+  const contentCommerceRatio = profile.posts.length > 0
+    ? Math.round((postsWithCommerce.length / profile.posts.length) * 100)
+    : 0
+
+  // 3. 构建信号列表
+  const isShoppingNiche = categories.some(c => {
+    const k = c.toLowerCase()
+    return k.includes('shopping') || k.includes('deals')
+  })
+  const signals: CommerceSignal[] = [
+    {
+      label: 'Storefront / Affiliate Links',
+      detected: commerceSignals.amazon > 0 || commerceSignals.shopify > 0,
+      weight: Math.max(commerceSignals.amazon, commerceSignals.shopify),
+      detail: commerceSignals.amazon > 0 || commerceSignals.shopify > 0
+        ? 'Amazon storefront / Shopify store / affiliate links detected in bio or recent posts'
+        : 'No storefront or affiliate links detected — add to bio to boost commerce signal',
+    },
+    {
+      label: 'Commerce Intent Keywords',
+      detected: contentCommerceRatio > 10,
+      weight: Math.min(contentCommerceRatio / 30, 1),
+      detail: `${contentCommerceRatio}% of posts contain commerce intent keywords (haul, deals, must-have, link in bio, etc.)`,
+    },
+    {
+      label: 'Live Commerce Activity',
+      detected: commerceSignals.liveCommerce > 0,
+      weight: commerceSignals.liveCommerce,
+      detail: commerceSignals.liveCommerce > 0
+        ? 'Live shopping / live commerce signals detected in content'
+        : 'No live commerce signals detected',
+    },
+    {
+      label: 'Shopping & Deals Niche',
+      detected: isShoppingNiche,
+      weight: isShoppingNiche ? 1 : 0.3,
+      detail: isShoppingNiche
+        ? 'Account classified as Shopping & Deals niche — high commerce relevance'
+        : 'Account is in a non-commerce niche — commerce fit depends on product alignment',
+    },
+    {
+      label: 'Commerce Dimension Score',
+      detected: dims.commerce >= 50,
+      weight: Math.min(dims.commerce / 100, 1),
+      detail: `Commerce readiness dimension scored ${dims.commerce}/100 in the 10-dimension assessment`,
+    },
+  ]
+
+  // 4. 构建渠道矩阵
+  const channelMeta: Record<string, { label: string; icon: string }> = {
+    brand_deals: { label: 'Brand Sponsorships', icon: '💰' },
+    creator_program: { label: 'Creator Program', icon: '🎬' },
+    subscriptions: { label: 'Subscriptions', icon: '⭐' },
+    tiktok_shop: { label: 'TikTok Shop', icon: '🛒' },
+    amazon_associates: { label: 'Amazon Associates', icon: '📦' },
+    shopify_dtc: { label: 'Shopify DTC', icon: '🏷️' },
+    live_commerce: { label: 'Live Commerce', icon: '📺' },
+    live_gifts: { label: 'LIVE Gifts', icon: '🎁' },
+  }
+  const commerceChannelIds = ['tiktok_shop', 'amazon_associates', 'shopify_dtc', 'live_commerce']
+
+  const channels: CommerceChannelFit[] = income.breakdown.map(b => {
+    const meta = channelMeta[b.source] || { label: b.label, icon: b.icon }
+    const isCommerceChannel = commerceChannelIds.includes(b.source)
+
+    let fitScore: number
+    if (b.monthlyAmount.mid > 0) {
+      const incomeScale = Math.min(Math.log10(b.monthlyAmount.mid + 1) * 25, 50)
+      const confidenceBonus = b.confidence === 'high' ? 20 : b.confidence === 'medium' ? 12 : 5
+      fitScore = Math.round(Math.min(incomeScale + confidenceBonus + (isCommerceChannel ? 18 : 0), 100))
+    } else {
+      fitScore = Math.round(Math.min(dims.commerce * 0.35 + (isCommerceChannel ? 10 : 0), 45))
+    }
+
+    const reasoning = b.monthlyAmount.mid > 0
+      ? b.detail
+      : (isCommerceChannel ? 'Below eligibility threshold for this commerce channel' : 'Limited direct commerce potential')
+
+    return {
+      source: b.source,
+      label: meta.label,
+      icon: meta.icon,
+      monthlyAmount: b.monthlyAmount,
+      fitScore,
+      eligible: b.monthlyAmount.mid > 0,
+      reasoning,
+    }
+  })
+
+  // 5. 商品品类匹配
+  let products = CATEGORY_PRODUCT_MAP.default
+  for (const cat of categories) {
+    const key = cat.toLowerCase()
+    if (CATEGORY_PRODUCT_MAP[key]) { products = CATEGORY_PRODUCT_MAP[key]; break }
+    if (CATEGORY_PRODUCT_MAP[cat]) { products = CATEGORY_PRODUCT_MAP[cat]; break }
+  }
+  const productMatches: CommerceProductMatch[] = products.map((p, i) => {
+    const baseFit = 55 - i * 8
+    const signalBoost = Math.round(
+      (commerceSignals.amazon * 15) + (commerceSignals.shopify * 12) + (commerceSignals.liveCommerce * 10)
+    )
+    const erBoost = Math.min(Math.round(metrics.engagementRate * 3), 18)
+    const nicheBoost = isShoppingNiche ? 10 : 0
+    const fitScore = Math.min(baseFit + signalBoost + erBoost + nicheBoost, 100)
+    return {
+      category: p.category,
+      icon: p.icon,
+      fitScore,
+      avgOrderValue: p.aov,
+      reasoning: `Aligns with your ${categories[0] || 'content'} niche. Typical Amazon AOV ~$${p.aov}.`,
+    }
+  })
+
+  // 6. 综合评分
+  const signalScore = signals.reduce((s, sig) => s + (sig.detected ? sig.weight * 20 : 0), 0) / signals.length
+  const commerceChannelScore = channels
+    .filter(c => commerceChannelIds.includes(c.source))
+    .reduce((s, c) => s + c.fitScore, 0) / commerceChannelIds.length
+  const overallScore = Math.round(
+    Math.min((signalScore * 0.4 + commerceChannelScore * 0.4 + contentCommerceRatio * 0.2), 100)
+  )
+
+  // 7. 等级
+  const tier: CommerceReadiness['tier'] =
+    overallScore >= 70 ? 'Commerce-Ready' :
+    overallScore >= 40 ? 'Emerging' : 'Limited'
+
+  // 8. summary
+  const commerceIncome = income.breakdown
+    .filter(b => commerceChannelIds.includes(b.source))
+    .reduce((s, b) => s + b.monthlyAmount.mid, 0)
+  const commerceIncomeRatio = income.monthlyTotal.mid > 0
+    ? Math.round((commerceIncome / income.monthlyTotal.mid) * 100)
+    : 0
+
+  const summary = tier === 'Commerce-Ready'
+    ? `Strong commerce readiness (score ${overallScore}/100). Commerce channels contribute ${commerceIncomeRatio}% of estimated income${commerceIncome > 0 ? ` — $${commerceIncome.toLocaleString()}/mo` : ''}. Account is well-positioned for direct product sales.`
+    : tier === 'Emerging'
+    ? `Emerging commerce potential (score ${overallScore}/100). ${contentCommerceRatio}% of content shows commerce intent. Optimize storefront signals and scale followers to unlock higher-tier commerce channels.`
+    : `Limited commerce readiness (score ${overallScore}/100). Build audience trust first, then add commerce signals (storefront links, product-focused content) before pursuing direct sales.`
+
+  // 9. recommendation
+  const eligibleCommerceChannels = channels
+    .filter(c => commerceChannelIds.includes(c.source) && c.eligible)
+    .sort((a, b) => b.monthlyAmount.mid - a.monthlyAmount.mid)
+  const topChannel = eligibleCommerceChannels[0]
+
+  const recommendation = topChannel
+    ? `Primary commerce opportunity: ${topChannel.label} (${topChannel.fitScore}% fit, est. $${topChannel.monthlyAmount.low.toLocaleString()}–$${topChannel.monthlyAmount.high.toLocaleString()}/mo). ${contentCommerceRatio < 20 ? 'Increase product-focused content to boost conversion rates.' : 'Maintain current commerce content cadence and expand product categories.'}`
+    : profile.followerCount < 5000
+    ? `Reach 5,000+ followers to unlock Amazon Associates affiliate revenue — your fastest path to commerce monetization.`
+    : `No commerce channels eligible yet. Add storefront/affiliate links to your bio and increase commerce-focused content (hauls, product roundups, reviews) to signal commerce intent.`
+
+  return {
+    overallScore,
+    tier,
+    summary,
+    channels,
+    signals,
+    productMatches,
+    contentCommerceRatio,
+    recommendation,
   }
 }

@@ -70,6 +70,8 @@ async function initStore(): Promise<Store> {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
       `
+      // Migration: add commerce_readiness column for existing deployments
+      await getSql()`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS commerce_readiness JSONB`
       storeType = 'postgres'
       return storeType
     } catch (err) {
@@ -144,7 +146,7 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
         (username, nickname, score, tier, dimensions, summary, metrics, risk_flags, verdict, advice, price_advice,
          account_health, content_cadence, engagement_quality, peer_benchmark, brand_potential, monetization_path, growth_plan,
          income_estimate, business_value, revenue_roadmap, content_strategy, peer_ranking, brand_matching,
-         trend_analysis, commercialization_advice, formula_version, calculation_metadata,
+         trend_analysis, commercialization_advice, commerce_readiness, formula_version, calculation_metadata,
          computed_at, avatar, bio, follower_count, following_count, total_likes, video_count, verified, region, posts, account_profile)
       VALUES
         (${evaluation.username}, ${evaluation.nickname}, ${evaluation.score}, ${evaluation.tier},
@@ -164,6 +166,7 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
          ${JSON.stringify(evaluation.brandMatching)}::jsonb,
          ${JSON.stringify(evaluation.trendAnalysis)}::jsonb,
          ${JSON.stringify(evaluation.commercializationAdvice)}::jsonb,
+         ${JSON.stringify(evaluation.commerceReadiness)}::jsonb,
          ${evaluation.formulaVersion || null},
          ${JSON.stringify(evaluation.calculationMetadata || null)}::jsonb,
          ${evaluation.computedAt}, ${evaluation.avatar || null}, ${evaluation.bio || null},
@@ -196,6 +199,7 @@ export async function saveEvaluation(evaluation: Evaluation): Promise<Evaluation
         brand_matching = EXCLUDED.brand_matching,
         trend_analysis = EXCLUDED.trend_analysis,
         commercialization_advice = EXCLUDED.commercialization_advice,
+        commerce_readiness = EXCLUDED.commerce_readiness,
         formula_version = EXCLUDED.formula_version,
         calculation_metadata = EXCLUDED.calculation_metadata,
         computed_at = EXCLUDED.computed_at,
@@ -380,6 +384,9 @@ function normalizeEvaluation(evaluation: Partial<Evaluation>): Evaluation {
     commercializationAdvice: evaluation.commercializationAdvice || {
       directions: [], primaryRecommendation: '', secondaryRecommendation: '', estimatedTotalMonthly: { low: 0, mid: 0, high: 0 }, summary: '',
     },
+    commerceReadiness: evaluation.commerceReadiness || {
+      overallScore: 0, tier: 'Limited' as const, summary: '', channels: [], signals: [], productMatches: [], contentCommerceRatio: 0, recommendation: '',
+    },
     computedAt: String(evaluation.computedAt),
     avatar: evaluation.avatar || undefined,
     bio: evaluation.bio || undefined,
@@ -466,6 +473,9 @@ function rowToEvaluation(row: Record<string, unknown>): Evaluation {
     brandMatching: parseJson<Evaluation['brandMatching']>(row.brand_matching),
     trendAnalysis: parseJson<Evaluation['trendAnalysis']>(row.trend_analysis),
     commercializationAdvice: parseJson<Evaluation['commercializationAdvice']>(row.commercialization_advice),
+    commerceReadiness: parseJson<Evaluation['commerceReadiness']>(row.commerce_readiness) || {
+      overallScore: 0, tier: 'Limited' as const, summary: '', channels: [], signals: [], productMatches: [], contentCommerceRatio: 0, recommendation: '',
+    },
     computedAt: String(row.computed_at ?? row.computedAt),
     avatar: row.avatar ? String(row.avatar) : undefined,
     bio: row.bio ? String(row.bio) : undefined,
