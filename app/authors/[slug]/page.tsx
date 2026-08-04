@@ -44,11 +44,19 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     name: author.name,
     jobTitle: author.role,
     description: author.bio,
+    image: author.avatar ? `https://tokvalue.com${author.avatar}` : undefined,
     worksFor: {
       '@type': 'Organization',
       name: 'TokValue',
       url: 'https://tokvalue.com',
     },
+    sameAs: [
+      author.twitter,
+      author.linkedin,
+      author.tiktok,
+      author.website,
+    ].filter(Boolean),
+    knowsAbout: ['TikTok', 'Creator Economy', 'Influencer Marketing', 'Social Media Analytics'],
   }
 
   return (
@@ -71,15 +79,69 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
           <header className="mb-10">
             <div className="flex items-center gap-5 mb-5">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-2xl font-bold text-white">
-                {author.avatarInitial}
-              </div>
+              {author.avatar ? (
+                <img
+                  src={author.avatar}
+                  alt={author.name}
+                  className="h-16 w-16 rounded-full object-cover border-2 border-[#FF0050]"
+                />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-2xl font-bold text-white">
+                  {author.avatarInitial}
+                </div>
+              )}
               <div>
                 <h1 className="text-3xl font-extrabold tracking-tight">{author.name}</h1>
                 <p className="mt-1 text-sm font-medium text-[#00F2EA]">{author.role}</p>
               </div>
             </div>
             <p className="text-base text-neutral-300 leading-relaxed">{author.bio}</p>
+
+            {/* Social Links */}
+            {(author.twitter || author.linkedin || author.tiktok || author.website) && (
+              <div className="flex flex-wrap gap-3 mt-4">
+                {author.twitter && (
+                  <a
+                    href={author.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[#00F2EA] hover:underline"
+                  >
+                    Twitter →
+                  </a>
+                )}
+                {author.linkedin && (
+                  <a
+                    href={author.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[#00F2EA] hover:underline"
+                  >
+                    LinkedIn →
+                  </a>
+                )}
+                {author.tiktok && (
+                  <a
+                    href={author.tiktok}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[#00F2EA] hover:underline"
+                  >
+                    TikTok →
+                  </a>
+                )}
+                {author.website && (
+                  <a
+                    href={author.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[#00F2EA] hover:underline"
+                  >
+                    Website →
+                  </a>
+                )}
+              </div>
+            )}
           </header>
 
           <section>

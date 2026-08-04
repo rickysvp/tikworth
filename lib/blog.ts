@@ -33,3 +33,36 @@ export function getRelatedPosts(slug: string, limit = 3): BlogPostMeta[] {
     .filter(p => p.slug !== slug && p.category === post.category)
     .slice(0, limit)
 }
+
+export function getPostsByCategory(category: string): BlogPostMeta[] {
+  return getAllPosts()
+    .filter(p => p.category === category)
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+}
+
+export function getPostsByTag(tag: string): BlogPostMeta[] {
+  const normalizedTag = tag.toLowerCase()
+  return getAllPosts()
+    .filter(p => p.tags.some(t => t.toLowerCase() === normalizedTag))
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+}
+
+export function getPostsByAuthor(authorSlug: string): BlogPostMeta[] {
+  return getAllPosts()
+    .filter(p => p.author === authorSlug)
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+}
+
+export function getAllTags(): string[] {
+  const tags = new Set<string>()
+  getAllPosts().forEach(p => p.tags.forEach(t => tags.add(t)))
+  return Array.from(tags).sort()
+}
+
+export function getAllCategories(): string[] {
+  const categories = new Set<string>()
+  getAllPosts().forEach(p => {
+    if (p.category) categories.add(p.category)
+  })
+  return Array.from(categories).sort()
+}

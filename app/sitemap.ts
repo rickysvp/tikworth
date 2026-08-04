@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { getAllPosts, getAllAuthors } from '@/lib/blog'
+import { getAllPosts, getAllAuthors, getAllTags, getAllCategories } from '@/lib/blog'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://tokvalue.com'
@@ -31,5 +31,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.4,
   }))
 
-  return [...staticPages, ...blogPages, ...authorPages]
+  // 分类页
+  const categoryPages: MetadataRoute.Sitemap = getAllCategories().map((category) => ({
+    url: `${base}/blog/category/${category.toLowerCase().replace(/ /g, '-')}`,
+    lastModified: '2026-08-04',
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }))
+
+  // 标签页
+  const tagPages: MetadataRoute.Sitemap = getAllTags().map((tag) => ({
+    url: `${base}/blog/tag/${tag.toLowerCase().replace(/ /g, '-')}`,
+    lastModified: '2026-08-04',
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }))
+
+  return [...staticPages, ...blogPages, ...authorPages, ...categoryPages, ...tagPages]
 }

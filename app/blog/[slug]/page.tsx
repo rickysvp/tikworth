@@ -127,10 +127,22 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {post.category && (
+                    <Link
+                      href={`/blog/category/${post.category.toLowerCase().replace(/ /g, '-')}`}
+                      className="inline-block rounded bg-[#FF0050]/20 px-2.5 py-1 text-xs text-[#FF0050] hover:bg-[#FF0050]/30 transition-colors"
+                    >
+                      {post.category}
+                    </Link>
+                  )}
                   {post.tags.map(tag => (
-                    <span key={tag} className="inline-block rounded bg-neutral-800 px-2.5 py-1 text-xs text-neutral-400">
-                      {tag}
-                    </span>
+                    <Link
+                      key={tag}
+                      href={`/blog/tag/${tag.toLowerCase().replace(/ /g, '-')}`}
+                      className="inline-block rounded bg-neutral-800 px-2.5 py-1 text-xs text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
+                    >
+                      #{tag}
+                    </Link>
                   ))}
                 </div>
               </header>
