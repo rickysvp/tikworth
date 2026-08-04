@@ -19,7 +19,7 @@ export const post7: BlogPost = {
   readTime: '10 min',
   category: 'Monetization',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'marcus-reid',
   coverGradient: 'from-[#00F2EA] to-[#FFD700]',
   tableOfContents: [
     { id: 'what-is-rpm-cpm', text: 'What Is RPM and CPM?', level: 2 },
@@ -220,7 +220,7 @@ export const post8: BlogPost = {
   readTime: '9 min',
   category: 'Analytics & Strategy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'marcus-reid',
   coverGradient: 'from-[#FFD700] to-[#FF2D78]',
   tableOfContents: [
     { id: 'why-er-matters', text: 'Why Engagement Rate Matters More Than Followers', level: 2 },
@@ -414,7 +414,7 @@ export const post9: BlogPost = {
   readTime: '11 min',
   category: 'Analytics & Strategy',
   featured: true,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FF2D78] to-[#00F2EA]',
   tableOfContents: [
     { id: 'why-follower-count-misleading', text: 'Why Follower Count Is Misleading', level: 2 },
@@ -624,7 +624,7 @@ export const post10: BlogPost = {
   readTime: '9 min',
   category: 'Case Studies',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#00F2EA] to-[#FF2D78]',
   tableOfContents: [
     { id: 'why-fitness-accounts-worth-more', text: 'Why Fitness Accounts Are Worth More', level: 2 },

@@ -15,7 +15,7 @@ export const post19: BlogPost = {
   readTime: '9 min',
   category: 'Creator Economy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FF2D78] to-[#FF6B9D]',
   tableOfContents: [
     { id: 'the-entertainment-valuation-paradox', text: 'The Entertainment Valuation Paradox', level: 2 },
@@ -153,7 +153,7 @@ export const post20: BlogPost = {
   readTime: '10 min',
   category: 'Analytics & Strategy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'daniella-ortiz',
   coverGradient: 'from-[#FF6B9D] to-[#8B5CF6]',
   tableOfContents: [
     { id: 'the-platform-payout-landscape', text: 'The Platform Payout Landscape', level: 2 },
@@ -291,7 +291,7 @@ export const post21: BlogPost = {
   readTime: '9 min',
   category: 'Analytics & Strategy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'marcus-reid',
   coverGradient: 'from-[#00F2EA] to-[#8B5CF6]',
   tableOfContents: [
     { id: 'what-is-an-account-health-score', text: 'What Is an Account Health Score?', level: 2 },
@@ -435,7 +435,7 @@ export const post22: BlogPost = {
   readTime: '9 min',
   category: 'Creator Economy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FFD700] to-[#FF6B9D]',
   tableOfContents: [
     { id: 'the-lifestyle-valuation-reality', text: 'The Lifestyle Valuation Reality', level: 2 },

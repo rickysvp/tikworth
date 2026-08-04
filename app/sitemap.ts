@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { getAllPosts } from '@/lib/blog'
+import { getAllPosts, getAllAuthors } from '@/lib/blog'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://tokvalue.com'
@@ -24,5 +24,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }))
 
-  return [...staticPages, ...blogPages]
+  // 作者页
+  const authorPages: MetadataRoute.Sitemap = getAllAuthors().map((a) => ({
+    url: `${base}/authors/${a.slug}`,
+    lastModified: '2026-08-04',
+    changeFrequency: 'monthly',
+    priority: 0.4,
+  }))
+
+  return [...staticPages, ...blogPages, ...authorPages]
 }

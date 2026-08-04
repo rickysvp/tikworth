@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Calendar, Clock, ArrowLeft } from 'lucide-react'
-import { getPostBySlug, getAllPosts, getRelatedPosts } from '@/lib/blog'
+import { getPostBySlug, getAllPosts, getRelatedPosts, getAuthorBySlug } from '@/lib/blog'
 import { extractTOC } from '@/lib/blog'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
@@ -20,6 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = getPostBySlug(slug)
   if (!post) return { title: 'Post Not Found — TokValue Blog' }
 
+  const author = getAuthorBySlug(post.author)
   const url = `https://tokvalue.com/blog/${slug}`
 
   return {
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       type: 'article',
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt,
-      authors: [post.author.name],
+      authors: [author?.name || post.author],
       tags: post.tags,
       url,
       images: [
@@ -63,6 +64,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const toc = extractTOC(post.content)
   const related = getRelatedPosts(slug, 3)
   const postUrl = `https://tokvalue.com/blog/${slug}`
+  const author = getAuthorBySlug(post.author)
 
   return (
     <div className="min-h-screen flex flex-col bg-black text-white">
@@ -73,7 +75,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         description={post.description}
         publishedAt={post.publishedAt}
         updatedAt={post.updatedAt}
-        author={post.author.name}
+        authorName={author?.name || post.author}
+        authorUrl={author ? `https://tokvalue.com/authors/${author.slug}` : undefined}
         tags={post.tags}
         url={postUrl}
         content={post.content}
@@ -134,13 +137,15 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
               {/* Author */}
               <div className="flex items-center gap-3 py-4 border-y border-neutral-800 my-8">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-sm font-bold text-white">
-                  {post.author.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">{post.author.name}</p>
-                  <p className="text-xs text-neutral-500">{post.author.role}</p>
-                </div>
+                <Link href={`/authors/${post.author}`} className="flex items-center gap-3 group">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-sm font-bold text-white">
+                    {author?.avatarInitial || post.author.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white group-hover:text-[#00F2EA] transition-colors">{author?.name || post.author}</p>
+                    <p className="text-xs text-neutral-500">{author?.role || 'TokValue Team'}</p>
+                  </div>
+                </Link>
               </div>
 
               {/* Article body with CTAs */}

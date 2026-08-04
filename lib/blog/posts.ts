@@ -39,7 +39,7 @@ export const post1: BlogPost = {
   readTime: '11 min',
   category: 'Creator Economy',
   featured: true,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FF2D78] to-[#00F2EA]',
   tableOfContents: [
     { id: 'three-pillars', text: 'The Three Pillars of TikTok Account Value', level: 2 },
@@ -197,7 +197,7 @@ export const post2: BlogPost = {
   publishedAt: '2026-07-28T10:30:00Z',
   readTime: '12 min',
   category: 'Monetization',
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#00F2EA] to-[#00D4CE]',
   tableOfContents: [
     { id: 'state-of-tiktok-money', text: 'The State of TikTok Monetization in 2026', level: 2 },
@@ -370,7 +370,7 @@ export const post3: BlogPost = {
   publishedAt: '2026-08-01T14:00:00Z',
   readTime: '12 min',
   category: 'Analytics & Strategy',
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'marcus-reid',
   coverGradient: 'from-[#FF6B9D] to-[#FF2D78]',
   tableOfContents: [
     { id: 'engagement-rate', text: '1. Engagement Rate — The King', level: 2 },
@@ -563,7 +563,7 @@ export const post4: BlogPost = {
   publishedAt: '2026-08-04T09:00:00Z',
   readTime: '8 min',
   category: 'Guides',
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#FFD700] to-[#FF8C00]',
   tableOfContents: [
     { id: 'what-each-tool-measures', text: 'What Each Tool Actually Measures', level: 2 },
@@ -694,7 +694,7 @@ export const post5: BlogPost = {
   publishedAt: '2026-08-04T09:00:00Z',
   readTime: '10 min',
   category: 'Guides',
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#00F2EA] to-[#00D4CE]',
   tableOfContents: [
     { id: 'brand-deals-by-tier', text: 'Brand Deals by Tier: What\'s Realistic for You', level: 2 },
@@ -897,7 +897,7 @@ export const post6: BlogPost = {
   publishedAt: '2026-08-04T09:00:00Z',
   readTime: '13 min',
   category: 'Case Studies',
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'marcus-reid',
   coverGradient: 'from-[#FFD700] to-[#FFA500]',
   tableOfContents: [
     { id: 'methodology', text: 'Methodology', level: 2 },

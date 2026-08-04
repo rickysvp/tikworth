@@ -12,11 +12,7 @@ export interface BlogPostMeta {
   readTime: string
   category: string
   featured?: boolean
-  author: {
-    name: string
-    role: string
-    avatar?: string
-  }
+  author: string // slug of author profile in lib/blog/authors.ts
   coverGradient?: string // CSS gradient for cover
 }
 

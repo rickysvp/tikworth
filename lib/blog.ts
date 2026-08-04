@@ -3,6 +3,7 @@ export type { BlogPostMeta, BlogPost, Category } from './blog/content'
 export { CATEGORIES } from './blog/content'
 export { ALL_POSTS } from './blog/posts'
 export { extractTOC } from './blog/posts'
+export { AUTHORS, getAuthorBySlug, getAllAuthors } from './blog/authors'
 
 import { ALL_POSTS } from './blog/posts'
 import type { BlogPostMeta } from './blog/content'

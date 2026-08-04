@@ -12,7 +12,7 @@ export const post15: BlogPost = {
   readTime: '10 min',
   category: 'Monetization',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#00F2EA] to-[#FFD700]',
   tableOfContents: [
     { id: 'how-rates-work', text: 'How Brand Deal Rates Work', level: 2 },
@@ -182,7 +182,7 @@ export const post16: BlogPost = {
   readTime: '11 min',
   category: 'Guides',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'daniella-ortiz',
   coverGradient: 'from-[#FF2D78] to-[#00F2EA]',
   tableOfContents: [
     { id: 'followers-vs-money', text: 'Growing for Followers vs. Growing for Money', level: 2 },
@@ -339,7 +339,7 @@ export const post17: BlogPost = {
   readTime: '9 min',
   category: 'Creator Economy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FFD700] to-[#FF8C00]',
   tableOfContents: [
     { id: 'accounts-are-assets', text: 'Yes, TikTok Accounts Are Assets', level: 2 },
@@ -494,7 +494,7 @@ export const post18: BlogPost = {
   readTime: '8 min',
   category: 'Monetization',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'daniella-ortiz',
   coverGradient: 'from-[#00F2EA] to-[#00D4CE]',
   tableOfContents: [
     { id: 'what-is-it', text: 'What Is the TikTok Creator Rewards Program?', level: 2 },

@@ -5,7 +5,8 @@ interface BlogPostJsonLdProps {
   description: string
   publishedAt: string
   updatedAt?: string
-  author: string
+  authorName: string
+  authorUrl?: string
   tags: string[]
   url: string
   content?: string
@@ -33,7 +34,8 @@ export function BlogPostJsonLd({
   description,
   publishedAt,
   updatedAt,
-  author,
+  authorName,
+  authorUrl,
   tags,
   url,
   content,
@@ -48,9 +50,9 @@ export function BlogPostJsonLd({
     datePublished: publishedAt,
     dateModified: updatedAt || publishedAt,
     author: {
-      '@type': 'Organization',
-      name: author,
-      url: 'https://tokvalue.com',
+      '@type': 'Person',
+      name: authorName,
+      ...(authorUrl ? { url: authorUrl } : {}),
     },
     publisher: {
       '@type': 'Organization',

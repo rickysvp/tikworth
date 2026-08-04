@@ -12,7 +12,7 @@ export const post11: BlogPost = {
   readTime: '9 min',
   category: 'Creator Economy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#9146FF] to-[#00F2EA]',
   tableOfContents: [
     { id: 'gaming-paradox', text: 'The Gaming Valuation Paradox', level: 2 },
@@ -145,7 +145,7 @@ export const post12: BlogPost = {
   readTime: '10 min',
   category: 'Monetization',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FF2D78] to-[#FFD700]',
   tableOfContents: [
     { id: 'most-valuable', text: 'Why Beauty Is the Most Valuable Niche', level: 2 },
@@ -283,7 +283,7 @@ export const post13: BlogPost = {
   readTime: '9 min',
   category: 'Creator Economy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FF8C42] to-[#FFD700]',
   tableOfContents: [
     { id: 'food-opportunity', text: 'The Food Niche Opportunity', level: 2 },
@@ -415,7 +415,7 @@ export const post14: BlogPost = {
   readTime: '8 min',
   category: 'Analytics & Strategy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#00F2EA] to-[#25F4EE]',
   tableOfContents: [
     { id: 'three-numbers', text: 'Why Three Tools Give Three Different Numbers', level: 2 },

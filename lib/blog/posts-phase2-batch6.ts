@@ -13,7 +13,7 @@ export const post26: BlogPost = {
   readTime: '9 min',
   category: 'Guides',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#00F2EA] to-[#8B5CF6]',
   tableOfContents: [
     { id: 'why-you-are-here', text: 'Why You\'re Searching "Exolyt" Right Now', level: 2 },
@@ -167,7 +167,7 @@ export const post27: BlogPost = {
   readTime: '9 min',
   category: 'Guides',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#FF6B9D] to-[#00F2EA]',
   tableOfContents: [
     { id: 'why-pentos', text: 'Why People Search "Pentos"', level: 2 },
@@ -320,7 +320,7 @@ export const post28: BlogPost = {
   readTime: '8 min',
   category: 'Guides',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#8B5CF6] to-[#FF2D78]',
   tableOfContents: [
     { id: 'why-hyplyt', text: 'Why Creators Find Hyplyt', level: 2 },
@@ -463,7 +463,7 @@ export const post29: BlogPost = {
   readTime: '10 min',
   category: 'Guides',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#FFD700] to-[#00F2EA]',
   tableOfContents: [
     { id: 'why-tools', text: 'Why You Need TikTok Analytics Tools in 2026', level: 2 },

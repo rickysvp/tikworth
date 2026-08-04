@@ -13,7 +13,7 @@ export const post23: BlogPost = {
   readTime: '10 min',
   category: 'Creator Economy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'chris-chen',
   coverGradient: 'from-[#FF2D78] to-[#00F2EA]',
   tableOfContents: [
     { id: 'ceiling', text: 'Why Your Niche Sets Your Valuation Ceiling', level: 2 },
@@ -176,7 +176,7 @@ export const post24: BlogPost = {
   readTime: '9 min',
   category: 'Analytics & Strategy',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'marcus-reid',
   coverGradient: 'from-[#00D4CE] to-[#FFD700]',
   tableOfContents: [
     { id: 'problem', text: 'The Authenticity Problem', level: 2 },
@@ -327,7 +327,7 @@ export const post25: BlogPost = {
   readTime: '9 min',
   category: 'Case Studies',
   featured: false,
-  author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
+  author: 'james-okafor',
   coverGradient: 'from-[#8B5CF6] to-[#FF2D78]',
   tableOfContents: [
     { id: 'what-is', text: 'What HypeAuditor Is', level: 2 },
