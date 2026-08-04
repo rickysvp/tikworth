@@ -18,7 +18,10 @@ let pgReady = false
 
 async function ensurePg(): Promise<NeonQueryFunction<false, false> | null> {
   if (pgReady) return sql
-  if (!DATABASE_URL) return null
+  if (!DATABASE_URL) {
+    console.warn('[auth] ensurePg: no DATABASE_URL configured')
+    return null
+  }
   try {
     const { neon } = await import('@neondatabase/serverless')
     sql = neon(DATABASE_URL)
@@ -36,9 +39,10 @@ async function ensurePg(): Promise<NeonQueryFunction<false, false> | null> {
       )
     `
     pgReady = true
+    console.log('[auth] ensurePg: Postgres connected successfully')
     return sql
   } catch (err) {
-    console.warn('[auth] Postgres init failed, falling back to file', err)
+    console.warn('[auth] ensurePg: Postgres init failed, falling back to file:', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -146,6 +150,7 @@ export async function storeCode(
         created_at = EXCLUDED.created_at,
         send_count_24h = EXCLUDED.send_count_24h
     `
+    console.log('[auth] storeCode: stored code for', key, 'code:', code, 'packageId:', packageId, 'credits:', credits)
     return { code, sendCount24h: previousSends + 1, rateLimited: false }
   }
 
@@ -211,8 +216,12 @@ export async function verifyCode(
   const pg = await ensurePg()
   if (pg) {
     const rows = await pg`SELECT * FROM verification_codes WHERE email = ${key}`
+    console.log('[auth] verifyCode: DB query returned', rows.length, 'rows for', key)
     const row = rows[0] as Record<string, unknown> | undefined
-    if (!row) return { ok: false, reason: 'not_found' }
+    if (!row) {
+      console.warn('[auth] verifyCode: no code found for email:', key)
+      return { ok: false, reason: 'not_found' }
+    }
 
     const entry: PendingCode = {
       code: String(row.code),
@@ -225,6 +234,8 @@ export async function verifyCode(
       createdAt: Number(row.created_at),
       sendCount24h: Number(row.send_count_24h),
     }
+
+    console.log('[auth] verifyCode: found entry for', key, 'stored code:', entry.code, 'input code:', trimmedCode, 'match:', entry.code === trimmedCode)
 
     if (now > entry.expiresAt) {
       await pg`DELETE FROM verification_codes WHERE email = ${key}`

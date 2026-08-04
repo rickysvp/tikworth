@@ -49,9 +49,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Create session token first — if JWT_SECRET is misconfigured, fail before consuming the code
-    const token = await createSessionToken(email)
+    let token: string
+    try {
+      token = await createSessionToken(email)
+    } catch (tokenErr) {
+      console.error('[verify-code] createSessionToken FAILED:', tokenErr instanceof Error ? tokenErr.message : String(tokenErr))
+      return NextResponse.json({
+        error: 'Session token creation failed. Please contact support.',
+        code: 'TOKEN_ERROR',
+        detail: tokenErr instanceof Error ? tokenErr.message : String(tokenErr),
+      }, { status: 500 })
+    }
 
     const result = await verifyCode(email, code)
+    console.log('[verify-code] verifyCode result:', JSON.stringify({ email, ok: result.ok, reason: result.ok ? 'ok' : result.reason }))
     if (!result.ok) {
       const messages: Record<string, { msg: string; status: number }> = {
         expired:    { msg: getServerDict().api.auth.VERIFY_EXPIRED, status: 410 },

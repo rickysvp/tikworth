@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
 import { FileText, ChevronRight } from 'lucide-react'
@@ -131,7 +132,27 @@ const sections = [
 export default function TermsPage() {
   const lastUpdated = 'August 2, 2026'
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    '@id': 'https://tokvalue.com/terms/#article',
+    url: 'https://tokvalue.com/terms',
+    headline: 'Terms of Service | TokValue',
+    description:
+      'Terms governing use of TokValue TikTok account valuation service.',
+    datePublished: '2026-08-02',
+    dateModified: lastUpdated,
+    isPartOf: { '@id': 'https://tokvalue.com/#website' },
+    publisher: { '@id': 'https://tokvalue.com/#publisher' },
+  }
+
   return (
+    <>
+      <Script
+        id="terms-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-neutral-100">
             <SiteHeader />
 
@@ -200,5 +221,6 @@ export default function TermsPage() {
 
             <SiteFooter />
     </div>
+    </>
   )
 }
