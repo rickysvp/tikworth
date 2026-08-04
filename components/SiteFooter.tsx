@@ -39,7 +39,7 @@ export function SiteFooter() {
 
           {/* Company */}
           <div>
-            <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">Company</h4>
+            <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">Team</h4>
             <ul className="space-y-2.5">
               <li><Link href="/about" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">About Us</Link></li>
               <li><Link href="/contact" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">Contact</Link></li>
