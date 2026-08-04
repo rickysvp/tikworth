@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Script from 'next/script'
 import { getAllPosts, getFeaturedPost } from '@/lib/blog'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
@@ -38,7 +39,34 @@ export default function BlogIndexPage() {
   const posts = getAllPosts()
   const featured = getFeaturedPost()
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': 'https://tokvalue.com/blog/#collection',
+    url: 'https://tokvalue.com/blog',
+    name: 'TokValue Blog — TikTok Creator Economy Insights',
+    description:
+      'Expert guides on TikTok account valuation, brand deal pricing, creator monetization, and analytics.',
+    isPartOf: { '@id': 'https://tokvalue.com/#website' },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: posts.length,
+      itemListElement: posts.slice(0, 25).map((post, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `https://tokvalue.com/blog/${post.slug}`,
+        name: post.title,
+      })),
+    },
+  }
+
   return (
+    <>
+      <Script
+        id="blog-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <div className="min-h-screen flex flex-col bg-black text-white">
       <SiteHeader />
 
@@ -64,5 +92,6 @@ export default function BlogIndexPage() {
 
       <SiteFooter />
     </div>
+    </>
   )
 }

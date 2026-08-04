@@ -32,9 +32,9 @@ export interface CreditPackage {
 const dict = getServerDict()
 
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: 'pack1', label: dict.creditPackages.pack1.label, credits: 1, price: 9, perUnit: '$9 per evaluation' },
-  { id: 'pack6', label: dict.creditPackages.pack6.label, credits: 6, price: 29, perUnit: '$4.83 per evaluation', badge: dict.creditPackages.pack6.badge, highlight: true },
-  { id: 'pack30', label: dict.creditPackages.pack30.label, credits: 30, price: 99, perUnit: '$3.30 per evaluation' },
+  { id: 'pack1', label: dict.creditPackages.pack1.label, credits: 1, price: 9, perUnit: '$9 per report' },
+  { id: 'pack6', label: dict.creditPackages.pack6.label, credits: 6, price: 29, perUnit: '$4.83 per report', badge: dict.creditPackages.pack6.badge, highlight: true },
+  { id: 'pack30', label: dict.creditPackages.pack30.label, credits: 30, price: 99, perUnit: '$3.30 per report' },
 ]
 
 export function findPackage(id: string): CreditPackage | undefined {

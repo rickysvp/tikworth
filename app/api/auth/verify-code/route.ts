@@ -48,6 +48,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: getServerDict().api.auth.INVALID_CODE, code: 'INVALID_CODE' }, { status: 400 })
     }
 
+    // Create session token first — if JWT_SECRET is misconfigured, fail before consuming the code
+    const token = await createSessionToken(email)
+
     const result = await verifyCode(email, code)
     if (!result.ok) {
       const messages: Record<string, { msg: string; status: number }> = {
@@ -61,7 +64,6 @@ export async function POST(req: NextRequest) {
     }
 
     const { entry } = result
-    const token = await createSessionToken(email)
 
     // ── Payment flow ──────────────────────────────────────────────────
     // 生产环境必须有 Creem 配置；本地开发可选跳过

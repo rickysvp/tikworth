@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
 import { Shield, ChevronRight } from 'lucide-react'
@@ -130,7 +131,27 @@ const sections = [
 export default function PrivacyPage() {
   const lastUpdated = 'August 2, 2026'
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    '@id': 'https://tokvalue.com/privacy/#article',
+    url: 'https://tokvalue.com/privacy',
+    headline: 'Privacy Policy | TokValue',
+    description:
+      'How TokValue collects, uses, discloses, and protects your personal information.',
+    datePublished: '2026-08-02',
+    dateModified: lastUpdated,
+    isPartOf: { '@id': 'https://tokvalue.com/#website' },
+    publisher: { '@id': 'https://tokvalue.com/#publisher' },
+  }
+
   return (
+    <>
+      <Script
+        id="privacy-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-neutral-100">
             <SiteHeader />
 
@@ -199,5 +220,6 @@ export default function PrivacyPage() {
 
             <SiteFooter />
     </div>
+    </>
   )
 }

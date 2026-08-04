@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
     await cleanupExpiredCodes()
     const body = await req.json().catch(() => ({}))
     const email = String(body.email || '').trim().toLowerCase()
-    const packageId = String(body.packageId || 'pack10')
+    const packageId = String(body.packageId || 'pack1')
 
     if (!email || !EMAIL_RE.test(email)) {
       return NextResponse.json({ error: getServerDict().api.auth.INVALID_EMAIL, code: 'INVALID_EMAIL' }, { status: 400 })
