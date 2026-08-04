@@ -429,6 +429,26 @@ export function StaticLanding() {
         </div>
       </section>
 
+      {/* Blog CTA */}
+      <section className="border-b border-neutral-800 py-16">
+        <div className="mx-auto max-w-2xl px-4 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FF0050]/20 bg-[#FF0050]/5 px-4 py-1.5 text-xs font-medium text-[#FF0050] mb-4">
+            <MessageCircle className="h-3.5 w-3.5" />
+            Free Resources
+          </div>
+          <h2 className="text-2xl font-bold mb-3">Creator Economy Data & Guides</h2>
+          <p className="text-neutral-400 max-w-xl mx-auto mb-6">
+            In-depth articles on TikTok valuation, brand deal pricing, engagement benchmarks, and monetization strategies — backed by data from 50,000+ analyzed accounts.
+          </p>
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-2 rounded-full bg-[#00F2EA] px-8 py-3 text-sm font-semibold text-black transition hover:bg-[#00D4CE]"
+          >
+            Read the Blog →
+          </Link>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="border-b border-neutral-800 py-16">
         <div className="mx-auto max-w-2xl px-4">
