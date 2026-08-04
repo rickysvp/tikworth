@@ -38,7 +38,7 @@ const IP_HMAC_KEY = process.env.IP_HASH_SECRET || (() => {
   if (process.env.NODE_ENV === 'production') {
     console.error('[analytics] ⚠️  IP_HASH_SECRET not set in production — IP hashes are reversible with default key. Set the IP_HASH_SECRET environment variable.')
   }
-  return 'tikworth-ip-hmac-v1'
+  return 'tokvalue-ip-hmac-v1'
 })()
 
 // ── DB init ──
