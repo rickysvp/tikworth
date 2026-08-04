@@ -1,4 +1,4 @@
-import { getPostsByCategory, getAllPosts } from '@/lib/blog'
+import { getPostsByCategory } from '@/lib/blog'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
 import { Calendar, Clock } from 'lucide-react'

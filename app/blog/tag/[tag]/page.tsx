@@ -51,7 +51,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag: strin
             Tagged: <span className="text-[#00F2EA]">#{tagName}</span>
           </h1>
           <p className="text-neutral-400 text-lg">
-            {posts.length} article{posts.length !== 1 ? 's' : ''} tagged with "{tagName}"
+            {posts.length} article{posts.length !== 1 ? 's' : ''} tagged with &quot;{tagName}&quot;
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import Script from 'next/script'
 import { Calendar, ArrowLeft } from 'lucide-react'
 import { getAllAuthors, getAuthorBySlug, getAllPosts } from '@/lib/blog'
@@ -80,10 +81,12 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
           <header className="mb-10">
             <div className="flex items-center gap-5 mb-5">
               {author.avatar ? (
-                <img
+                <Image
                   src={author.avatar}
                   alt={author.name}
-                  className="h-16 w-16 rounded-full object-cover border-2 border-[#FF0050]"
+                  width={64}
+                  height={64}
+                  className="rounded-full border-2 border-[#FF0050]"
                 />
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-2xl font-bold text-white">
