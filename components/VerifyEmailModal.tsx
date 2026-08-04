@@ -112,7 +112,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
       const res = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), packageId: selectedPkg.id }),
+        body: JSON.stringify({ email: email.trim(), packageId: showReturning ? '_returning' : selectedPkg.id }),
       })
       const data = await res.json().catch(() => ({ error: dict.verifyEmail.sendFailed }))
       if (!res.ok) throw new Error(data.error || dict.verifyEmail.sendFailed)
@@ -152,6 +152,20 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
 
       clearPendingEmail()
       setActiveEmail(email.trim())
+
+      // Returning user flow — no purchase, just verify email and get token
+      if (data.returning) {
+        if (data.token) setSessionToken(data.token)
+        // Fetch their existing balance
+        const bal = await fetchBalance(email.trim())
+        if (bal) setBalance(bal)
+        setStep('success')
+        setTimeout(() => {
+          onClose()
+          onUnlock()
+        }, 1500)
+        return
+      }
 
       if (data.requiresPayment && data.checkoutUrl) {
         // 支付流程：token 存到 sessionStorage（临时），支付成功后才晋升为正式 token
@@ -297,13 +311,12 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
                       className="flex-1 rounded-xl border border-neutral-700 bg-[#0a0a0a] px-3 py-2 text-sm text-white placeholder-neutral-600 outline-none focus:border-[#00F2EA] transition-colors"
                       onKeyDown={e => {
                         if (e.key === 'Enter' && email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                          setSelectedPkg(CREDIT_PACKAGES[0])
-                          handleSendCode()
+                          handleSendCode(e)
                         }
                       }}
                     />
                     <button
-                      onClick={() => { setSelectedPkg(CREDIT_PACKAGES[0]); handleSendCode() }}
+                      onClick={(e) => handleSendCode(e as unknown as React.FormEvent)}
                       disabled={loading || !email}
                       className="shrink-0 rounded-xl bg-[#00F2EA] px-4 py-2 text-xs font-bold text-black hover:bg-[#00dccb] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -549,9 +562,11 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
                 </button>
               </div>
 
-              <div className="mt-3 rounded-lg bg-neutral-900/50 px-3 py-2 text-center text-[11px] text-neutral-500">
-                {t(isUnlockMode ? dict.verifyEmail.unlockPackageSummary : dict.verifyEmail.packageSummary, { label: selectedPkg.label, price: selectedPkg.price, count: selectedPkg.credits })}
-              </div>
+              {!showReturning && (
+                <div className="mt-3 rounded-lg bg-neutral-900/50 px-3 py-2 text-center text-[11px] text-neutral-500">
+                  {t(isUnlockMode ? dict.verifyEmail.unlockPackageSummary : dict.verifyEmail.packageSummary, { label: selectedPkg.label, price: selectedPkg.price, count: selectedPkg.credits })}
+                </div>
+              )}
             </div>
           )}
 

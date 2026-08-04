@@ -195,8 +195,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: getServerDict().api.auth.INVALID_EMAIL, code: 'INVALID_EMAIL' }, { status: 400 })
     }
 
-    const pkg = findPackage(packageId)
-    if (!pkg) {
+    const pkg = packageId === '_returning' ? null : findPackage(packageId)
+    if (!pkg && packageId !== '_returning') {
       return NextResponse.json(
         { error: getServerDict().api.auth.INVALID_PACKAGE, code: 'INVALID_PACKAGE', validPackages: CREDIT_PACKAGES.map(p => p.id) },
         { status: 400 }
@@ -204,7 +204,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate and store 6-digit code (10 min TTL), with per-email rate limiting
-    const { code, rateLimited } = await storeCode(email, pkg.id, pkg.credits, pkg.price)
+    const credits = pkg ? pkg.credits : 0
+    const amount = pkg ? pkg.price : 0
+    const { code, rateLimited } = await storeCode(email, packageId, credits, amount)
     if (rateLimited) {
       return NextResponse.json(
         { error: getServerDict().api.auth.RATE_LIMIT, code: 'RATE_LIMIT' },
@@ -229,7 +231,7 @@ export async function POST(req: NextRequest) {
             from: `TokValue <${fromEmail}>`,
             to: email,
             subject: `${code} is your TokValue verification code`,
-            html: buildEmailHtml(code, pkg.label, pkg.credits, pkg.price),
+            html: buildEmailHtml(code, pkg?.label ?? 'Account Access', pkg?.credits ?? 0, pkg?.price ?? 0),
           }),
         })
         emailDelivered = res.ok
@@ -241,7 +243,7 @@ export async function POST(req: NextRequest) {
 
     if (!emailDelivered) {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[send-code] DEV — code for ${email}: ${code} (package: ${pkg.id}, ${pkg.credits} credits, $${pkg.price})`)
+        console.log(`[send-code] DEV — code for ${email}: ${code} (package: ${packageId}, ${credits} credits, $${amount})`)
       }
       devCode = process.env.NODE_ENV === 'development' ? code : null
     }

@@ -65,6 +65,17 @@ export async function POST(req: NextRequest) {
 
     const { entry } = result
 
+    // ── Returning user flow (no purchase) ────────────────────────────
+    // credits === 0 means this was a "Verify Existing Email" request, not a purchase
+    if (entry.credits === 0) {
+      return NextResponse.json({
+        ok: true,
+        email,
+        returning: true,
+        token,
+      })
+    }
+
     // ── Payment flow ──────────────────────────────────────────────────
     // 生产环境必须有 Creem 配置；本地开发可选跳过
     if (!SKIP_PAYMENT && (!CREEM_API_KEY || !CREEM_WEBHOOK_SECRET)) {

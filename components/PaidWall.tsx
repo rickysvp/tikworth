@@ -154,6 +154,19 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
 
       clearPendingEmail()
       setActiveEmail(email.trim())
+
+      // Returning user flow — no purchase, just verify email and get token
+      if (data.returning) {
+        if (data.token) setSessionToken(data.token)
+        const bal = await fetchBalance(email.trim())
+        if (bal) setBalance(bal)
+        setStep('success')
+        setTimeout(() => {
+          onUnlock()
+        }, 1500)
+        return
+      }
+
       if (data.token) setSessionToken(data.token)
 
       if (data.requiresPayment && data.checkoutUrl) {
