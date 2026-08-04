@@ -330,20 +330,20 @@ const en = {
         {
           id: 'pack1',
           name: 'Single',
-          desc: 'For creators — discover your account\'s commercial value and content growth plan',
+          desc: 'Best for individual creators and influencers',
           highlight: false,
         },
         {
           id: 'pack6',
           name: 'Growth',
-          desc: 'For MCNs & agencies — benchmark rosters, vet talent, and price brand deals',
+          desc: 'Best for MCNs, talent agencies, and influencer marketing teams',
           highlight: true,
           badge: 'Best Value',
         },
         {
           id: 'pack30',
           name: 'Studio',
-          desc: 'For brands & analysts — enterprise-scale valuation across portfolios and campaigns',
+          desc: 'Best for brands, market analysts, and large-scale campaign planners',
           highlight: false,
         },
       ],
