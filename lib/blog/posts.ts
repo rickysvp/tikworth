@@ -554,7 +554,7 @@ export const post4: BlogPost = {
   excerpt:
     'Social Blade tracks followers. TokValue tracks business value. If you\'re serious about brand deals, you need more than a graph.',
   tags: ['TokValue vs', 'Social Blade', 'analytics tools', 'brand deals'],
-  publishedAt: '2026-08-05T09:00:00Z',
+  publishedAt: '2026-08-04T09:00:00Z',
   readTime: '8 min',
   category: 'Guides',
   author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
@@ -685,7 +685,7 @@ export const post5: BlogPost = {
   excerpt:
     'Most creators don\'t get brand deals because they ask wrong. Here\'s how to get brands to come to you — with real outreach templates and rate card benchmarks.',
   tags: ['brand deals', 'how to', 'sponsorships', 'TikTok monetization'],
-  publishedAt: '2026-08-08T09:00:00Z',
+  publishedAt: '2026-08-04T09:00:00Z',
   readTime: '10 min',
   category: 'Guides',
   author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
@@ -888,7 +888,7 @@ export const post6: BlogPost = {
   excerpt:
     'We analyzed 50,000+ TikTok accounts. Here\'s what creators actually earn — and the exact benchmarks you need to hit to reach your income goals.',
   tags: ['creator income', 'TikTok data', 'income report', 'creator economy'],
-  publishedAt: '2026-08-10T09:00:00Z',
+  publishedAt: '2026-08-04T09:00:00Z',
   readTime: '13 min',
   category: 'Case Studies',
   author: { name: 'TokValue Research Team', role: 'Creator Economy Analysts' },
