@@ -27,7 +27,7 @@ const jsonLd = {
       isPartOf: { '@id': 'https://tokvalue.com/#website' },
       about: { '@id': 'https://tokvalue.com/#organization' },
       description:
-        'Why we built TokValue — bringing transparency to TikTok account valuation through data-driven analysis and neutral third-party estimates.',
+        'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis — covering brand deals, live gifts, and short-video commerce.',
     },
     {
       '@type': 'WebSite',
@@ -42,7 +42,7 @@ const jsonLd = {
 export const metadata: Metadata = {
   title: 'About TokValue | Transparent TikTok Account Valuation',
   description:
-    'Why we built TokValue — bringing transparency to TikTok account valuation through data-driven analysis and neutral third-party estimates.',
+    'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis — covering brand deals, live gifts, and short-video commerce.',
   alternates: {
     canonical: '/about',
   },
@@ -107,39 +107,46 @@ export default function AboutPage() {
         <section className="mx-auto max-w-4xl px-4 sm:px-6 py-16 border-b border-neutral-800">
           <h2 className="text-2xl font-bold tracking-tight mb-6">How We Solve It</h2>
           <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00F2EA]/10 text-[#00F2EA]">
-                <Target className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Data-Driven Estimates</h3>
-                <p className="text-sm text-neutral-400 leading-relaxed">
-                  We analyze publicly available TikTok metrics — follower count, engagement rates, content performance, 
-                  niche benchmarks — to generate valuation estimates grounded in observable market signals.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00F2EA]/10 text-[#00F2EA]">
-                <Scale className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Neutral Third Party</h3>
-                <p className="text-sm text-neutral-400 leading-relaxed">
-                  We don&apos;t buy, sell, or broker accounts. We have no stake in any transaction. 
-                  Our only goal is accurate measurement — not pushing deals in any direction.
-                </p>
-              </div>
-            </div>
+            {/* Pillar 1: Multi-dimensional */}
             <div className="flex gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00F2EA]/10 text-[#00F2EA]">
                 <Eye className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Transparent Methodology</h3>
+                <h3 className="font-semibold mb-1">Multi-Dimensional Commercial Revenue Analysis</h3>
                 <p className="text-sm text-neutral-400 leading-relaxed">
-                  Every valuation breaks down into interpretable dimensions. You can see exactly 
-                  what factors drove the estimate — and judge for yourself whether they apply to your situation.
+                  A TikTok account earns money across multiple streams: brand deals and sponsorships,
+                  live gifts and donations, short-video e-commerce, and live-stream shopping. We
+                  analyze all of these dimensions to build a complete picture of earning potential —
+                  not just follower count.
+                </p>
+              </div>
+            </div>
+            {/* Pillar 2: Market transaction data */}
+            <div className="flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00F2EA]/10 text-[#00F2EA]">
+                <Target className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Market Transaction Data</h3>
+                <p className="text-sm text-neutral-400 leading-relaxed">
+                  Beyond public metrics, we track actual market transaction pricing. When an account
+                  changes hands, the real deal price reflects what the market is willing to pay —
+                  not a formula. We use that data to calibrate our valuation models continuously.
+                </p>
+              </div>
+            </div>
+            {/* Pillar 3: Neutral + Transparent */}
+            <div className="flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00F2EA]/10 text-[#00F2EA]">
+                <Scale className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Neutral Third Party. Transparent Methodology.</h3>
+                <p className="text-sm text-neutral-400 leading-relaxed">
+                  We don&apos;t buy, sell, or broker accounts. Every valuation breaks down into
+                  interpretable dimensions — you can see exactly what drove the number and judge
+                  whether the factors apply to your situation.
                 </p>
               </div>
             </div>
