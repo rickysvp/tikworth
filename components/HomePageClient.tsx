@@ -96,6 +96,7 @@ function HomePageContent() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -224,6 +225,38 @@ function HomePageContent() {
     if (!result) return
     setShowExportMenu(false)
     setShowShareModal(true)
+  }
+
+  async function handlePricingCheckout(packageId: string) {
+    if (checkoutLoading) return
+    setCheckoutLoading(true)
+    try {
+      const token = getSessionToken()
+      if (!token) {
+        setVerifyModalMode('evaluate')
+        setShowVerifyModal(true)
+        return
+      }
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ packageId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok || !data.checkoutUrl) {
+        toast('Payment service error. Please try again.')
+        return
+      }
+      window.location.href = data.checkoutUrl
+    } catch (err) {
+      console.error('[pricing-checkout] failed:', err)
+      toast('Failed to start checkout. Please try again.')
+    } finally {
+      setCheckoutLoading(false)
+    }
   }
 
   const handleEvaluate = useCallback(async (name?: string) => {
@@ -738,14 +771,19 @@ function HomePageContent() {
 
                       {/* CTA */}
                       <button
-                        onClick={() => { setVerifyModalMode('evaluate'); setShowVerifyModal(true) }}
+                        onClick={() => handlePricingCheckout(pkg.id)}
+                        disabled={checkoutLoading}
                         className={`mt-5 w-full rounded-xl py-3 text-sm font-semibold transition-all ${
                           pkg.highlight
                             ? 'bg-[#FF0050] text-white hover:bg-[#e60049] shadow-lg shadow-[#FF0050]/20'
                             : 'border border-neutral-700 text-neutral-300 hover:border-[#FF0050] hover:text-[#FF0050]'
-                        }`}
+                        } ${checkoutLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
                       >
-                        {dict.common.getStarted}
+                        {checkoutLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Redirecting...
+                          </span>
+                        ) : dict.common.getStarted}
                       </button>
                     </div>
                   )

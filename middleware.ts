@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const PROTECTED_API_PATTERNS = [
   '/api/evaluate',
   '/api/history',
+  '/api/checkout',
   '/api/credit/consume',
   '/api/credit/refund',
 ]
@@ -31,6 +32,20 @@ export async function middleware(request: NextRequest) {
   if (isProtectedRoute) {
     // 对于 POST /api/evaluate，必须有 Authorization header
     if (pathname === '/api/evaluate' && method === 'POST') {
+      const auth = request.headers.get('authorization')
+      if (!auth || !auth.startsWith('Bearer ')) {
+        return NextResponse.json(
+          { error: 'Authentication required', code: 'UNAUTHORIZED' },
+          { 
+            status: 401,
+            headers: { 'Cache-Control': 'no-store, max-age=0' }
+          }
+        )
+      }
+    }
+
+    // 对于 POST /api/checkout，必须有 Authorization header
+    if (pathname === '/api/checkout' && method === 'POST') {
       const auth = request.headers.get('authorization')
       if (!auth || !auth.startsWith('Bearer ')) {
         return NextResponse.json(
