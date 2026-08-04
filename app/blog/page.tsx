@@ -13,6 +13,24 @@ export const metadata: Metadata = {
     title: 'TokValue Blog',
     description: 'Expert guides on TikTok creator economy, brand deals, and analytics.',
     type: 'website',
+    url: 'https://tokvalue.com/blog',
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'TokValue — TikTok Account Value Calculator',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TokValue Blog',
+    description: 'Expert guides on TikTok creator economy, brand deals, and analytics.',
+    images: ['/og.png'],
+  },
+  alternates: {
+    canonical: '/blog',
   },
 }
 

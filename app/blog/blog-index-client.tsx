@@ -124,6 +124,10 @@ export default function BlogIndexClient({ posts, featured }: BlogIndexClientProp
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+      {/* Page title */}
+      <h1 className="mb-8 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        TokValue Blog
+      </h1>
       {/* Search + Filter */}
       <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
