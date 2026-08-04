@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
-import { Mail, ArrowLeft, ShieldCheck, BarChart3, Users, Megaphone, Code2, ArrowRight } from 'lucide-react'
+import { Mail, ShieldCheck, BarChart3, Users, Megaphone, Code2, ArrowRight } from 'lucide-react'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
 import { getAllAuthors } from '@/lib/blog'
@@ -88,13 +88,6 @@ export default function AboutPage() {
         {/* Hero */}
         <section className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900/60 via-transparent to-transparent">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 py-20 sm:py-24">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors mb-10"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Link>
             <p className="text-xs font-semibold text-[#00F2EA] uppercase tracking-widest mb-4">About TokValue</p>
             <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-6">
               The Team Behind TokValue
