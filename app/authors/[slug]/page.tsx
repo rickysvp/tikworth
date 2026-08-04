@@ -20,6 +20,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${author.name} — ${author.role} | TokValue`,
     description: author.bio.slice(0, 155),
     alternates: { canonical: url },
+    openGraph: {
+      title: `${author.name} — ${author.role} | TokValue`,
+      description: author.bio.slice(0, 155),
+      url,
+    },
   }
 }
 

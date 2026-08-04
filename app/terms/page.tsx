@@ -6,6 +6,14 @@ import { FileText, ChevronRight } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'Terms of Service | TokValue',
   description: 'TokValue Terms of Service — the terms governing use of our TikTok account valuation service.',
+  alternates: {
+    canonical: '/terms',
+  },
+  openGraph: {
+    title: 'Terms of Service | TokValue',
+    description: 'TokValue Terms of Service — the terms governing use of our TikTok account valuation service.',
+    url: 'https://tokvalue.com/terms',
+  },
 }
 
 const sections = [

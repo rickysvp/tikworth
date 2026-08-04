@@ -24,7 +24,7 @@ function renderMd(md: string): string {
     })
     .replace(/^# (.+)$/gm, (_m: string, text: string) => {
       const id = anchorMap[text] || text.toLowerCase().replace(/\s+/g, '-')
-      return `<h1 id="${id}" class="text-3xl font-bold mt-8 mb-6 text-white">${text}</h1>`
+      return `<h2 id="${id}" class="text-3xl font-bold mt-8 mb-6 text-white">${text}</h2>`
     })
   html = html
     .replace(/^---+$/gm, '<hr class="my-8 border-neutral-800" />')

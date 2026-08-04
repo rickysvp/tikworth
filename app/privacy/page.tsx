@@ -6,6 +6,14 @@ import { Shield, ChevronRight } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'Privacy Policy | TokValue',
   description: 'TokValue Privacy Policy — how we collect, use, and protect your personal information.',
+  alternates: {
+    canonical: '/privacy',
+  },
+  openGraph: {
+    title: 'Privacy Policy | TokValue',
+    description: 'TokValue Privacy Policy — how we collect, use, and protect your personal information.',
+    url: 'https://tokvalue.com/privacy',
+  },
 }
 
 const sections = [

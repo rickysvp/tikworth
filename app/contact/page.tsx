@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/contact',
   },
+  openGraph: {
+    title: 'Contact Us | TokValue',
+    description:
+      'Get in touch with the TokValue team — questions, feedback, partnership ideas.',
+    url: 'https://tokvalue.com/contact',
+  },
 }
 
 const jsonLd = {

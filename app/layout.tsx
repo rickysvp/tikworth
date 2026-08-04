@@ -28,12 +28,9 @@ export const metadata: Metadata = {
     apple: '/w.png?v=2',
   },
   openGraph: {
-    title: d.seo.title,
-    description: d.seo.shortDescription,
     type: 'website',
     locale: 'en_US',
     siteName: 'TokValue',
-    url: 'https://tokvalue.com/',
     images: [
       {
         url: '/og.png',
@@ -45,8 +42,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: d.seo.title,
-    description: d.seo.shortDescription,
     images: ['/og.png'],
   },
   robots: {

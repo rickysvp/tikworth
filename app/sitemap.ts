@@ -8,8 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     { url: base, lastModified: '2026-08-03', changeFrequency: 'daily', priority: 1 },
     { url: `${base}/blog`, lastModified: '2026-08-03', changeFrequency: 'daily', priority: 0.9 },
-    { url: `${base}/history`, lastModified: '2026-08-03', changeFrequency: 'weekly', priority: 0.5 },
-    { url: `${base}/tracker`, lastModified: '2026-08-03', changeFrequency: 'weekly', priority: 0.5 },
+  // P0-2: /history and /tracker are login-gated pages — excluded from sitemap by design
     { url: `${base}/about`, lastModified: '2026-08-04', changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/contact`, lastModified: '2026-08-04', changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/privacy`, lastModified: '2026-08-03', changeFrequency: 'yearly', priority: 0.2 },

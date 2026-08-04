@@ -46,6 +46,12 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/about',
   },
+  openGraph: {
+    title: 'About TokValue | Transparent TikTok Account Valuation',
+    description:
+      'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis.',
+    url: 'https://tokvalue.com/about',
+  },
 }
 
 export default function AboutPage() {
