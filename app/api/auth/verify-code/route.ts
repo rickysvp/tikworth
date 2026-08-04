@@ -8,7 +8,9 @@ export const maxDuration = 25 // Vercel Pro: extend to 25s
 const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
 const CREEM_WEBHOOK_SECRET = process.env.CREEM_WEBHOOK_SECRET || ''
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'))
-const SKIP_PAYMENT = process.env.NEXT_PUBLIC_DEV_SKIP_PAYMENT === 'true'
+// DEV_SKIP_PAYMENT 仅在本地开发环境生效，生产环境（Vercel）永远走支付流程
+const IS_DEV = process.env.NODE_ENV === 'development'
+const SKIP_PAYMENT = IS_DEV && process.env.NEXT_PUBLIC_DEV_SKIP_PAYMENT === 'true'
 
 // Creem product ID mapping: packageId → product_id
 const PRODUCT_ID_MAP: Record<string, string> = {
@@ -61,7 +63,13 @@ export async function POST(req: NextRequest) {
     const token = await createSessionToken(email)
 
     // ── Payment flow ──────────────────────────────────────────────────
-    if (CREEM_API_KEY && CREEM_WEBHOOK_SECRET && !SKIP_PAYMENT) {
+    // 生产环境必须有 Creem 配置；本地开发可选跳过
+    if (!SKIP_PAYMENT && (!CREEM_API_KEY || !CREEM_WEBHOOK_SECRET)) {
+      console.error('[verify-code] Creem not configured — CREEM_API_KEY or CREEM_WEBHOOK_SECRET is empty')
+      return NextResponse.json({ error: 'Payment service not configured. Please contact support.', code: 'CREEM_CONFIG_ERROR' }, { status: 503 })
+    }
+
+    if (!SKIP_PAYMENT) {
       const productId = PRODUCT_ID_MAP[entry.packageId]
       if (!productId) {
         console.error(`[verify-code] No Creem product ID for package: ${entry.packageId}`)
