@@ -48,7 +48,7 @@ export async function GET() {
     creditTableError: creditTableError || null,
     hasResend: !!process.env.RESEND_API_KEY,
     hasCreem: !!process.env.CREEM_API_KEY,
-    skipPayment: process.env.NEXT_PUBLIC_DEV_SKIP_PAYMENT === 'true',
+    skipPayment: process.env.DEV_SKIP_PAYMENT === 'true',
     appUrl: process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'),
   })
 }

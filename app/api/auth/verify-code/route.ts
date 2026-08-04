@@ -10,8 +10,9 @@ const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
 const CREEM_WEBHOOK_SECRET = process.env.CREEM_WEBHOOK_SECRET || ''
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'))
 // DEV_SKIP_PAYMENT 仅在本地开发环境生效，生产环境（Vercel）永远走支付流程
+// 注意：使用 DEV_SKIP_PAYMENT（非 NEXT_PUBLIC_）避免暴露给客户端
 const IS_DEV = process.env.NODE_ENV === 'development'
-const SKIP_PAYMENT = IS_DEV && process.env.NEXT_PUBLIC_DEV_SKIP_PAYMENT === 'true'
+const SKIP_PAYMENT = IS_DEV && process.env.DEV_SKIP_PAYMENT === 'true'
 
 // Creem product ID mapping: packageId → product_id
 const PRODUCT_ID_MAP: Record<string, string> = {

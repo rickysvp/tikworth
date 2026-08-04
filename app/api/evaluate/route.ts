@@ -132,8 +132,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 扣减 1 次额度（仅缓存未命中时消耗）
-    const consumeResult = await consumeCredit(userEmail)
+    // 扣减 1 次额度（仅缓存未命中时消耗），传入username用于日志记录
+    const consumeResult = await consumeCredit(userEmail, normalized)
     if (!consumeResult.ok) {
       const msgs: Record<string, { msg: string; status: number }> = {
         NOT_FOUND:  { msg: getServerDict().api.errors.NO_CREDITS, status: 402 },

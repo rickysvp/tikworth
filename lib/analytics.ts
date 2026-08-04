@@ -735,7 +735,7 @@ export async function getPVUV(): Promise<PVUVData> {
 
 // ── Query: Users List ──
 
-/** 批量查询用户已使用评估次数（基于 evaluations.evaluated_by 分组） */
+/** 批量查询用户已使用评估次数（从 credit_usage_logs 日志表查询） */
 export async function getEvaluationCountsByUser(emails: string[]): Promise<Map<string, number>> {
   const result = new Map<string, number>()
   if (!emails.length) return result
@@ -743,21 +743,99 @@ export async function getEvaluationCountsByUser(emails: string[]): Promise<Map<s
   if (!useDb || !sql) return result
 
   try {
+    // 优先从 credit_usage_logs 表查询（权威数据源）
     const rows = await sql`
-      SELECT evaluated_by AS email, COUNT(*)::int AS used
-      FROM evaluations
-      WHERE evaluated_by IS NOT NULL AND evaluated_by <> ''
-      GROUP BY evaluated_by
+      SELECT email, COUNT(*)::int AS used
+      FROM credit_usage_logs
+      WHERE action = 'consume' AND reason = 'evaluate'
+      GROUP BY email
     `
     for (const r of rows as Array<Record<string, unknown>>) {
       const email = String(r.email).toLowerCase().trim()
       const used = Number(r.used)
       if (email) result.set(email, used)
     }
+    
+    // 检查是否有历史数据需要迁移
+    if (result.size === 0) {
+      console.warn('[analytics] credit_usage_logs is empty, falling back to evaluations table')
+      // 回退到旧表查询（迁移期间使用）
+      const fallbackRows = await sql`
+        SELECT evaluated_by AS email, COUNT(*)::int AS used
+        FROM evaluations
+        WHERE evaluated_by IS NOT NULL AND evaluated_by <> ''
+        GROUP BY evaluated_by
+      `
+      for (const r of fallbackRows as Array<Record<string, unknown>>) {
+        const email = String(r.email).toLowerCase().trim()
+        const used = Number(r.used)
+        if (email) result.set(email, used)
+      }
+    }
   } catch (err) {
     console.warn('[analytics] failed to query evaluation counts by user:', err)
   }
   return result
+}
+
+/** 数据一致性检查：积分余额与日志记录是否匹配 */
+export async function checkCreditConsistency(): Promise<{
+  email: string
+  balance: number
+  logCount: number
+  expectedBalance: number
+  consistent: boolean
+}[]> {
+  const useDb = await initDb()
+  if (!useDb || !sql) return []
+
+  try {
+    // 查询所有用户的积分余额
+    const balanceRows = await sql`SELECT email, credits, total_purchased FROM credit_balances`
+    const results: Array<{
+      email: string
+      balance: number
+      logCount: number
+      expectedBalance: number
+      consistent: boolean
+    }> = []
+
+    for (const row of balanceRows as Array<Record<string, unknown>>) {
+      const email = String(row.email)
+      const balance = Number(row.credits)
+      const totalPurchased = Number(row.total_purchased || 0)
+
+      // 查询该用户的所有日志记录（含 consume/refund/grant/admin_deduct）
+      const logRows = await sql`
+        SELECT
+          SUM(CASE WHEN action = 'consume' THEN credits ELSE 0 END) as consumed,
+          SUM(CASE WHEN action = 'refund' THEN credits ELSE 0 END) as refunded,
+          SUM(CASE WHEN action = 'grant' THEN credits ELSE 0 END) as granted,
+          SUM(CASE WHEN action = 'admin_deduct' THEN credits ELSE 0 END) as admin_deducted
+        FROM credit_usage_logs
+        WHERE email = ${email}
+      `
+      const consumed = Number((logRows[0] as Record<string, unknown>)?.consumed || 0)
+      const refunded = Number((logRows[0] as Record<string, unknown>)?.refunded || 0)
+      const granted = Number((logRows[0] as Record<string, unknown>)?.granted || 0)
+      const adminDeducted = Number((logRows[0] as Record<string, unknown>)?.admin_deducted || 0)
+
+      // 期望余额 = 购买总额 + 赠送 - 消费 + 退款 - 管理员扣减
+      const expectedBalance = totalPurchased + granted - consumed + refunded - adminDeducted
+
+      results.push({
+        email,
+        balance,
+        logCount: consumed,
+        expectedBalance,
+        consistent: Math.abs(balance - expectedBalance) <= 1 // 允许1的误差（边界情况）
+      })
+    }
+    return results
+  } catch (err) {
+    console.warn('[analytics] failed to check credit consistency:', err)
+    return []
+  }
 }
 
 export interface UserListItem {

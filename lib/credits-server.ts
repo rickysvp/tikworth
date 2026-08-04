@@ -14,6 +14,7 @@ const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || ''
 
 let sql: NeonQueryFunction<false, false> | null = null
 let initPromise: Promise<void> | null = null
+let usageLogInitPromise: Promise<void> | null = null
 
 async function getSql(): Promise<NeonQueryFunction<false, false>> {
   if (sql) return sql
@@ -40,6 +41,30 @@ async function initTable(): Promise<void> {
     })()
   }
   return initPromise
+}
+
+export async function initUsageLogTable(): Promise<void> {
+  if (!usageLogInitPromise) {
+    usageLogInitPromise = (async () => {
+      const s = await getSql()
+      await s`
+        CREATE TABLE IF NOT EXISTS credit_usage_logs (
+          id SERIAL PRIMARY KEY,
+          email TEXT NOT NULL,
+          action TEXT NOT NULL,
+          username TEXT,
+          credits INTEGER NOT NULL DEFAULT 0,
+          balance_after INTEGER NOT NULL,
+          reason TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `
+      await s`CREATE INDEX IF NOT EXISTS idx_usage_logs_email ON credit_usage_logs(email)`
+      await s`CREATE INDEX IF NOT EXISTS idx_usage_logs_action ON credit_usage_logs(email, action)`
+      await s`CREATE INDEX IF NOT EXISTS idx_usage_logs_created ON credit_usage_logs(created_at)`
+    })()
+  }
+  return usageLogInitPromise
 }
 
 function rowToBalance(row: Record<string, unknown>): CreditBalance {
@@ -208,11 +233,12 @@ export async function getPendingPurchase(email: string): Promise<PendingPurchase
   }
 }
 
-export async function consumeCredit(email: string): Promise<{ ok: boolean; balance?: CreditBalance; reason?: string }> {
+export async function consumeCredit(email: string, username?: string): Promise<{ ok: boolean; balance?: CreditBalance; reason?: string }> {
   const key = email.toLowerCase().trim()
   if (!key) return { ok: false, reason: 'NOT_FOUND' }
 
   await initTable()
+  await initUsageLogTable()
   const s = await getSql()
 
   // Check current credits first
@@ -226,6 +252,16 @@ export async function consumeCredit(email: string): Promise<{ ok: boolean; balan
     UPDATE credit_balances
     SET credits = credits - 1
     WHERE email = ${key} AND credits > 0
+  `
+
+  // Read back the actual balance after UPDATE (avoids race condition on balance_after)
+  const updated = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+  const balanceAfter = Number(updated[0]?.credits || 0)
+
+  // Write usage log for audit trail
+  await s`
+    INSERT INTO credit_usage_logs (email, action, username, credits, balance_after, reason)
+    VALUES (${key}, 'consume', ${username || null}, 1, ${balanceAfter}, 'evaluate')
   `
 
   // Read back the updated row
@@ -242,6 +278,7 @@ export async function refundCredit(email: string): Promise<void> {
   if (!key) return
 
   await initTable()
+  await initUsageLogTable()
   const s = await getSql()
 
   await s`
@@ -249,4 +286,56 @@ export async function refundCredit(email: string): Promise<void> {
     SET credits = credits + 1
     WHERE email = ${key}
   `
+
+  // Read back the actual balance after UPDATE (avoids race condition on balance_after)
+  const updated = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+  const balanceAfter = Number(updated[0]?.credits || 0)
+
+  // Write refund log
+  await s`
+    INSERT INTO credit_usage_logs (email, action, username, credits, balance_after, reason)
+    VALUES (${key}, 'refund', null, 1, ${balanceAfter}, 'evaluate_rollback')
+  `
+}
+
+/**
+ * 获取用户的积分使用次数（从日志表查询）
+ */
+export async function getUsageCountByEmail(email: string): Promise<number> {
+  const key = email.toLowerCase().trim()
+  if (!key) return 0
+
+  await initUsageLogTable()
+  const s = await getSql()
+
+  const rows = await s`
+    SELECT COUNT(*)::int AS count
+    FROM credit_usage_logs
+    WHERE email = ${key} AND action = 'consume' AND reason = 'evaluate'
+  `
+  return Number(rows[0]?.count || 0)
+}
+
+/**
+ * 批量获取多个用户的积分使用次数
+ */
+export async function getUsageCountsByEmails(emails: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>()
+  if (!emails.length) return result
+
+  await initUsageLogTable()
+  const s = await getSql()
+
+  const rows = await s`
+    SELECT email, COUNT(*)::int AS count
+    FROM credit_usage_logs
+    WHERE action = 'consume' AND reason = 'evaluate'
+    GROUP BY email
+  `
+  for (const r of rows as Array<Record<string, unknown>>) {
+    const email = String(r.email).toLowerCase().trim()
+    const count = Number(r.count)
+    if (email) result.set(email, count)
+  }
+  return result
 }

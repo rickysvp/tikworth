@@ -1,13 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Middleware is intentionally minimal.
- * Admin API routes (/api/tiktokmaster/*) use verifyAdminRequest() internally
- * via lib/admin-api-utils.ts for real JWT verification.
- * No token check is done here to avoid duplicating verification logic
- * across middleware and route handlers.
+ * API 鉴权中间件：对敏感 API 路由进行基本的 token 检查。
+ * 完整的 JWT 验证在路由处理器内部完成（verifySessionToken），
+ * 此处仅做快速前置检查，防止未授权请求进入业务逻辑。
+ * 
+ * 保护的路由：
+ * - /api/evaluate (POST)：评估账号
+ * - /api/history (GET)：用户历史记录
+ * - /api/credit/*：积分相关操作
+ * 
+ * 注意：管理后台路由 (/api/tiktokmaster/*) 使用独立的 verifyAdminRequest() 验证。
  */
-export async function middleware(_request: NextRequest) {
+const PROTECTED_API_PATTERNS = [
+  '/api/evaluate',
+  '/api/history',
+  '/api/credit/consume',
+  '/api/credit/refund',
+]
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const method = request.method
+
+  // 只对 POST /api/evaluate 和 GET /api/history 等敏感路由进行基本检查
+  const isProtectedRoute = PROTECTED_API_PATTERNS.some(
+    pattern => pathname === pattern
+  )
+
+  if (isProtectedRoute) {
+    // 对于 POST /api/evaluate，必须有 Authorization header
+    if (pathname === '/api/evaluate' && method === 'POST') {
+      const auth = request.headers.get('authorization')
+      if (!auth || !auth.startsWith('Bearer ')) {
+        return NextResponse.json(
+          { error: 'Authentication required', code: 'UNAUTHORIZED' },
+          { 
+            status: 401,
+            headers: { 'Cache-Control': 'no-store, max-age=0' }
+          }
+        )
+      }
+    }
+
+    // 对于 GET /api/history，必须有 Authorization header
+    if (pathname === '/api/history' && method === 'GET') {
+      const auth = request.headers.get('authorization')
+      if (!auth || !auth.startsWith('Bearer ')) {
+        return NextResponse.json(
+          { error: 'Authentication required', code: 'UNAUTHORIZED' },
+          { 
+            status: 401,
+            headers: { 'Cache-Control': 'no-store, max-age=0' }
+          }
+        )
+      }
+    }
+  }
+
   return NextResponse.next()
 }
 

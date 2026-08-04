@@ -5,6 +5,7 @@
 
 import type { NeonQueryFunction } from '@neondatabase/serverless'
 import { recordAuditLog } from '@/lib/analytics'
+import { initUsageLogTable } from '@/lib/credits-server'
 
 const DATABASE_URL = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').replace(/\s+/g, '')
 
@@ -42,6 +43,7 @@ export async function adminGrantCredits(
   reason: string,
 ): Promise<{ success: boolean; granted: number; totalCredits: number }> {
   await initTable()
+  await initUsageLogTable()
   const s = await getSql()
   let totalGranted = 0
 
@@ -55,6 +57,16 @@ export async function adminGrantCredits(
       VALUES (${key}, ${credits}, 0, '[]'::jsonb, ${Date.now()})
       ON CONFLICT (email) DO UPDATE SET
         credits = credit_balances.credits + ${credits}
+    `
+
+    // Read back actual balance after UPDATE
+    const updated = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+    const balanceAfter = Number(updated[0]?.credits || 0)
+
+    // Write usage log for audit trail
+    await s`
+      INSERT INTO credit_usage_logs (email, action, username, credits, balance_after, reason)
+      VALUES (${key}, 'grant', null, ${credits}, ${balanceAfter}, ${reason})
     `
 
     // Record audit log
@@ -78,6 +90,7 @@ export async function adminDeductCredits(
   reason: string,
 ): Promise<{ success: boolean; remainingCredits: number }> {
   await initTable()
+  await initUsageLogTable()
   const s = await getSql()
   const key = email.toLowerCase().trim()
   if (!key) throw new Error('Invalid email')
@@ -89,6 +102,16 @@ export async function adminDeductCredits(
     WHERE email = ${key}
   `
 
+  // Read back actual balance after UPDATE
+  const updated = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
+  const balanceAfter = Number(updated[0]?.credits || 0)
+
+  // Write usage log for audit trail
+  await s`
+    INSERT INTO credit_usage_logs (email, action, username, credits, balance_after, reason)
+    VALUES (${key}, 'admin_deduct', null, ${credits}, ${balanceAfter}, ${reason})
+  `
+
   await recordAuditLog({
     action: 'deduct_credits',
     target_email: key,
@@ -96,8 +119,7 @@ export async function adminDeductCredits(
     reason,
   })
 
-  const rows = await s`SELECT credits FROM credit_balances WHERE email = ${key}`
-  return { success: true, remainingCredits: Number(rows[0]?.credits || 0) }
+  return { success: true, remainingCredits: balanceAfter }
 }
 
 // ── 禁用用户 ──
