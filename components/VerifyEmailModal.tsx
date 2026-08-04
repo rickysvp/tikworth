@@ -11,7 +11,7 @@ import type { CreditBalance, CreditPackage } from '@/lib/credits'
 import { CREDIT_PACKAGES } from '@/lib/credits'
 import {
   getActiveEmail, setActiveEmail, setPendingEmail, clearPendingEmail,
-  fetchBalance, setSessionToken,
+  fetchBalance, setSessionToken, setPendingToken,
 } from '@/lib/credits-client'
 
 type Step = 'choose' | 'email' | 'code' | 'success'
@@ -149,12 +149,17 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
 
       clearPendingEmail()
       setActiveEmail(email.trim())
-      if (data.token) setSessionToken(data.token)
 
       if (data.requiresPayment && data.checkoutUrl) {
+        // 支付流程：token 存到 sessionStorage（临时），支付成功后才晋升为正式 token
+        // 防止用户不付款就拿到 token 去评估
+        if (data.token) setPendingToken(data.token)
         window.location.href = data.checkoutUrl
         return
       }
+
+      // DEV 模式 / 直接发放额度：token 存到 localStorage（正式）
+      if (data.token) setSessionToken(data.token)
 
       setBalance({
         email: email.trim(),

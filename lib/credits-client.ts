@@ -7,6 +7,7 @@ import type { CreditBalance } from './credits'
 
 const ACTIVE_EMAIL_KEY = 'tokvalue_active_email'
 const TOKEN_KEY = 'tokvalue_session_token'
+const PENDING_TOKEN_KEY = 'tokvalue_pending_token'
 const CODES_KEY = 'tokvalue_codes_v1'
 
 export function getActiveEmail(): string | null {
@@ -37,6 +38,29 @@ export function setSessionToken(token: string | null) {
     if (token) localStorage.setItem(TOKEN_KEY, token)
     else localStorage.removeItem(TOKEN_KEY)
   } catch {}
+}
+
+/** 临时存储 token（支付流程用，sessionStorage，浏览器关闭即清除） */
+export function setPendingToken(token: string | null) {
+  if (typeof window === 'undefined') return
+  try {
+    if (token) sessionStorage.setItem(PENDING_TOKEN_KEY, token)
+    else sessionStorage.removeItem(PENDING_TOKEN_KEY)
+  } catch {}
+}
+
+/** 读取临时 token 并晋升为正式 token（支付成功后调用） */
+export function promotePendingToken(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const pending = sessionStorage.getItem(PENDING_TOKEN_KEY)
+    if (pending) {
+      localStorage.setItem(TOKEN_KEY, pending)
+      sessionStorage.removeItem(PENDING_TOKEN_KEY)
+      return pending
+    }
+    return null
+  } catch { return null }
 }
 
 function authHeaders() {

@@ -34,7 +34,7 @@ import type { CreditBalance } from '@/lib/credits'
 
 import { useI18n, t } from '@/lib/i18n'
 import { CREDIT_PACKAGES } from '@/lib/credits'
-import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCreditsApi, setSessionToken } from '@/lib/credits-client'
+import { getActiveEmail, setActiveEmail, fetchBalance, getSessionToken, claimCreditsApi, setSessionToken, promotePendingToken } from '@/lib/credits-client'
 import { ParticleBackground } from '@/components/ParticleBackground'
 import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 import { ShareModal } from '@/components/ShareModal'
@@ -320,6 +320,8 @@ function HomePageContent() {
     if (paid === 'success' && paidEmail && !paidHandled.current) {
       paidHandled.current = true
       setActiveEmail(paidEmail)
+      // 支付成功：将 sessionStorage 中的临时 token 晋升为正式 token
+      promotePendingToken()
       setIsLoggedIn(true)
       setPaymentSuccess(true)
 
