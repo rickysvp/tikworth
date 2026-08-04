@@ -16,9 +16,11 @@ interface Props {
   balanceLoading?: boolean
   /** 预选账号名（用于弹窗内提示） */
   username?: string
+  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved report */
+  mode?: 'evaluate' | 'unlock'
 }
 
-export function PaidWallModal({ open, onClose, onUnlock, result, existingBalance, isUnlocking, balanceLoading, username }: Props) {
+export function PaidWallModal({ open, onClose, onUnlock, result, existingBalance, isUnlocking, balanceLoading, username, mode = 'evaluate' }: Props) {
   // ESC 关闭 + 锁定滚动
   useEffect(() => {
     if (!open) return
@@ -38,7 +40,7 @@ export function PaidWallModal({ open, onClose, onUnlock, result, existingBalance
       className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4 sm:p-6"
       onClick={(e) => { if (e.target === e.currentTarget && !isUnlocking) onClose() }}
     >
-      <div className="relative w-full max-w-2xl my-4 sm:my-8">
+      <div className="relative w-full max-w-2xl my-4 sm:my-8 max-h-[90vh] flex flex-col">
         {/* 关闭按钮 */}
         <button
           onClick={() => { if (!isUnlocking) onClose() }}
@@ -50,21 +52,25 @@ export function PaidWallModal({ open, onClose, onUnlock, result, existingBalance
 
         {/* 账号提示（可选） */}
         {username && (
-          <div className="rounded-t-2xl border-x border-t border-[#00F2EA]/30 bg-[#00F2EA]/5 px-5 py-3 text-center">
+          <div className="rounded-t-2xl border-x border-t border-[#00F2EA]/30 bg-[#00F2EA]/5 px-5 py-3 text-center flex-shrink-0">
             <p className="text-sm text-neutral-300">
-              Unlock <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s full report
+              {mode === 'unlock'
+                ? <>View <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s saved report</>
+                : <>Unlock <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s full report</>
+              }
             </p>
           </div>
         )}
 
         {/* PaidWall 主体 */}
-        <div className={username ? 'rounded-b-2xl border-x border-b border-neutral-800 bg-[#0f0f0f]' : 'rounded-2xl border border-neutral-800 bg-[#0f0f0f]'}>
+        <div className={username ? 'rounded-b-2xl border-x border-b border-neutral-800 bg-[#0f0f0f] flex-1 min-h-0' : 'rounded-2xl border border-neutral-800 bg-[#0f0f0f] flex-1 min-h-0'}>
           <PaidWall
             onUnlock={onUnlock}
             result={result}
             existingBalance={existingBalance}
             isUnlocking={isUnlocking}
             balanceLoading={balanceLoading}
+            mode={mode}
           />
         </div>
       </div>

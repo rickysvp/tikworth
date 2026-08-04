@@ -15,7 +15,7 @@ const en = {
     brandName: 'TokValue',
     loading: 'Loading...',
     analyzing: 'Analyzing...',
-    evaluations: 'evaluations',
+    evaluations: 'reports',
     evaluate: 'Evaluate',
     save: 'Save',
     cancel: 'Cancel',
@@ -91,8 +91,8 @@ const en = {
     blog: 'Blog',
     howItWorks: 'How It Works',
     verifyEmail: 'Verify Email',
-    creditsAdded: 'Evaluations Added',
-    loadingCredits: 'Loading evaluations...',
+    creditsAdded: 'Reports Added',
+    loadingCredits: 'Loading reports...',
   },
 
   // ── Home Page / Landing ──
@@ -301,16 +301,16 @@ const en = {
     },
     pricing: {
       title: 'Simple, Transparent Pricing',
-      subtitle: 'One-time purchase. No auto-renewal. Evaluations are linked to your email and work across all devices.',
+      subtitle: 'One-time purchase. No auto-renewal. Reports are linked to your email and work across all devices.',
       footer: ['No auto-renewal', 'Email-linked', 'Cross-device access'],
       trustBar: [
         { icon: 'zap', title: 'Instant Delivery', desc: 'Unlock the full report seconds after purchase' },
-        { icon: 'mail', title: 'Email-Linked', desc: 'Access your evaluations from any device' },
-        { icon: 'card', title: 'No Subscription', desc: 'One-time payment, credits never expire' },
+        { icon: 'mail', title: 'Email-Linked', desc: 'Access your reports from any device' },
+        { icon: 'card', title: 'No Subscription', desc: 'One-time payment, reports never expire' },
       ],
       allPlansInclude: {
         title: 'Every plan includes everything',
-        subtitle: 'All packages unlock the full evaluation suite. The only difference is how many evaluations you get.',
+        subtitle: 'All packages unlock the full analysis suite. The only difference is how many reports you get.',
         features: {
           scoring: '10-Dimension AI Scoring',
           brandDeal: 'Brand Deal Pricing Engine',
@@ -358,7 +358,7 @@ const en = {
         },
         q2: {
           q: 'How much does TokValue cost?',
-          a: 'Each evaluation uses 1 evaluation credit. Evaluations start at $9 for a single evaluation, $29 for 6 evaluations ($4.83 each), and $99 for 30 evaluations ($3.30 each). No subscription. No auto-renewal. Evaluations are linked to your email and accessible across all your devices.',
+          a: 'Each report uses 1 credit. Credits start at $9 for a single report, $29 for 6 reports ($4.83 each), and $99 for 30 reports ($3.30 each). No subscription. No auto-renewal. Reports are linked to your email and accessible across all your devices.',
         },
         q3: {
           q: 'How does the TikTok account valuation work?',
@@ -370,11 +370,11 @@ const en = {
         },
         q5: {
           q: 'Is my TikTok data secure?',
-          a: 'We access only publicly available TikTok profile data — the same information anyone can see by visiting a TikTok profile. We never require your TikTok password, login credentials, or any private account access. The only personal information we store is the email address you use for evaluation linking, which allows you to access your evaluations across devices. We do not sell, share, or analyze your personal data for any purpose beyond providing the evaluation service.',
+          a: 'We access only publicly available TikTok profile data — the same information anyone can see by visiting a TikTok profile. We never require your TikTok password, login credentials, or any private account access. The only personal information we store is the email address you use for report linking, which allows you to access your reports across devices. We do not sell, share, or analyze your personal data for any purpose beyond providing the evaluation service.',
         },
         q6: {
-          q: 'Can I use my evaluations on multiple devices?',
-          a: 'Yes. Your evaluations are linked to your email address, not your device or browser. Simply verify your email on any device — desktop, laptop, tablet, or phone — and your full evaluation balance will be available immediately. No app installation required; everything works in your browser.',
+          q: 'Can I use my reports on multiple devices?',
+          a: 'Yes. Your reports are linked to your email address, not your device or browser. Simply verify your email on any device — desktop, laptop, tablet, or phone — and your full credit balance will be available immediately. No app installation required; everything works in your browser.',
         },
         q7: {
           q: 'Which countries do you support?',
@@ -386,7 +386,7 @@ const en = {
         },
         q9: {
           q: 'Do I get a downloadable report?',
-          a: 'Once your evaluation is complete, your full report is displayed immediately in your browser with all 10 analysis modules unlocked. You can export the complete report as a professional PDF (brand-deck ready) or PNG image — both included at no extra cost. You can also save the evaluation to your Tracker for ongoing monitoring, and revisit it anytime from your History page. All paid evaluations are permanently accessible as long as you use the same verified email.',
+          a: 'Once your report is complete, your full report is displayed immediately in your browser with all 10 analysis modules unlocked. You can export the complete report as a professional PDF (brand-deck ready) or PNG image — both included at no extra cost. You can also save the report to your Tracker for ongoing monitoring, and revisit it anytime from your History page. All paid reports are permanently accessible as long as you use the same verified email.',
         },
       },
     },
@@ -424,22 +424,28 @@ const en = {
     badge: 'Deep Analysis Locked',
     title: 'Unlock {username}\'s Complete TikTok Account Report',
     subtitle: 'Get all 10 analysis modules, instant generation, and an export-ready PDF report.',
-    loadingCredits: 'Loading evaluations...',
-    creditsRemaining: '{count} evaluations remaining ({email})',
+    // Unlock mode (for previously evaluated accounts)
+    unlockTitle: 'Unlock {username}\'s Saved TikTok Account Report',
+    unlockSubtitle: 'Access your previously generated report with all 10 analysis modules, PDF export, and more.',
+    unlockHeaderHint: 'View @{username}\'s saved report',
+    // Evaluate mode (for new account evaluation)
+    evaluateHeaderHint: 'Unlock @{username}\'s full report',
+    loadingCredits: 'Loading reports...',
+    creditsRemaining: '{count} reports remaining ({email})',
     trustCreators: '{count} creators have unlocked',
     trustInstant: 'Instant · No waiting',
-    trustCredits: 'Evaluations never expire · Accessible across devices via email',
-    stepEmail: 'Link your evaluations via email',
+    trustCredits: 'Reports never expire · Accessible across devices via email',
+    stepEmail: 'Link your reports via email',
     stepCode: 'Check your email for the code',
     stepSuccess: 'Unlocked',
-    hasCreditsHint: 'You have evaluations available. Unlock this report now.',
-    useCreditUnlock: 'Use 1 evaluation to unlock ({remaining} remaining)',
+    hasCreditsHint: 'You have reports available. Unlock this report now.',
+    useCreditUnlock: 'Use 1 report to unlock ({remaining} remaining)',
     unlocking: 'Unlocking...',
     choosePlan: 'Choose your plan',
     planSubtitle: 'One-time purchase · No auto-renewal · Cross-device email access',
-    ctaButton: '${price} Unlock {count} evaluations',
+    ctaButton: '{price} USD Unlock {count} reports',
     emailTitle: 'Link Your Email',
-    emailDesc: 'Used to link your evaluations. Access your evaluations on any device via email verification.',
+    emailDesc: 'Used to link your reports. Access your reports on any device via email verification.',
     emailPlaceholder: 'your@email.com',
     sendCode: 'Send Verification Code',
     backToPackages: 'Back to packages',
@@ -452,21 +458,21 @@ const en = {
     changeEmail: 'Change email',
     resendCode: 'Resend code',
     resendIn: 'Resend in {s}s',
-    purchaseSummary: 'Package: {label} · ${price} · {count} evaluations',
+    purchaseSummary: 'Package: {label} · {price} USD · {count} reports',
     successTitle: 'Unlocked!',
-    successMessage: 'Your email {email} is linked with {balance} evaluations remaining.',
+    successMessage: 'Your email {email} is linked with {balance} reports remaining.',
     successLoading: 'Loading your full report...',
     footerGuarantees: [
-      'Email-linked evaluations',
+      'Email-linked reports',
       'No registration · Code-only login',
       'No auto-renewal',
       'Cross-device recovery',
     ],
     // Package features
     packageFeatures: {
-      pack1: ['1 complete evaluation', 'All 10 analysis modules', 'PDF export'],
-      pack6: ['6 complete evaluations', 'Cross-device recovery', 'PDF export', 'Priority support'],
-      pack30: ['30 complete evaluations', 'Cross-device sync', 'PDF export', 'Early access + VIP support'],
+      pack1: ['1 complete report', 'All 10 analysis modules', 'PDF export'],
+      pack6: ['6 complete reports', 'Cross-device recovery', 'PDF export', 'Priority support'],
+      pack30: ['30 complete reports', 'Cross-device sync', 'PDF export', 'Early access + VIP support'],
     },
     // Unlock module cards (10 cards shown in the paywall)
     unlockModules: [
@@ -492,8 +498,9 @@ const en = {
   // ── Verify Email Modal ──
   verifyEmail: {
     brandSubtitle: 'Professional TikTok account valuation reports trusted by 12,000+ creators and brands.',
+    // Evaluate mode (new account evaluation)
     returnLabel: 'Already have an account?',
-    returnDesc: 'Verify your email to access your existing evaluations.',
+    returnDesc: 'Verify your email to access your existing reports.',
     verifyExisting: 'Verify Existing Email',
     newUserLabel: 'New to TokValue?',
     newUserDesc: 'Get your first complete TikTok evaluation report.',
@@ -503,12 +510,12 @@ const en = {
       { icon: 'TrendingUp', title: 'Growth Roadmap', desc: '12-month revenue projection & strategy' },
     ],
     chooseTitle: 'Unlock Your TikTok Account Report',
-    chooseSubtitle: 'One evaluation = one complete 10-module report. No subscription, no auto-renewal.',
-    creditsAvailable: '{count} evaluations available ({email})',
-    useCreditUnlock: 'Unlock with 1 Evaluation',
+    chooseSubtitle: 'One report = one complete 10-module analysis. No subscription, no auto-renewal.',
+    creditsAvailable: '{count} reports available ({email})',
+    useCreditUnlock: 'Use 1 report to unlock',
     continueWithEmail: 'Get Started — Choose Package',
     emailTitle: 'Verify Your Email',
-    emailSubtitle: 'Enter your email to link your evaluations',
+    emailSubtitle: 'Enter your email to link your reports',
     emailPlaceholder: 'your@email.com',
     sendCode: 'Send Verification Code',
     noRegistration: 'No registration needed. Code-only login.',
@@ -520,15 +527,22 @@ const en = {
     changeEmail: 'Change email',
     resendCode: 'Resend code',
     resendIn: 'Resend in {s}s',
-    packageSummary: 'Package: {label} · ${price} · {count} evals',
+    packageSummary: 'Package: {label} · {price} USD · {count} reports',
     successTitle: 'Unlocked!',
-    successMessage: '{email} has {balance} evaluations remaining',
+    successMessage: '{email} has {balance} reports remaining',
     successClosing: 'Auto-closing...',
     dialogAria: 'Verify your email to unlock',
     invalidEmail: 'Please enter a valid email address',
     sendFailed: 'Failed to send verification code',
     verifyFailed: 'Verification failed',
     digitAria: 'Digit {n}',
+    // Unlock mode (unlock previously saved report)
+    unlockChooseTitle: 'Unlock Saved TikTok Report',
+    unlockChooseSubtitle: 'Access your previously generated report with all 10 modules.',
+    unlockCreditsAvailable: '{count} reports available ({email})',
+    unlockUseCreditUnlock: 'Use 1 report to view',
+    unlockPackageSummary: 'Package: {label} · {price} USD · {count} reports',
+    unlockSuccessMessage: '{email} has {balance} reports remaining',
   },
 
   // ── Evaluation Report Sections ──
@@ -608,8 +622,8 @@ const en = {
     },
     // Purchase required
     purchaseRequired: {
-      usesCredit: 'This evaluation uses 1 evaluation credit',
-      purchaseToView: 'Purchase evaluations to view the full report',
+      usesCredit: 'This report uses 1 credit',
+      purchaseToView: 'Purchase credits to view the full report',
     },
     // Export & Share
     exportReport: 'Export Report',
@@ -829,13 +843,13 @@ const en = {
     D: 'Emerging Value · Foundation Building',
     E: 'Limited Value · Strategic Rebuild Needed',
     F: 'Inactive Value · Account Restructuring Advised',
-    },
+  },
 
   // ── Credit Packages ──
   creditPackages: {
-    pack1: { label: 'Single', badge: undefined as string | undefined },
+    pack1: { label: 'Single', badge: undefined },
     pack6: { label: 'Growth', badge: 'Best Value' },
-    pack30: { label: 'Studio', badge: undefined as string | undefined },
+    pack30: { label: 'Studio', badge: undefined },
   },
 
   // ── API Error Messages ──
@@ -850,7 +864,7 @@ const en = {
       UNAUTHORIZED: 'Please sign in to continue.',
       CONSUME_ERROR: 'Failed to process credit transaction.',
       BALANCE_ERROR: 'Failed to retrieve credit balance.',
-      NO_CREDITS: 'Insufficient evaluations. Please purchase evaluations to continue.',
+      NO_CREDITS: 'Insufficient reports. Please purchase credits to continue.',
       SESSION_EXPIRED: 'Your session has expired. Please verify your email again.',
       INVALID_EMAIL: 'Please enter a valid email address.',
       INVALID_PACKAGE: 'Invalid package selected.',
@@ -910,7 +924,7 @@ const en = {
       VERIFY_NOT_FOUND: 'No verification code found for this email. Please request a new code.',
       VERIFY_TOO_MANY: 'Too many failed attempts. Please request a new code.',
       VERIFY_ERROR: 'Verification failed. Please try again later.',
-      VERIFY_SUCCESS: 'Verification successful! {count} evaluations have been added.',
+      VERIFY_SUCCESS: 'Verification successful! {count} reports have been added.',
       INVALID_CODE: 'Please enter the 6-digit verification code.',
       NO_EMAIL: 'Please enter your email address.',
     },
@@ -919,7 +933,7 @@ const en = {
       NOT_CONFIGURED: 'Payment system is not configured.',
       WEBHOOK_SECRET_MISSING: 'Webhook secret is not configured.',
       INVALID_CREDITS: 'Invalid evaluation amount.',
-      FAILED_GRANT: 'Failed to grant evaluations.',
+      FAILED_GRANT: 'Failed to grant reports.',
       SIGNATURE_FAILED: 'Webhook signature verification failed.',
       CHECKOUT_FAILED: 'Failed to create checkout session.',
     },
@@ -963,7 +977,7 @@ const en = {
   // ── History Page ──
   history: {
     title: 'TikTok Account Evaluation History',
-    description: 'View your previously evaluated TikTok accounts. Re-evaluating within 24 hours won\'t consume additional evaluations.',
+    description: 'View your previously evaluated TikTok accounts. Re-evaluating within 24 hours won\'t consume additional credits.',
     backToEvaluation: 'Back to Evaluation',
     emptyTitle: 'No evaluation records yet',
     emptyCta: 'Check a TikTok Account',
@@ -1002,10 +1016,10 @@ const en = {
     sendCode: {
       subject: 'Your TokValue verification code: {code}',
       title: 'TokValue Verification Code',
-      body: 'You purchased the {label} package ({credits} evaluations, ${price}). Your verification code is:',
-      footer: 'This code is valid for 10 minutes. Do not share it with anyone. Once verified, your evaluations will be linked to your email and accessible across all devices.',
+      body: 'You purchased the {label} package ({credits} reports, {price} USD). Your verification code is:',
+      footer: 'This code is valid for 10 minutes. Do not share it with anyone. Once verified, your reports will be linked to your email and accessible across all devices.',
     },
-    creemDescription: 'TokValue {credits} evaluations',
+    creemDescription: 'TokValue {credits} reports',
   },
 } as const
 

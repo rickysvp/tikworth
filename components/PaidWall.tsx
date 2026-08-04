@@ -25,6 +25,8 @@ interface PaidWallProps {
   isUnlocking?: boolean
   /** Loading state for initial balance fetch */
   balanceLoading?: boolean
+  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved report */
+  mode?: 'evaluate' | 'unlock'
 }
 
 type Step = 'choose' | 'email' | 'code' | 'success'
@@ -42,8 +44,9 @@ const UNLOCK_MODULES = [
   { icon: FileDown,     color: 'text-[#00F2EA]', bg: 'bg-[#00F2EA]/10' },
 ]
 
-export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balanceLoading }: PaidWallProps) {
+export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balanceLoading, mode = 'evaluate' }: PaidWallProps) {
   const { dict } = useI18n()
+  const isUnlockMode = mode === 'unlock'
   const [step, setStep] = useState<Step>('choose')
   const [selectedPkg, setSelectedPkg] = useState<CreditPackage>(CREDIT_PACKAGES[1])
   const [email, setEmail] = useState('')
@@ -216,12 +219,12 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
   }
 
   return (
-    <div className="relative rounded-3xl border border-neutral-800 bg-[#0a0a0a] overflow-hidden bg-mesh-gradient-strong isolate animate-fade-in-up">
+    <div className="relative rounded-3xl border border-neutral-800 bg-[#0a0a0a] overflow-hidden bg-mesh-gradient-strong isolate animate-fade-in-up max-h-[calc(90vh-8rem)] flex flex-col">
       {/* 顶部光斑装饰 */}
       <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-48 bg-[#FF0050]/15 rounded-full blur-3xl" />
       <div className="pointer-events-none absolute top-1/3 -right-24 w-72 h-72 bg-[#00F2EA]/10 rounded-full blur-3xl" />
 
-      <div className="relative px-6 sm:px-10 pt-8 pb-10">
+      <div className="relative px-6 sm:px-10 pt-8 pb-6 overflow-y-auto flex-1">
         {/* ── 标题区 ── */}
         <div className="text-center">
           <div className="inline-flex items-center gap-1.5 mb-3">
@@ -230,10 +233,10 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
             <Lock className="h-3.5 w-3.5 text-[#FF0050]" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-            {t(dict.paidWall.title, { username: username || 'this account' })}
+            {t(isUnlockMode ? dict.paidWall.unlockTitle : dict.paidWall.title, { username: username || 'this account' })}
           </h2>
           <p className="mt-2 text-sm text-neutral-400">
-            {dict.paidWall.subtitle}
+            {isUnlockMode ? dict.paidWall.unlockSubtitle : dict.paidWall.subtitle}
           </p>
           {balanceLoading && !balance && step === 'choose' && (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-700 bg-neutral-900/50 px-3 py-1 text-xs">
@@ -375,7 +378,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                             <span className={`text-3xl font-black ${isSelected ? 'text-white' : 'text-neutral-200'}`}>{pkg.price}</span>
                           </div>
                           <div className="mt-1 text-sm font-bold text-white">{pkg.label}</div>
-                          <div className="mt-0.5 text-[11px] text-neutral-500">{pkg.credits} evaluations · {pkg.perUnit}</div>
+                          <div className="mt-0.5 text-[11px] text-neutral-500">{pkg.credits} reports · {pkg.perUnit}</div>
                           <div className="mt-3 space-y-1">
                             {(dict.paidWall.packageFeatures[pkg.id as keyof typeof dict.paidWall.packageFeatures] || []).map((f, i) => (
                               <div key={i} className="flex items-start gap-1.5 text-[11px] text-neutral-400">

@@ -21,14 +21,17 @@ interface VerifyEmailModalProps {
   onClose: () => void
   onUnlock: () => void
   existingBalance?: CreditBalance | null
+  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved report */
+  mode?: 'evaluate' | 'unlock'
 }
 
 const VALUE_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   DollarSign, Shield, TrendingUp,
 }
 
-export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }: VerifyEmailModalProps) {
+export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, mode = 'evaluate' }: VerifyEmailModalProps) {
   const { dict } = useI18n()
+  const isUnlockMode = mode === 'unlock'
   const [step, setStep] = useState<Step>('choose')
   const [selectedPkg, setSelectedPkg] = useState<CreditPackage>(CREDIT_PACKAGES[1])
   const [email, setEmail] = useState('')
@@ -325,8 +328,12 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
                   <div className="flex-1 h-px bg-neutral-800" />
                 </div>
                 <div className="text-center mb-4">
-                  <h2 className="text-lg font-bold text-white">{dict.verifyEmail.chooseTitle}</h2>
-                  <p className="mt-1 text-xs text-neutral-400">{dict.verifyEmail.chooseSubtitle}</p>
+                  <h2 className="text-lg font-bold text-white">
+                    {isUnlockMode ? dict.verifyEmail.unlockChooseTitle : dict.verifyEmail.chooseTitle}
+                  </h2>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    {isUnlockMode ? dict.verifyEmail.unlockChooseSubtitle : dict.verifyEmail.chooseSubtitle}
+                  </p>
                 </div>
 
                 {/* Value Proposition Cards */}
@@ -354,7 +361,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
                 <div className="mb-4 rounded-xl border border-[#00F2EA]/30 bg-[#00F2EA]/5 p-4 text-center">
                   <div className="flex items-center justify-center gap-1.5 text-sm text-[#00F2EA]">
                     <Sparkles className="h-4 w-4" />
-                    <span className="font-semibold">{t(dict.verifyEmail.creditsAvailable, { count: balance.credits, email: balance.email })}</span>
+                    <span className="font-semibold">{t(isUnlockMode ? dict.verifyEmail.unlockCreditsAvailable : dict.verifyEmail.creditsAvailable, { count: balance.credits, email: balance.email })}</span>
                   </div>
                   <button
                     onClick={() => { onClose(); onUnlock() }}
@@ -362,7 +369,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
                   >
                     <span className="flex items-center justify-center gap-2">
                       <Zap className="h-4 w-4" />
-                      {dict.verifyEmail.useCreditUnlock}
+                      {isUnlockMode ? dict.verifyEmail.unlockUseCreditUnlock : dict.verifyEmail.useCreditUnlock}
                     </span>
                   </button>
                   <button
@@ -404,7 +411,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
                             <span className={`text-2xl font-black ${isSelected ? 'text-white' : 'text-neutral-200'}`}>{pkg.price}</span>
                           </div>
                           <div className="mt-0.5 text-xs font-bold text-white">{pkgDict?.label ?? pkg.label}</div>
-                          <div className="text-[10px] text-neutral-500">{pkg.credits} evaluations</div>
+                          <div className="text-[10px] text-neutral-500">{pkg.credits} reports · {pkg.perUnit}</div>
                         </button>
                       )
                     })}
@@ -415,7 +422,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
                     className="w-full group relative overflow-hidden rounded-xl bg-gradient-to-r from-[#FF0050] to-[#ff2d6a] py-3 text-sm font-bold text-white shadow-lg shadow-[#FF0050]/20 hover:shadow-xl hover:shadow-[#FF0050]/30 transition-all"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
-                      {dict.verifyEmail.continueWithEmail}
+                      {t(dict.paidWall.ctaButton, { price: selectedPkg.price, count: selectedPkg.credits })}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
@@ -543,7 +550,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
               </div>
 
               <div className="mt-3 rounded-lg bg-neutral-900/50 px-3 py-2 text-center text-[11px] text-neutral-500">
-                {t(dict.verifyEmail.packageSummary, { label: selectedPkg.label, price: selectedPkg.price, count: selectedPkg.credits })}
+                {t(isUnlockMode ? dict.verifyEmail.unlockPackageSummary : dict.verifyEmail.packageSummary, { label: selectedPkg.label, price: selectedPkg.price, count: selectedPkg.credits })}
               </div>
             </div>
           )}
@@ -556,7 +563,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance }:
               </div>
               <h2 className="text-xl font-bold text-white">{dict.verifyEmail.successTitle}</h2>
               <p className="mt-2 text-sm text-neutral-400">
-                {t(dict.verifyEmail.successMessage, { email, balance: successBalance ?? 0 })}
+                {t(isUnlockMode ? dict.verifyEmail.unlockSuccessMessage : dict.verifyEmail.successMessage, { email, balance: successBalance ?? 0 })}
               </p>
               <p className="mt-3 text-xs text-neutral-500">{dict.verifyEmail.successClosing}</p>
             </div>

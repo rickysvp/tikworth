@@ -82,8 +82,10 @@ function HomePageContent() {
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
+  const [verifyModalMode, setVerifyModalMode] = useState<'evaluate' | 'unlock'>('evaluate')
   const [showShareModal, setShowShareModal] = useState(false)
   const [showPaidWallModal, setShowPaidWallModal] = useState(false)
+  const [paidWallMode, setPaidWallMode] = useState<'evaluate' | 'unlock'>('evaluate')
   const [evaluatingModal, setEvaluatingModal] = useState<{
     open: boolean
     status: EvaluatingStatus
@@ -232,6 +234,7 @@ function HomePageContent() {
     const token = getSessionToken()
     if (!token) {
       pendingUsername.current = target
+      setPaidWallMode('evaluate')
       setNeedPurchase(true)
       setShowPaidWallModal(true)
       return
@@ -268,6 +271,7 @@ function HomePageContent() {
         if (res.status === 402) {
           // 额度不足或未购买：弹窗收尾后弹出付费墙
           setEvaluatingModal(prev => ({ ...prev, status: 'completing' }))
+          setPaidWallMode('evaluate')
           setNeedPurchase(true)
           setShowPaidWallModal(true)
         } else {
@@ -499,7 +503,7 @@ function HomePageContent() {
               </>
             ) : (
               <button
-                onClick={() => setShowVerifyModal(true)}
+                onClick={() => { setVerifyModalMode('evaluate'); setShowVerifyModal(true) }}
                 className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#FF0050] to-[#ff2d6a] px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-[#FF0050]/20 hover:shadow-xl hover:shadow-[#FF0050]/30 transition-all"
               >
                 <span className="relative z-10 flex items-center gap-1.5">
@@ -595,6 +599,7 @@ function HomePageContent() {
           <RecentEvaluations onSelect={(name) => {
             setUsername(name)
             pendingUsername.current = name
+            setPaidWallMode('unlock')
             setNeedPurchase(true)
             setShowPaidWallModal(true)
           }} />
@@ -905,13 +910,13 @@ function HomePageContent() {
                         <span className="text-5xl font-black text-white tracking-tight">{pkg.price}</span>
                       </div>
                       <p className="text-sm text-neutral-500">
-                        <span className="text-white font-semibold">{pkg.credits}</span> evaluations
+                        <span className="text-white font-semibold">{pkg.credits}</span> reports
                       </p>
                       <p className="text-xs text-neutral-600 mt-0.5">{pkg.perUnit}</p>
 
                       {/* CTA */}
                       <button
-                        onClick={() => { setShowVerifyModal(true) }}
+                        onClick={() => { setVerifyModalMode('evaluate'); setShowVerifyModal(true) }}
                         className={`mt-5 w-full rounded-xl py-3 text-sm font-semibold transition-all ${
                           pkg.highlight
                             ? 'bg-[#FF0050] text-white hover:bg-[#e60049] shadow-lg shadow-[#FF0050]/20'
@@ -985,6 +990,7 @@ function HomePageContent() {
         isUnlocking={isUnlocking}
         balanceLoading={balanceLoading}
         username={pendingUsername.current || undefined}
+        mode={paidWallMode}
       />
 
       {/* Evaluating Modal — 评估中动态进度弹窗 */}
@@ -1449,6 +1455,7 @@ function HomePageContent() {
         onClose={() => setShowVerifyModal(false)}
         onUnlock={handleUnlock}
         existingBalance={creditBalance}
+        mode={verifyModalMode}
       />
       {result && (
         <ShareModal
