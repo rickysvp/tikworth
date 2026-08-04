@@ -429,7 +429,7 @@ export const post9: BlogPost = {
 
 Every week, creators ask us: "How much is my TikTok account worth?" And every week, the same pattern emerges — they lead with follower count, and we have to explain why follower count barely matters.
 
-Here's the reality: a 500,000-follower comedy account with a 1.5% engagement rate earns $18,000–$24,000 per year in brand deals. An 80,000-follower beauty account with a 6.3% engagement rate earns $120,000–$150,000 per year.
+**📊 Related:** [En: a 500,000-follower comedy account with a 1.5% engagement rate earns $18,000–$24,000 per year in brand deals. An 80,000-follower beauty account with a 6.3% engagement rate earns $120,000–$150,000 per year.
 
 The comedy account has 6x more followers. The beauty account is worth 6–8x more money. This gap isn't unusual — it's the fundamental rule of TikTok account valuation that most calculators get completely wrong.
 
