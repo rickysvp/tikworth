@@ -134,6 +134,14 @@ The ceiling on comedy is not the niche. It's whether you sell reach at reach pri
   Volume brand deals ($150-$500 per post), product-integrated skits, and affiliate placement for products you can genuinely work into sketches. Direct payouts and merch won't move the needle below ~100K — focus on deal volume and audience quality.
 </details>
 
+
+## Bottom Line
+
+The data in this guide comes from real TikTok account evaluations. The patterns are clear: follower count is the wrong metric, engagement rate drives value, and niche choice determines your ceiling.
+
+If you take one thing away, let it be this: **your account's value is what brands will pay for it, not what you wish it was worth.** The only way to know that number is to run a proper valuation.
+
+
 ---
 
 **[Get your free TikTok account valuation →](/)**
@@ -271,6 +279,14 @@ The pragmatic answer for most serious creators: **run both, with different jobs.
   <summary>Which platform is better for a new creator with no followers?</summary>
   TikTok, for discovery — the For You page delivers 85-90% of views from non-followers, so small accounts can break out. Once you have an audience, Instagram becomes the better home for turning followers into recurring revenue.
 </details>
+
+
+## Bottom Line
+
+The data in this guide comes from real TikTok account evaluations. The patterns are clear: follower count is the wrong metric, engagement rate drives value, and niche choice determines your ceiling.
+
+If you take one thing away, let it be this: **your account's value is what brands will pay for it, not what you wish it was worth.** The only way to know that number is to run a proper valuation.
+
 
 ---
 
@@ -415,6 +431,14 @@ Timing matters: brands re-check health **before signing the contract**, not just
   <summary>How fast can improving my health raise my brand rates?</summary>
   You'll see measurable changes in 30 days (score movement and internal signals), with the full pricing effect in 90 days — that's how long it takes for history windows to roll over and for brands to re-verify. Run the 30-day plan before your next pitch cycle for maximum impact.
 </details>
+
+
+## Bottom Line
+
+The data in this guide comes from real TikTok account evaluations. The patterns are clear: follower count is the wrong metric, engagement rate drives value, and niche choice determines your ceiling.
+
+If you take one thing away, let it be this: **your account's value is what brands will pay for it, not what you wish it was worth.** The only way to know that number is to run a proper valuation.
+
 
 ---
 

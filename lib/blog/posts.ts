@@ -188,6 +188,34 @@ Three trends are reshaping account valuation this year:
 
 **3. AI Is Raising the Floor.** AI tools mean a solo creator can now output at the level of a small production team. We don't score "AI usage" directly, but the effects show up in our quality layer — consistent cadence, higher content volume, better editing.
 
+## Bottom Line
+
+Your TikTok account's value isn't what you think it is. It's not your follower count, your likes, or your viral hits. It's what brands are willing to pay for access to your audience — and that number depends on engagement rate, niche, region, and a dozen other factors most calculators ignore.
+
+The creators who maximize their value don't just post content. They understand their numbers, track their metrics, and negotiate from data. That's the gap between a $10K/year account and a $100K/year account.
+
+## FAQ
+
+<details>
+<summary>How much is a TikTok account with 100K followers worth?</summary>
+A 100K-follower account typically earns $1,000-$5,000 per sponsored post, or $24,000-$120,000/year in brand deals depending on engagement rate and niche. Beauty/fitness accounts at 100K with 5%+ ER can reach $100K+ annually.
+</details>
+
+<details>
+<summary>Does follower count or engagement matter more for TikTok value?</summary>
+Engagement rate matters 3-5x more than follower count. A 50K account with 7% ER is worth more than a 500K account with 1% ER. Brands pay for engaged audiences, not passive follower numbers.
+</details>
+
+<details>
+<summary>What is the best niche for TikTok monetization?</summary>
+Finance ($30 CPM), Tech ($22 CPM), and Beauty ($20 CPM) are the highest-paying niches. Comedy/Entertainment ($10 CPM) has the lowest per-follower value despite having the largest audiences.
+</details>
+
+<details>
+<summary>How does TikTok Shop affect account value?</summary>
+Commerce-ready accounts (TikTok Shop, Amazon Associates, Shopify) get a 20-40% valuation premium. TokValue's scoring engine now treats commerce signals as a separate value dimension.
+</details>
+
 ---
 
 Your TikTok account isn't just a hobby — it's an asset with measurable value. Whether you're planning to monetize, negotiate brand deals, or even sell your account, knowing your real valuation is the first step.
