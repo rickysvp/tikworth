@@ -84,12 +84,14 @@ async function initDb(): Promise<boolean> {
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS ip_hash TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_agent TEXT`
       await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer TEXT`
+      await sql`ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS hostname TEXT`
       // 旧表可能存在 event_name 列（历史 schema），所有读写已统一为 event_type。
       // 这里仅在列存在时清理 NOT NULL 约束，避免历史 INSERT 失败；列不存在时静默跳过。
       // 注意：不再做 UPDATE event_name（列不存在时会抛错导致 initDb 整体失败）。
       try { await sql`ALTER TABLE analytics_events ALTER COLUMN event_name DROP NOT NULL` } catch { /* 列不存在，无需迁移 */ }
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_analytics_hostname ON analytics_events(hostname)`
 
       await sql`
         CREATE TABLE IF NOT EXISTS admin_audit_log (
@@ -153,7 +155,70 @@ function shanghaiBoundaries() {
   }
 }
 
-// ── Record Event ──
+// ── Bot Filtering ──
+
+const BOT_PATTERNS = [
+  /bot/i, /crawl/i, /spider/i, /fetch/i, /curl/i, /wget/i,
+  /lighthouse/i, /pagespeed/i, /gtmetrix/i,
+  /semrush/i, /ahrefs/i, /seznami/i, /sistrix/i,
+  /monitor/i, /pingdom/i, /uptimerobot/i, /checkmk/i, /nagios/i,
+  /w3c/i, /headless/i, /puppeteer/i, /playwright/i, /selenium/i,
+  /chrome-lighthouse/i,
+  /whatsapp/i, /facebookexternalhit/i, /embedder/i,
+  /preview/i, /vercel-deployment/i, /edge-function/i,
+  /axios/i, /go-http/i, /python-requests/i,
+  /java\/|libwww-perl|php\//i,
+  /^-$/,
+]
+
+const MIN_BROWSER_UA_LENGTH = 20
+
+/**
+ * 判断是否应跳过该事件（bot/crawler/preview 等非人类流量）。
+ * 仅过滤 page_view 事件，其他事件（search/evaluate/purchase 等）不过滤。
+ */
+export function shouldSkipEvent(userAgent: string): boolean {
+  if (!userAgent || userAgent.length < MIN_BROWSER_UA_LENGTH) return true
+  return BOT_PATTERNS.some(p => p.test(userAgent))
+}
+
+/**
+ * 归一化 hostname：将 Vercel preview/branch URL 映射到生产域名。
+ * 这样不同 preview 环境的访问会被正确聚合。
+ */
+export function normalizeHostname(host: string): string {
+  if (!host) return PROD_HOSTNAME
+  const hostname = host.split(':')[0].toLowerCase()
+  const clean = hostname.replace(/^www\./, '')
+  const VERCEL_SUFFIXES = ['.vercel.app', '.vercel.dev']
+  if (VERCEL_SUFFIXES.some(s => clean.endsWith(s))) {
+    return PROD_HOSTNAME
+  }
+  return clean
+}
+
+const PROD_HOSTNAME = process.env.NEXT_PUBLIC_APP_URL
+  ? (() => { try { return new URL(process.env.NEXT_PUBLIC_APP_URL).hostname } catch { return 'tokvalue.com' } })()
+  : 'tokvalue.com'
+
+/**
+ * 归一化 referrer URL：将 Vercel preview 来源统一归到生产域名。
+ * 如果 referrer 归一化后是自己站的域名（站内导航），清空为"直接访问"。
+ */
+export function normalizeReferrer(referrer: string): string {
+  if (!referrer) return ''
+  try {
+    const url = new URL(referrer)
+    const normalized = normalizeHostname(url.host)
+    // 如果是自己站内导航，归为"直接访问"，避免污染流量来源统计
+    if (normalized === PROD_HOSTNAME) {
+      return ''
+    }
+    return referrer
+  } catch {
+    return referrer
+  }
+}
 
 /**
  * 写入事件到 analytics_events 表。
@@ -767,6 +832,9 @@ export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
       FROM analytics_events
       WHERE event_type = 'page_view'
         AND created_at >= ${since}::timestamptz
+        -- 过滤 Vercel preview 域名（历史数据兼容，新数据已在写入时归一化）
+        AND (referrer IS NULL OR referrer NOT LIKE '%vercel.app%')
+        AND (referrer IS NULL OR referrer NOT LIKE '%vercel.dev%')
       GROUP BY source
       ORDER BY visitors DESC
       LIMIT 20
