@@ -8,8 +8,8 @@ const dict = getServerDict()
 export function SiteFooter() {
   return (
     <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-        <div className="grid gap-8 sm:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -30,10 +30,17 @@ export function SiteFooter() {
           {/* Product */}
           <div>
             <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.product}</h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               <li><Link href="/#capabilities" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.capabilities}</Link></li>
               <li><Link href="/#pricing" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.nav.pricing}</Link></li>
               <li><Link href="/blog" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.blog}</Link></li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">Company</h4>
+            <ul className="space-y-2.5">
               <li><Link href="/about" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">About Us</Link></li>
               <li><Link href="/contact" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">Contact</Link></li>
             </ul>
@@ -42,7 +49,7 @@ export function SiteFooter() {
           {/* Legal */}
           <div>
             <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">{dict.home.footer.legal}</h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               <li><Link href="/privacy" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.privacyPolicy}</Link></li>
               <li><Link href="/terms" className="text-sm text-neutral-500 hover:text-[#00F2EA] transition-colors">{dict.home.footer.termsOfService}</Link></li>
             </ul>

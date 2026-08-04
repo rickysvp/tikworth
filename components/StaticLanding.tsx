@@ -5,12 +5,13 @@ import {
   Shield, Sparkles, Eye, Scale, AlertTriangle, Activity, Rocket, Lightbulb,
   Flame, MessageCircle, Radio, FileDown, RefreshCw, BarChart3, LineChart,
   Wallet, Zap, Mail, CreditCard, Star, CheckCircle2, ArrowRight, ChevronDown,
-  BookOpen,
 } from 'lucide-react'
 import { getServerDict, t } from '@/lib/i18n/server'
 import { CREDIT_PACKAGES } from '@/lib/credits'
 import type { EnDict } from '@/lib/i18n/dictionaries/en'
 import { HomepageJsonLd } from '@/components/HomepageJsonLd'
+import { SiteHeader } from '@/components/SiteHeader'
+import { SiteFooter } from '@/components/SiteFooter'
 
 /**
  * StaticLanding — SSR 输出的静态首页内容。
@@ -70,32 +71,10 @@ export function StaticLanding() {
   const d: EnDict = getServerDict()
 
   return (
-    <main className="min-h-screen pb-20">
+    <div className="min-h-screen flex flex-col">
       <link rel="canonical" href="https://tokvalue.com/" />
       <HomepageJsonLd />
-      {/* TopBar */}
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl">
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#00F2EA]/40 to-transparent" />
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center gap-4">
-          <Link href="/" className="group shrink-0">
-            <Image src="/tokvalue.png" alt="TokValue" width={160} height={40} className="h-10 w-auto object-contain" />
-          </Link>
-          <nav className="hidden md:flex items-center justify-center gap-1 flex-1">
-            <a href="#pricing" className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors">
-              <Zap className="h-3.5 w-3.5" />
-              {d.nav.pricing}
-            </a>
-            <a href="#capabilities" className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors">
-              <Lightbulb className="h-3.5 w-3.5" />
-              {d.nav.howItWorks}
-            </a>
-            <Link href="/blog" className="group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-neutral-400 hover:text-white transition-colors">
-              <BookOpen className="h-3.5 w-3.5" />
-              {d.nav.blog}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Hero — 静态文字 */}
       <section className="relative overflow-hidden border-b border-neutral-800">
@@ -467,12 +446,7 @@ export function StaticLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-800">
-        <div className="mx-auto max-w-6xl px-4 py-8 text-xs text-neutral-600">
-          <p>{d.home.footer.tagline}</p>
-          <p className="mt-3">{d.home.footer.legalItems.join(' · ')}</p>
-        </div>
-      </footer>
-    </main>
+      <SiteFooter />
+    </div>
   )
 }

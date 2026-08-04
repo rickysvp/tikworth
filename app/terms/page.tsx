@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import Image from 'next/image'
-import { FileText, ChevronRight, Mail, ArrowLeft } from 'lucide-react'
+import { SiteHeader } from '@/components/SiteHeader'
+import { SiteFooter } from '@/components/SiteFooter'
+import { FileText, ChevronRight } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | TokValue',
@@ -124,20 +124,8 @@ export default function TermsPage() {
   const lastUpdated = 'August 2, 2026'
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-neutral-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-neutral-800">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 h-16 flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            <Image src="/tokvalue.png" alt="TokValue" width={120} height={32} className="h-8 w-auto object-contain" />
-          </Link>
-          <div className="flex-1" />
-          <Link href="/privacy" className="text-xs text-neutral-500 hover:text-[#00F2EA] transition-colors">
-            Privacy Policy
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-neutral-100">
+            <SiteHeader />
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-neutral-800">
@@ -202,28 +190,7 @@ export default function TermsPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
-        <div className="mx-auto max-w-4xl px-4 py-10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Image src="/tokvalue.png" alt="TokValue" width={120} height={32} className="h-8 w-auto object-contain" />
-            </div>
-            <div className="flex items-center gap-4 text-xs text-neutral-500">
-              <Link href="/" className="hover:text-[#00F2EA] transition-colors">Home</Link>
-              <Link href="/privacy" className="hover:text-[#00F2EA] transition-colors">Privacy Policy</Link>
-              <Link href="/terms" className="text-[#FF0050]">Terms of Service</Link>
-              <a href="mailto:connect@tokvalue.com" className="hover:text-[#00F2EA] transition-colors flex items-center gap-1">
-                <Mail className="h-3 w-3" />
-                Contact
-              </a>
-            </div>
-          </div>
-          <p className="mt-6 text-xs text-neutral-600 text-center">
-            © {new Date().getFullYear()} TokValue. All rights reserved.
-          </p>
-        </div>
-      </footer>
-    </main>
+            <SiteFooter />
+    </div>
   )
 }
