@@ -4,6 +4,7 @@ import { PHASE2_BATCH2 } from './posts-phase2-batch2'
 import { PHASE2_BATCH3 } from './posts-phase2-batch3'
 import { PHASE2_BATCH4 } from './posts-phase2-batch4'
 import { PHASE2_BATCH5 } from './posts-phase2-batch5'
+import { PHASE2_BATCH6 } from './posts-phase2-batch6'
 
 // TOC extractor — generates heading structure from markdown
 export function extractTOC(content: string) {
@@ -1085,4 +1086,5 @@ export const ALL_POSTS: BlogPost[] = [
   ...PHASE2_BATCH3,
   ...PHASE2_BATCH4,
   ...PHASE2_BATCH5,
+  ...PHASE2_BATCH6,
 ]
