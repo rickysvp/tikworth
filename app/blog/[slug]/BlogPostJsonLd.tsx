@@ -8,6 +8,24 @@ interface BlogPostJsonLdProps {
   author: string
   tags: string[]
   url: string
+  content?: string
+}
+
+function extractFaqs(content?: string): Array<{ q: string; a: string }> {
+  if (!content) return []
+  const faqs: Array<{ q: string; a: string }> = []
+  const detailsRe = /<details>[\s\S]*?<summary>(.+?)<\/summary>([\s\S]*?)<\/details>/g
+  let m: RegExpExecArray | null
+  while ((m = detailsRe.exec(content)) !== null) {
+    const q = m[1].trim()
+    const a = m[2]
+      .replace(/<[^>]+>/g, '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (q && a) faqs.push({ q, a })
+  }
+  return faqs
 }
 
 export function BlogPostJsonLd({
@@ -18,8 +36,10 @@ export function BlogPostJsonLd({
   author,
   tags,
   url,
+  content,
 }: BlogPostJsonLdProps) {
-  const schema = {
+  const faqs = extractFaqs(content)
+  const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: title,
@@ -37,7 +57,7 @@ export function BlogPostJsonLd({
       name: 'TokValue',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://tokvalue.com/logo.png',
+        url: 'https://tokvalue.com/tokvalue.png',
       },
     },
     mainEntityOfPage: {
@@ -47,6 +67,20 @@ export function BlogPostJsonLd({
     keywords: tags.join(', '),
     articleSection: 'Creator Economy',
     inLanguage: 'en-US',
+  }
+
+  if (faqs.length > 0) {
+    schema.mainEntity = {
+      '@type': 'FAQPage',
+      mainEntity: faqs.map(f => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: f.a,
+        },
+      })),
+    }
   }
 
   return (

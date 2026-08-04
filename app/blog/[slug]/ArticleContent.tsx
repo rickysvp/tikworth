@@ -34,6 +34,10 @@ function renderMd(md: string): string {
       '<a href="$2" class="text-[#00F2EA] underline underline-offset-2 hover:text-[#00D4CE]" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/^> (.+)$/gm, '<blockquote class="my-6 rounded-xl border-l-4 border-[#00F2EA] bg-[#00F2EA]/5 px-5 py-4 text-neutral-300 italic">$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-neutral-300 leading-relaxed">$1</li>')
+  // Details/Summary (FAQ) — keep raw HTML blocks intact
+  html = html.replace(/^<details>$/gm, '<details class="my-5 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">')
+  html = html.replace(/^<summary>(.+?)<\/summary>$/gm, '<summary class="cursor-pointer select-none font-semibold text-white hover:text-[#00F2EA] transition-colors">$1</summary>')
+  html = html.replace(/^<\/details>$/gm, '</details>')
   // Tables
   html = html.replace(/^\|(.+)\|$/gm, (_: string, row: string) => {
     const cells = row.split('|').map((c: string) => c.trim()).filter(Boolean)
@@ -48,7 +52,7 @@ function renderMd(md: string): string {
   })
   html = html.replace(/((?:<tr>.+?<\/tr>\n?)+)/g,
     '<table class="w-full my-6 border-collapse border border-neutral-800 rounded-lg overflow-hidden"><tbody>$1</tbody></table>')
-  html = html.replace(/^(?!<[a-z])(.+)$/gm, '<p class="text-neutral-300 leading-relaxed mb-5">$1</p>')
+  html = html.replace(/^(?!<\/?[a-z])(.+)$/gm, '<p class="text-neutral-300 leading-relaxed mb-5">$1</p>')
   html = html.replace(/<p class="text-neutral-300 leading-relaxed mb-5">\s*<\/p>/g, '')
   html = html.replace(/(<li class="ml-4 list-disc text-neutral-300 leading-relaxed">[^<]*<\/li>\n?)+/g,
     (match: string) => `<ul class="mb-5 space-y-1">${match}</ul>`)

@@ -76,6 +76,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         author={post.author.name}
         tags={post.tags}
         url={postUrl}
+        content={post.content}
       />
 
       <ReadingProgress />
