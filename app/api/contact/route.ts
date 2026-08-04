@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { hashIp } from '@/lib/analytics'
 
+export const dynamic = 'force-dynamic'
+
 const TO_EMAIL = 'connect@tokvalue.com'
 
 // 简单内存限流：每 IP 每 60 分钟最多 5 次提交

@@ -910,7 +910,7 @@ function HomePageContent() {
                         <span className="text-5xl font-black text-white tracking-tight">{pkg.price}</span>
                       </div>
                       <p className="text-sm text-neutral-500">
-                        <span className="text-white font-semibold">{pkg.credits}</span> reports
+                        <span className="text-white font-semibold">{pkg.credits}</span> evaluations
                       </p>
                       <p className="text-xs text-neutral-600 mt-0.5">{pkg.perUnit}</p>
 

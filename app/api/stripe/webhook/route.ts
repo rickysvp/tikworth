@@ -4,6 +4,8 @@ import { getServerDict } from '@/lib/i18n/server'
 import { recordEvent, hashIp } from '@/lib/analytics'
 import crypto from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
 const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
 const CREEM_WEBHOOK_SECRET = process.env.CREEM_WEBHOOK_SECRET || ''
 

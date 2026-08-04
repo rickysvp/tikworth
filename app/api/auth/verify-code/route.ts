@@ -3,6 +3,7 @@ import { grantCredits, storePendingPurchase } from '@/lib/credits-server'
 import { verifyCode, createSessionToken } from '@/lib/auth'
 import { getServerDict, t as serverT } from '@/lib/i18n/server'
 
+export const dynamic = 'force-dynamic'
 export const maxDuration = 25 // Vercel Pro: extend to 25s
 
 const CREEM_API_KEY = process.env.CREEM_API_KEY || ''

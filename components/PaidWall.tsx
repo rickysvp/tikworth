@@ -25,7 +25,7 @@ interface PaidWallProps {
   isUnlocking?: boolean
   /** Loading state for initial balance fetch */
   balanceLoading?: boolean
-  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved report */
+  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved evaluation */
   mode?: 'evaluate' | 'unlock'
 }
 
@@ -116,7 +116,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), packageId: selectedPkg.id }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({ error: dict.paidWall.sendFailed }))
       if (!res.ok) throw new Error(data.error || dict.paidWall.sendFailed)
       setDevCode(data.devCode || null)
       setPendingEmail(email.trim(), selectedPkg.id)
@@ -149,7 +149,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), code: fullCode }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({ error: dict.paidWall.verifyFailed }))
       if (!res.ok) throw new Error(data.error || dict.paidWall.verifyFailed)
 
       clearPendingEmail()
@@ -378,7 +378,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
                             <span className={`text-3xl font-black ${isSelected ? 'text-white' : 'text-neutral-200'}`}>{pkg.price}</span>
                           </div>
                           <div className="mt-1 text-sm font-bold text-white">{pkg.label}</div>
-                          <div className="mt-0.5 text-[11px] text-neutral-500">{pkg.credits} reports · {pkg.perUnit}</div>
+                          <div className="mt-0.5 text-[11px] text-neutral-500">{pkg.credits} evaluations · {pkg.perUnit}</div>
                           <div className="mt-3 space-y-1">
                             {(dict.paidWall.packageFeatures[pkg.id as keyof typeof dict.paidWall.packageFeatures] || []).map((f, i) => (
                               <div key={i} className="flex items-start gap-1.5 text-[11px] text-neutral-400">

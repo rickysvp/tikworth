@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const rawUrl = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '')
   const dbUrl = rawUrl.replace(/\s+/g, '')

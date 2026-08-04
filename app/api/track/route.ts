@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordEventFromRequest } from '@/lib/analytics'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 客户端埋点接收端点。
  * 所有 tracker（PageViewTracker、trackEvent 等）统一发到此路由，

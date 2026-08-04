@@ -9,6 +9,8 @@ import { getServerDict } from '@/lib/i18n/server'
 import { recordEventFromRequest } from '@/lib/analytics'
 import { ApiErrorResponse, Evaluation } from '@/types'
 
+export const dynamic = 'force-dynamic'
+
 function buildSnapshot(evaluation: Evaluation) {
   return {
     username: evaluation.username,

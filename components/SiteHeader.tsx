@@ -26,8 +26,8 @@ export function SiteHeader() {
       setIsLoggedIn(true)
       setBalanceLoading(true)
       fetch('/api/credits/balance', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then((data: CreditBalance) => { setCreditBalance(data); setBalanceLoading(false) })
+        .then(r => r.ok ? r.json() : null)
+        .then((data: CreditBalance | null) => { if (data) { setCreditBalance(data); } setBalanceLoading(false) })
         .catch(() => setBalanceLoading(false))
     }
   }, [])

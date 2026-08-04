@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createShare, getShare } from '@/lib/share-store'
 import { findEvaluation } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 // POST /api/share — create a share link for an evaluation
 export async function POST(req: NextRequest) {
   try {

@@ -3,6 +3,8 @@ import { consumeCredit } from '@/lib/credits-server'
 import { getBearerToken, verifySessionToken } from '@/lib/auth'
 import { getServerDict } from '@/lib/i18n/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   try {
     const token = getBearerToken(req)

@@ -79,7 +79,8 @@ export async function fetchBalance(email?: string | null): Promise<CreditBalance
       headers: authHeaders(),
     })
     if (!res.ok) return null
-    const data = await res.json()
+    const data = await res.json().catch(() => null)
+    if (!data) return null
     if (data.email) setActiveEmail(data.email)
     return data || null
   } catch { return null }
@@ -93,7 +94,7 @@ export async function consumeCreditApi(): Promise<{ ok: boolean; balance?: Credi
       headers: authHeaders(),
       body: JSON.stringify({}),
     })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({ error: 'CONSUME_FAILED' }))
     if (!res.ok) return { ok: false, error: data.error || 'CONSUME_FAILED' }
     return { ok: true, balance: data.balance }
   } catch { return { ok: false, error: 'NETWORK_ERROR' } }
@@ -109,7 +110,7 @@ export async function claimCreditsApi(): Promise<{ claimed: boolean; credits: nu
       body: JSON.stringify({}),
     })
     if (!res.ok) return null
-    return await res.json()
+    return await res.json().catch(() => null)
   } catch { return null }
 }
 

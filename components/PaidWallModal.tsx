@@ -16,7 +16,7 @@ interface Props {
   balanceLoading?: boolean
   /** 预选账号名（用于弹窗内提示） */
   username?: string
-  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved report */
+  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved evaluation */
   mode?: 'evaluate' | 'unlock'
 }
 
@@ -55,8 +55,8 @@ export function PaidWallModal({ open, onClose, onUnlock, result, existingBalance
           <div className="rounded-t-2xl border-x border-t border-[#00F2EA]/30 bg-[#00F2EA]/5 px-5 py-3 text-center flex-shrink-0">
             <p className="text-sm text-neutral-300">
               {mode === 'unlock'
-                ? <>View <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s saved report</>
-                : <>Unlock <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s full report</>
+                ? <>View <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s saved evaluation</>
+                : <>Unlock <span className="text-[#00F2EA] font-semibold">@{username}</span>&apos;s full evaluation</>
               }
             </p>
           </div>

@@ -80,9 +80,9 @@ function PostCard({ post }: { post: BlogPostMeta }) {
           {new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
       </div>
-      <h3 className="font-semibold leading-snug text-white group-hover:text-[#00F2EA] transition-colors line-clamp-2">
+      <h2 className="font-semibold leading-snug text-white group-hover:text-[#00F2EA] transition-colors line-clamp-2">
         {post.title}
-      </h3>
+      </h2>
       <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-neutral-400">
         {post.excerpt}
       </p>

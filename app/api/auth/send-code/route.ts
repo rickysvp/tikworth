@@ -3,6 +3,8 @@ import { CREDIT_PACKAGES, findPackage } from '@/lib/credits'
 import { storeCode, cleanupExpiredCodes } from '@/lib/auth'
 import { getServerDict } from '@/lib/i18n/server'
 
+export const dynamic = 'force-dynamic'
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const LOGO_URL = 'https://tokvalue.com/tokvalue.png'
 

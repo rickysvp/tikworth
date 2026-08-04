@@ -21,7 +21,7 @@ interface VerifyEmailModalProps {
   onClose: () => void
   onUnlock: () => void
   existingBalance?: CreditBalance | null
-  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved report */
+  /** 'evaluate' = new account evaluation, 'unlock' = unlock previously saved evaluation */
   mode?: 'evaluate' | 'unlock'
 }
 
@@ -114,7 +114,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), packageId: selectedPkg.id }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({ error: dict.verifyEmail.sendFailed }))
       if (!res.ok) throw new Error(data.error || dict.verifyEmail.sendFailed)
       setDevCode(data.devCode || null)
       setPendingEmail(email.trim(), selectedPkg.id)
@@ -147,7 +147,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), code: fullCode }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({ error: dict.verifyEmail.verifyFailed }))
       if (!res.ok) throw new Error(data.error || dict.verifyEmail.verifyFailed)
 
       clearPendingEmail()
@@ -411,7 +411,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
                             <span className={`text-2xl font-black ${isSelected ? 'text-white' : 'text-neutral-200'}`}>{pkg.price}</span>
                           </div>
                           <div className="mt-0.5 text-xs font-bold text-white">{pkgDict?.label ?? pkg.label}</div>
-                          <div className="text-[10px] text-neutral-500">{pkg.credits} reports · {pkg.perUnit}</div>
+                          <div className="text-[10px] text-neutral-500">{pkg.credits} evaluations · {pkg.perUnit}</div>
                         </button>
                       )
                     })}
