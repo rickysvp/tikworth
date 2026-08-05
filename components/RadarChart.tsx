@@ -11,16 +11,16 @@ import {
 } from 'recharts'
 
 const dimensionMeta: { key: keyof DimensionScores; label: string }[] = [
-  { key: 'reach', label: '流量触达' },
-  { key: 'engagement', label: '互动健康' },
-  { key: 'content', label: '内容爆款' },
-  { key: 'authenticity', label: '粉丝真实' },
-  { key: 'momentum', label: '增长势能' },
-  { key: 'stability', label: '流量稳定' },
-  { key: 'commerce', label: '商业适配' },
-  { key: 'monetization', label: '变现潜力' },
-  { key: 'health', label: '账号健康' },
-  { key: 'influence', label: '行业位势' },
+  { key: 'reach', label: 'Reach' },
+  { key: 'engagement', label: 'Engagement' },
+  { key: 'content', label: 'Content' },
+  { key: 'authenticity', label: 'Authenticity' },
+  { key: 'momentum', label: 'Momentum' },
+  { key: 'stability', label: 'Stability' },
+  { key: 'commerce', label: 'Commerce' },
+  { key: 'monetization', label: 'Monetization' },
+  { key: 'health', label: 'Health' },
+  { key: 'influence', label: 'Influence' },
 ]
 
 export function RadarChart({ dimensions }: { dimensions: DimensionScores }) {
@@ -31,7 +31,7 @@ export function RadarChart({ dimensions }: { dimensions: DimensionScores }) {
   }))
 
   return (
-    <div className="w-full h-[420px] sm:h-[480px]" role="img" aria-label="10维度雷达评分图">
+    <div className="w-full h-[420px] sm:h-[480px]" role="img" aria-label="10-dimension radar chart">
       <ResponsiveContainer width="100%" height="100%">
         <ReRadarChart data={data} outerRadius="65%">
           <PolarGrid stroke="#27272a" strokeWidth={0.5} />
@@ -47,7 +47,7 @@ export function RadarChart({ dimensions }: { dimensions: DimensionScores }) {
             tickCount={6}
           />
           <Radar
-            name="评分"
+            name="Score"
             dataKey="score"
             stroke="#FF0050"
             fill="#FF0050"
