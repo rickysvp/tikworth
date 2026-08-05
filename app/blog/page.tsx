@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     url: 'https://tokvalue.com/blog',
     images: [
       {
-        url: '/og.png',
+        url: '/og.png?v=2',
         width: 1200,
         height: 630,
         alt: 'TokValue — TikTok Account Value Calculator',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'TokValue Blog',
     description: 'Expert guides on TikTok creator economy, brand deals, and analytics.',
-    images: ['/og.png'],
+    images: ['/og.png?v=2'],
   },
   alternates: {
     canonical: '/blog',
