@@ -349,44 +349,52 @@ const en = {
       ],
     },
     faq: {
-      title: 'TikTok Account Value Calculator FAQ',
+      title: 'Frequently Asked Questions',
       badge: 'FAQ',
       questions: {
         q1: {
-          q: 'Why use TokValue instead of TikTok analytics?',
-          a: 'TikTok\'s built-in analytics tell you what happened — views, likes, follower counts. TokValue tells you what your account is worth in dollars. We translate raw metrics into a commercial valuation using calibrated CPM benchmarks from Influencer Marketing Hub, region-specific market multipliers across 50+ countries, and a 10-dimension scoring model. Whether you\'re negotiating a brand deal, pitching to an agency, or planning your content strategy, you need a third-party valuation that brands trust — not just a screenshot of your dashboard.',
+          q: 'Is this free?',
+          a: 'No. Each evaluation costs 1 credit — $9 for one, $29 for 6 ($4.83 each), or $99 for 30 ($3.30 each). One-time payment, no subscription, no auto-renewal.',
         },
         q2: {
-          q: 'How much does TokValue cost?',
-          a: 'Each evaluation uses 1 credit. Credits start at $9 for a single evaluation, $29 for 6 evaluations ($4.83 each), and $99 for 30 evaluations ($3.30 each). No subscription. No auto-renewal. Evaluations are linked to your email and accessible across all your devices.',
+          q: 'I just type a username and get a valuation? How long does it take?',
+          a: 'Yes. Enter any TikTok @username, hit evaluate, and you get a dollar valuation in about 10-20 seconds. The report opens instantly in your browser — no email delivery wait, no PDF download delay.',
         },
         q3: {
-          q: 'How does the TikTok account valuation work?',
-          a: 'Our engine runs a three-stage process: (1) Data Collection — we fetch real-time profile, video, and engagement data via TikTok\'s public API. (2) Multi-Dimensional Scoring — we evaluate 10 weighted dimensions including follower authenticity, engagement quality, content consistency, influence reach, monetization capability, brand safety, and risk signals. Each dimension is scored 0-100 using calibrated benchmarks. (3) Commercial Valuation — we combine the scores with region-specific CPM rates, content maturity analysis, and market comparables to produce a dollar-value estimate with five component breakdowns: brand collaboration, content assets, fan assets, monetization capability, and IP premium.',
+          q: 'How accurate is the number? Why should I trust it?',
+          a: 'Think of it like a Zillow estimate for TikTok accounts — not a guaranteed offer, but a data-backed starting point you can take to a negotiation. We score 10 dimensions (engagement, content quality, follower authenticity, risk signals, etc.), cross-reference with publicly reported brand deal data, and adjust by your region and niche. The final number gives you a low/mid/high range so you know the spread, not just a single number.',
         },
         q4: {
-          q: 'How accurate is the TikTok account valuation?',
-          a: 'Our model is calibrated against publicly reported brand deal values and the latest industry benchmarks from Influencer Marketing Hub. While no third-party estimate can be 100% precise — actual deal values depend on negotiation, brand budget, and campaign scope — our framework is designed to give you a defensible starting point for negotiations. Our value assessment framework uses global percentile ranking, and the dollar range accounts for market variance.',
+          q: 'What do I actually get after paying?',
+          a: 'A full report with dollar valuation, tier rating (S/A/B/C/D), peer ranking, brand deal pricing, 12-month revenue projection, growth action plan, risk scan, brand matching suggestions, content strategy guide, and monetization paths. You can export as PDF or PNG. All immediately accessible in your browser and permanent under your History.',
         },
         q5: {
-          q: 'Is my TikTok data secure?',
-          a: 'We access only publicly available TikTok profile data — the same information anyone can see by visiting a TikTok profile. We never require your TikTok password, login credentials, or any private account access. The only personal information we store is the email address you use for evaluation linking, which allows you to access your evaluations across devices. We do not sell, share, or analyze your personal data for any purpose beyond providing the evaluation service.',
+          q: 'Do you need my TikTok password?',
+          a: 'No — never. We only read what\'s publicly visible on TikTok: profile stats, video counts, engagement. Same information anyone can see by visiting a profile. We don\'t need and will never ask for your password, login, or private account access.',
         },
         q6: {
-          q: 'Can I use my evaluations on multiple devices?',
-          a: 'Yes. Your evaluations are linked to your email address, not your device or browser. Simply verify your email on any device — desktop, laptop, tablet, or phone — and your full evaluation balance will be available immediately. No app installation required; everything works in your browser.',
+          q: 'Can I get a refund?',
+          a: 'Yes. Unused credits are fully refundable within 7 days of purchase. Once a credit is used to generate an evaluation report, that purchase is final — but the report is yours permanently. Email connect@tokvalue.com for refunds.',
         },
         q7: {
-          q: 'Which countries do you support?',
-          a: 'We support TikTok accounts from 50+ countries with region-specific CPM rates and market multipliers. Coverage includes: North America (US, Canada, Mexico), Western Europe (UK, Germany, France, Italy, Spain, Netherlands, etc.), Nordics (Sweden, Norway, Denmark, Finland), Asia-Pacific (Japan, Korea, Australia, Indonesia, Philippines, Vietnam, Thailand, etc.), Middle East (UAE, Saudi Arabia, Turkey, Israel), Latin America (Brazil, Argentina, Colombia, Chile, etc.), and more. If an account\'s region cannot be detected from TikTok\'s API, we use language analysis across 15 languages to infer the most likely market.',
+          q: 'How is this different from Social Blade or other tools?',
+          a: 'Social Blade graphs your follower count. TikTok Analytics shows your views. Neither gives you a dollar value. TokValue is built specifically for commercial valuation — it tells you what your account is worth and why, with risk detection (bot followers, fake engagement) and channel-by-channel income estimates. Use it when money is on the table.',
         },
         q8: {
-          q: 'How does TokValue assess account quality?',
-          a: 'Our assessment framework evaluates 10 weighted dimensions — follower authenticity, engagement quality, content consistency, influence reach, monetization capability, brand safety, and risk signals. Each dimension is scored 0-100 against calibrated benchmarks, then combined into a composite value rating. Accounts are assigned a rating from Premium Value (exceptional commercial potential) to Developing Value (growth opportunity ahead). The dollar valuation is a separate absolute commercial estimate — it tells you what your account is worth across five revenue channels. A Growth Value account in a high-CPM region (like the US) can be worth more than a Premium Value account in a lower-CPM market. Both metrics together give you the complete picture for pricing and positioning.',
+          q: 'Are my reports public? Can anyone see them?',
+          a: 'Your evaluation results are private. They\'re linked to your email, and only you can access them from your History page after verifying that email. Other people can\'t see your reports unless you share them.',
         },
         q9: {
-          q: 'Do I get a downloadable report?',
-          a: 'Once your report is complete, your full report is displayed immediately in your browser with all 10 analysis modules unlocked. You can export the complete report as a professional PDF (brand-deck ready) or PNG image — both included at no extra cost. You can also save the report to your Tracker for ongoing monitoring, and revisit it anytime from your History page. All paid reports are permanently accessible as long as you use the same verified email.',
+          q: 'Do credits expire? What if I buy now but evaluate later?',
+          a: 'Credits never expire. Buy a pack now, use them whenever — days, weeks, or months later. They stay linked to your email until you use them.',
+        },
+        q10: {
+          q: 'Only TikTok? What about Instagram or YouTube?',
+          a: 'Right now, TokValue only supports TikTok. We chose to go deep rather than spread thin — our valuation model is built specifically for TikTok\'s creator economy, engagement mechanics, and brand deal market. Other platforms may come in the future.',
+        },
+        q11: {
+          q: 'Can I value anyone\'s account, or just my own?',
+          a: 'Anyone\'s. You can look up your own account, a competitor\'s, a potential collaboration partner\'s, or an influencer you\'re considering hiring. As long as the account is public on TikTok, we can evaluate it.',
         },
       },
     },
