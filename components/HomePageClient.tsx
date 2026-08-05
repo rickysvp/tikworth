@@ -784,18 +784,19 @@ function HomePageContent() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 {loading ? dict.common.analyzing : dict.common.evaluate}
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResult(DEMO_RESULT)
+                  setError('')
+                  setLoading(false)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="ml-3 text-sm font-medium text-neutral-400 hover:text-[#00F2EA] transition-colors cursor-pointer"
+              >
+                or view demo
+              </button>
             </div>
-            <span
-              onClick={() => {
-                setResult(DEMO_RESULT)
-                setError('')
-                setLoading(false)
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              className="ml-2.5 text-xs text-neutral-500 hover:text-[#00F2EA] cursor-pointer transition-colors select-none"
-            >
-              or view demo
-            </span>
           </form>
 
           {error && (
