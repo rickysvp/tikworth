@@ -40,6 +40,207 @@ import { VerifyEmailModal } from '@/components/VerifyEmailModal'
 import { ShareModal } from '@/components/ShareModal'
 import { RecentEvaluations } from '@/components/RecentEvaluations'
 
+// Demo result — realistic mid-tier US fitness creator (@fitnesswithkaty)
+const DEMO_RESULT = {
+  username: 'fitnesswithkaty',
+  nickname: 'Katy 🌟',
+  score: 72,
+  tier: 'A',
+  mock: true,
+  followerCount: 342_000,
+  followingCount: 1_820,
+  totalLikes: 8_900_000,
+  videoCount: 287,
+  verified: false,
+  region: 'US',
+  avatar: undefined,
+  bio: 'Fitness coach | 30-day challenge creator | Helping you build sustainable habits 🏋️',
+  computedAt: new Date().toISOString(),
+  dataQuality: 'full' as const,
+  formulaVersion: 'v2',
+  metrics: {
+    engagementRate: 7.8, avgPlays: 48_000, avgLikes: 31_015, avgComments: 1_960,
+    avgShares: 2_870, likesPerVideo: 31_015, followerFollowingRatio: 187.9,
+    recentMedianPlays: 55_000, olderMedianPlays: 41_000, playGrowth: 0.34, cvPlays: 0.82,
+    daysSinceLastPost: 1, topPostPlays: 210_000, topPostLikes: 18_000,
+    matureMedianPlays: 62_000, matureWeightedAvgPlays: 62_000, historicalImpliedPlays: 52_000,
+    immatureVideoCount: 5, growingVideoCount: 8, likePlayRatio: 0.12,
+    effectivePlaysSource: 'mature+historical' as const,
+    effectivePlays: 57_000, effectiveAvgPlays: 57_000, effectivePeakPlays: 180_000,
+  },
+  dimensions: { reach: 68, engagement: 78, content: 71, authenticity: 82,
+    momentum: 74, stability: 70, commerce: 65, monetization: 60, health: 85, influence: 68 },
+  riskFlags: [],
+  summary: {
+    headline: 'A-tier fitness account with strong engagement and healthy growth trajectory.',
+    strengths: ['Exceptional 7.8% engagement rate — 3x industry average for this follower tier',
+      'Consistent 18-34% monthly growth over 90 days',
+      'Fitness niche commands $22 CPM for brand deals — above average'],
+    weaknesses: ['No verified badge — reduces instant credibility in cold outreach',
+      'Limited international reach (US-centric content)'],
+    targetAudience: 'Budget-conscious 18-34 fitness enthusiasts, primarily US-based women',
+    bestAction: 'Leverage the high engagement rate to pitch 1-2 micro-brand deals per month.',
+  },
+  verdict: 'Tier A — Strong engagement health and consistent growth trajectory.',
+  advice: 'Focus on consistent posting (4x/week) to lock in the growth momentum.',
+  priceAdvice: 'Market reference range: $380 – $1,140 per brand deal based on $22 CPM.',
+  accountHealth: { overallScore: 85, shadowbanRisk: 'low' as const, shadowbanSignals: [],
+    growthAnomaly: 'normal' as const, growthAnomalyReason: 'Consistent growth pattern',
+    engagementAuthenticity: 95, fakeFollowerEstimate: 2, healthReasoning: 'Low risk.' },
+  contentCadence: { postingRhythm: 'daily' as const, avgPostsPerDay: 0.6, avgPostsPerWeek: 4.2,
+    bestTimeSlots: [{ hour: 7, engagementRate: 8.2 }],
+    bestWeekdays: [{ weekday: 'Monday', engagementRate: 8.5 }],
+    consistencyScore: 82, cadenceAdvice: '4-5 posts per week, morning uploads 7-9 AM.' },
+  engagementQuality: { conversationDepth: 2.1, shareRatio: 0.058, commentLikeRatio: 0.07,
+    completionRate: null, viralCoefficient: 0.14, topEngagers: [],
+    qualityReasoning: 'Healthy comment-to-like ratio suggests authentic audience.' },
+  peerBenchmark: { percentile: 74, peerGroupSize: '8,400+ accounts',
+    benchmarks: [{ metric: 'Engagement Rate', userValue: 7.8, peerAvg: 5.2, peerTop10: 9.1, status: 'above' as const },
+      { metric: 'Avg Plays Ratio', userValue: 16.7, peerAvg: 12.1, peerTop10: 24.5, status: 'above' as const },
+      { metric: '90-Day Growth', userValue: 34, peerAvg: 18, peerTop10: 45, status: 'above' as const }],
+    similarCreators: [] },
+  brandPotential: { brandScore: 68, estimatedCPM: 22, audienceSpendingPower: 'medium' as const,
+    suitableCategories: ['Fitness', 'Activewear', 'Nutrition'],
+    collaborationTypes: [{ type: 'Product Review', fit: 0.88, expectedRevenue: '$400-800/post' },
+      { type: 'Tutorial Sponsorship', fit: 0.72, expectedRevenue: '$300-600/post' }],
+    brandReasoning: 'High engagement and authentic audience make this account attractive for brands.' },
+  monetizationPath: { eligiblePrograms: ['tiktokShop', 'subscriptions', 'liveGifts'], nearestThreshold: null,
+    estimatedMonthlyUsd: { low: 2_600, mid: 2_955, high: 3_500 },
+    pathReasoning: 'Account qualifies for TikTok Shop and subscription monetization.' },
+  growthPlan: {
+    items: [{ priority: 'high' as const, area: 'Content Consistency', action: 'Post 4x/week',
+      expectedImpact: 'Lock growth momentum, reach 400K by Q2' },
+      { priority: 'medium' as const, area: 'Brand Outreach', action: 'Build media kit, pitch 3 brands',
+        expectedImpact: 'Establish first brand deal track record' }],
+    summary: 'Focus on consistency first, then leverage engagement for brand partnerships.' },
+  incomeEstimate: {
+    monthlyTotal: { low: 2_600, mid: 2_955, high: 3_500 },
+    breakdown: [
+      { source: 'brand_deals' as const, label: 'Brand Sponsorships', icon: '💰', monthlyAmount: { low: 1_400, mid: 2_100, high: 2_800 }, percentage: 38, confidence: 'high' as const, detail: '1-2 deals/month at $700-1400' },
+      { source: 'creator_program' as const, label: 'Creator Fund', icon: '📺', monthlyAmount: { low: 200, mid: 285, high: 370 }, percentage: 10, confidence: 'high' as const, detail: '$0.05/1000 views' },
+      { source: 'subscriptions' as const, label: 'Subscriptions', icon: '⭐', monthlyAmount: { low: 0, mid: 0, high: 0 }, percentage: 0, confidence: 'medium' as const, detail: 'Not yet activated' },
+      { source: 'tiktok_shop' as const, label: 'TikTok Shop', icon: '🛒', monthlyAmount: { low: 300, mid: 420, high: 560 }, percentage: 14, confidence: 'medium' as const, detail: 'AOV $35, 2% conversion' },
+      { source: 'amazon_associates' as const, label: 'Amazon Associates', icon: '📦', monthlyAmount: { low: 0, mid: 0, high: 0 }, percentage: 0, confidence: 'medium' as const, detail: 'Not active' },
+      { source: 'shopify_dtc' as const, label: 'Shopify DTC', icon: '🧴', monthlyAmount: { low: 0, mid: 0, high: 0 }, percentage: 0, confidence: 'low' as const, detail: 'No storefront' },
+      { source: 'live_gifts' as const, label: 'LIVE Gifts', icon: '🎁', monthlyAmount: { low: 80, mid: 150, high: 220 }, percentage: 5, confidence: 'low' as const, detail: '1-2 LIVE sessions/week' },
+      { source: 'live_commerce' as const, label: 'LIVE Commerce', icon: '🛍️', monthlyAmount: { low: 0, mid: 0, high: 0 }, percentage: 0, confidence: 'low' as const, detail: 'Eligible at 50K+ followers' },
+    ],
+    categoryCpm: 22, categoryRpm: 0.04, regionMultiplier: 1.0,
+    categoryLabel: 'Fitness', regionLabel: 'US',
+    summary: 'Estimated monthly income of $2,955 based on current monetization path.',
+  },
+  businessValue: {
+    totalValue: { low: 44_800, mid: 75_400, high: 114_600 },
+    components: [
+      { label: 'Brand Deal Annual Value', icon: '💰', amount: { low: 17_000, mid: 25_200, high: 33_600 }, percentage: 38, detail: 'Based on $22 CPM · 1 post/week' },
+      { label: 'Content Asset Value', icon: '🎬', amount: { low: 6_500, mid: 9_200, high: 12_000 }, percentage: 16, detail: '287 videos × $31 avg yield × 0.7 discount' },
+      { label: 'Follower Asset Value', icon: '👥', amount: { low: 4_800, mid: 6_800, high: 9_200 }, percentage: 13, detail: '342K followers × $0.028/follower' },
+      { label: 'Monetization Capability', icon: '⚡', amount: { low: 3_500, mid: 4_900, high: 6_200 }, percentage: 9, detail: 'Subscription + Shop + LIVE · 12-month cap' },
+      { label: 'IP / Brand Asset', icon: '🏆', amount: { low: 13_000, mid: 16_500, high: 20_000 }, percentage: 24, detail: 'Fitness niche authority · Authentic engagement' },
+    ],
+    summary: 'Estimated total business value of $75,400 for this TikTok account.',
+  },
+  brandDealPerVideo: { low: 380, mid: 720, high: 1_140, monthlyBrandPosts: 4 },
+  accountProfile: { categories: ['Fitness', 'Health'], personaType: 'Mid-tier Creator',
+    postingRhythm: 'Daily', audienceRegion: 'US', contentStyle: 'Tutorial & Challenge' },
+  revenueRoadmap: {
+    currentMonthly: { low: 2_600, mid: 2_955, high: 3_500 },
+    projections: [
+      { month: 3, label: 'Month 3', revenue: { low: 3_000, mid: 3_500, high: 4_200 }, milestone: 'Reach 400K followers — unlock tier 2 brand rates', unlocks: ['Expanded brand deal rates', 'Creator Marketplace access'] },
+      { month: 6, label: 'Month 6', revenue: { low: 4_000, mid: 4_800, high: 6_000 }, milestone: '2 brand partners per month stable', unlocks: ['Premium CPM tier'] },
+      { month: 12, label: 'Month 12', revenue: { low: 6_000, mid: 7_500, high: 9_500 }, milestone: '400K+ followers, 4 brand deals/month', unlocks: ['Multi-platform expansion'] },
+    ],
+    total12Month: { low: 56_000, mid: 68_000, high: 82_000 },
+    summary: 'Consistent growth trajectory with brand deal revenue as the primary driver.',
+  },
+  contentStrategy: {
+    pillars: [
+      { type: 'Workout Tutorial', icon: '🏋️', frequency: '3x/week', expectedEngagement: '4.5-6%', examples: ['30-day ab challenge', 'Full body HIIT'], why: 'High share rate and saves — algorithm signals quality' },
+      { type: 'Nutrition & Meal Prep', icon: '🥗', frequency: '1x/week', expectedEngagement: '3.5-5%', examples: ['High-protein recipes', 'Macro breakdown'], why: 'Supports supplement brand partnerships' },
+      { type: 'Motivation & Lifestyle', icon: '💪', frequency: '1x/week', expectedEngagement: '5-7%', examples: ['Morning routine', 'Progress updates'], why: 'Builds community and parasocial connection' },
+    ],
+    recommendedHashtags: [
+      { tag: '#fitness', volume: 'high' as const, relevance: 0.95 },
+      { tag: '#workout', volume: 'high' as const, relevance: 0.92 },
+      { tag: '#weightloss', volume: 'high' as const, relevance: 0.88 },
+      { tag: '#homeworkout', volume: 'medium' as const, relevance: 0.85 },
+      { tag: '#fitcheck', volume: 'medium' as const, relevance: 0.80 },
+    ],
+    optimalSchedule: [
+      { day: 'Monday', time: '7:00 AM', format: 'Workout Tutorial' },
+      { day: 'Wednesday', time: '7:00 AM', format: 'Workout Tutorial' },
+      { day: 'Friday', time: '7:00 AM', format: 'Workout Tutorial' },
+    ],
+    videoDuration: { min: 30, max: 90, label: '30-90 seconds' },
+    collaborationIdeas: [{ type: 'Fitness Brand Partnership', description: 'Co-create content with supplement brand', potential: 'high' as const }],
+    summary: 'Three-pillar strategy: workout tutorials, nutrition, and motivation content.',
+  },
+  peerRanking: { overallPercentile: 26, tierLabel: 'Top 26%', peerGroupDescription: '342K follower US fitness accounts',
+    rankingBreakdown: [
+      { metric: 'Engagement Rate', value: '7.8%', percentile: 74, barColor: '#00F2EA' },
+      { metric: 'Avg Plays Ratio', value: '16.7%', percentile: 68, barColor: '#FF0050' },
+      { metric: '90-Day Growth', value: '+34%', percentile: 81, barColor: '#22c55e' },
+    ],
+    insight: 'Strong engagement places this account in the top quartile of peer fitness accounts.' },
+  brandMatching: {
+    matches: [
+      { category: 'Fitness', icon: '🏋️', fitScore: 88, estimatedDealRange: { low: 400, high: 900 }, exampleBrands: ['Gymshark', 'Myprotein', 'Optimum Nutrition'], collaborationType: 'Product Review', reasoning: 'Perfect audience fit for fitness content' },
+      { category: 'Activewear', icon: '👟', fitScore: 78, estimatedDealRange: { low: 300, high: 700 }, exampleBrands: ['Fabletics', 'Alo Yoga', 'Under Armour'], collaborationType: 'Tutorial Sponsorship', reasoning: 'Lifestyle content integrates well with activewear' },
+      { category: 'Nutrition', icon: '🥗', fitScore: 71, estimatedDealRange: { low: 250, high: 550 }, exampleBrands: ['Protein World', 'Huel'], collaborationType: 'Unboxing', reasoning: 'Pairs naturally with fitness tutorials' },
+    ],
+    totalBrandValue: { low: 34_000, mid: 52_000, high: 72_000 },
+    summary: 'Strong brand fit in fitness, activewear, and nutrition verticals.',
+  },
+  trendAnalysis: {
+    trendingTopics: [], trendingSounds: [],
+    contentPredictions: [{ direction: 'Home workouts staying mainstream', confidence: 82, expectedEngagement: '4-6%', why: 'Consistent search volume and low competition in fitness niche' }],
+    bestPostTimes: [{ day: 'Monday', hour: 7, score: 8.5 }],
+    summary: 'Fitness content remains consistently strong.',
+  },
+  commercializationAdvice: {
+    directions: [{
+      name: 'Brand Sponsorships', icon: '💰', fitScore: 82, difficulty: 'medium' as const,
+      estimatedMonthlyRevenue: { low: 800, mid: 1_400, high: 2_200 }, revenuePotential: 'high' as const,
+      description: 'Partner with fitness and supplement brands for sponsored content.',
+      actionSteps: ['Build media kit with engagement metrics', 'Register on influencer platforms', 'Approach brands directly'],
+      why: 'High engagement rate makes this account attractive to brands.',
+      prerequisites: ['Media kit', 'Active engagement with 3-5 niche brands'],
+    }],
+    primaryRecommendation: 'Start with brand sponsorships given the high engagement rate.',
+    secondaryRecommendation: 'Set up TikTok Shop storefront with recommended products.',
+    estimatedTotalMonthly: { low: 1_000, mid: 1_800, high: 2_900 },
+    summary: 'Strong candidate for brand partnerships.',
+  },
+  commerceReadiness: {
+    overallScore: 52, tier: 'Emerging' as const,
+    summary: 'Account shows commerce intent signals and suitable audience demographics.',
+    channels: [
+      { source: 'tiktokShop', label: 'TikTok Shop', icon: '🛒', monthlyAmount: { low: 300, mid: 420, high: 560 }, fitScore: 68, eligible: true, reasoning: 'Set up storefront with fitness products' },
+      { source: 'brandSponsorships', label: 'Brand Sponsorships', icon: '💰', monthlyAmount: { low: 1_400, mid: 2_100, high: 2_800 }, fitScore: 82, eligible: true, reasoning: 'Engagement metrics are strong, ready for outreach' },
+      { source: 'subscriptions', label: 'Subscriptions', icon: '⭐', monthlyAmount: { low: 0, mid: 0, high: 0 }, fitScore: 45, eligible: false, reasoning: 'Build audience to 500K for tier 2 subscription revenue' },
+    ],
+    signals: [
+      { label: 'Fitness niche strength', detected: true, weight: 0.8, detail: 'Strong vertical content in high-value category' },
+      { label: 'Engagement rate', detected: true, weight: 0.9, detail: '7.8% ER is 3x category average' },
+      { label: 'No prior brand deals', detected: true, weight: 0.7, detail: 'No prior brand deals on record' },
+      { label: 'Video commerce content', detected: true, weight: 0.6, detail: 'Tutorial format suitable for product integration' },
+    ],
+    productMatches: [
+      { category: 'Protein Supplements', icon: '💪', fitScore: 85, avgOrderValue: 45, reasoning: 'Natural fit for fitness audience' },
+      { category: 'Fitness Equipment', icon: '🏋️', fitScore: 78, avgOrderValue: 65, reasoning: 'Featured in tutorials' },
+      { category: 'Activewear', icon: '👕', fitScore: 72, avgOrderValue: 55, reasoning: 'Gym fits perform well' },
+    ],
+    contentCommerceRatio: 0.15,
+    recommendation: 'Build a link-in-bio storefront before approaching brands. Start with $100-300 micro-deals to establish a track record.',
+  },
+  calculationMetadata: {
+    effectiveAvgPlays: 57_000, effectivePeakPlays: 180_000, matureVideoCount: 23,
+    excludedImmatureCount: 5, excludedGrowingCount: 8, brandCpm: 22,
+    engagementMultiplier: 1.8, regionMultiplier: 1.0, categoryForCpm: 'Fitness', regionLabel: 'US',
+    perVideoBrandDealMid: 720, monthlyBrandPosts: 4, likePlayRatio: 0.12, playsSource: 'mature+historical',
+  },
+} as Evaluation
+
 // Client-side analytics tracking helper
 // 注意：page_view 由 components/PageViewTracker.tsx 统一发送，本函数只负责行为事件
 function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
@@ -582,6 +783,19 @@ function HomePageContent() {
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 {loading ? dict.common.analyzing : dict.common.evaluate}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResult(DEMO_RESULT)
+                  setError('')
+                  setLoading(false)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="ml-2 inline-flex items-center gap-2 rounded-xl border border-[#00F2EA]/40 bg-[#00F2EA]/10 px-4 py-2.5 text-sm font-semibold text-[#00F2EA] hover:bg-[#00F2EA]/20 transition-colors"
+              >
+                <Play className="h-4 w-4" />
+                View Demo
               </button>
             </div>
           </form>
