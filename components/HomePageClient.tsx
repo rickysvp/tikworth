@@ -241,6 +241,159 @@ const DEMO_RESULT = {
   },
 } as Evaluation
 
+// S-tier: @charlidamelio (mega celebrity, 150M followers)
+const S_TIER_DEMO: Evaluation = {
+  ...DEMO_RESULT,
+  username: 'charlidamelio',
+  nickname: 'Charli D\u2019Amelio \ud83c\udf1f',
+  score: 92,
+  tier: 'S',
+  followerCount: 152_300_000,
+  followingCount: 1_420,
+  totalLikes: 11_200_000_000,
+  videoCount: 1_650,
+  verified: true,
+  region: 'US',
+  bio: 'Dancer \u2022 Actress \u2022 Founder of D\u2019Amelio Brands',
+  metrics: { ...DEMO_RESULT.metrics, engagementRate: 5.2, avgPlays: 2_800_000, effectivePlays: 3_200_000,
+    matureVideoCount: 145, matureMedianPlays: 2_900_000, matureAvgPlays: 2_900_000,
+    likesPerVideo: 6_787_878, avgLikes: 6_787_878, effectiveAvgPlays: 3_200_000, effectivePeakPlays: 12_000_000 },
+  dimensions: { reach: 100, engagement: 85, content: 82, authenticity: 70,
+    momentum: 78, stability: 88, commerce: 90, monetization: 95, health: 90, influence: 100 },
+  incomeEstimate: { ...DEMO_RESULT.incomeEstimate,
+    monthlyTotal: { low: 180_000, mid: 245_000, high: 320_000 },
+    breakdown: DEMO_RESULT.incomeEstimate.breakdown.map(b => b.source === 'brand_deals'
+      ? { ...b, monthlyAmount: { low: 120_000, mid: 165_000, high: 220_000 }, percentage: 65, detail: '4 deals/month at $30K-55K' }
+      : b.source === 'creator_program'
+      ? { ...b, monthlyAmount: { low: 8_000, mid: 11_000, high: 14_500 }, percentage: 5, detail: '$0.05/1000 views, mega tier' }
+      : b),
+  },
+  businessValue: { ...DEMO_RESULT.businessValue,
+    totalValue: { low: 4_800_000, mid: 7_200_000, high: 11_500_000 },
+    summary: 'Mega celebrity IP \u2014 estimated total business value $7.2M',
+  },
+  brandDealPerVideo: { low: 30_000, mid: 45_000, high: 70_000, monthlyBrandPosts: 4 },
+  accountProfile: { ...DEMO_RESULT.accountProfile, personaType: 'Mega Creator',
+    contentStyle: 'Lifestyle & Entertainment' },
+} as Evaluation
+
+// S-tier: @mrbeast (mega, IP-driven, $25M deals)
+const MRBEAST_DEMO: Evaluation = {
+  ...S_TIER_DEMO,
+  username: 'mrbeast',
+  nickname: 'MrBeast \ud83c\udf1f',
+  score: 100,
+  tier: 'S',
+  followerCount: 380_000_000,
+  followingCount: 165,
+  totalLikes: 42_000_000_000,
+  videoCount: 820,
+  verified: true,
+  region: 'US',
+  bio: 'YouTube/TikTok Creator \u2022 Beast Burger, Feastables, MrBeast Toys',
+  metrics: { ...S_TIER_DEMO.metrics, engagementRate: 6.8, avgPlays: 12_000_000, effectivePlays: 15_000_000,
+    matureVideoCount: 89, matureMedianPlays: 13_000_000, matureAvgPlays: 13_000_000,
+    likesPerVideo: 51_219_512, avgLikes: 51_219_512, effectiveAvgPlays: 15_000_000, effectivePeakPlays: 85_000_000 },
+  dimensions: { reach: 100, engagement: 92, content: 95, authenticity: 88,
+    momentum: 95, stability: 92, commerce: 98, monetization: 100, health: 95, influence: 100 },
+  incomeEstimate: { ...DEMO_RESULT.incomeEstimate,
+    monthlyTotal: { low: 850_000, mid: 1_200_000, high: 1_650_000 },
+    breakdown: DEMO_RESULT.incomeEstimate.breakdown.map(b => b.source === 'brand_deals'
+      ? { ...b, monthlyAmount: { low: 750_000, mid: 1_000_000, high: 1_400_000 }, percentage: 78, detail: '2-4 deals/month at $375K-700K' }
+      : b),
+  },
+  businessValue: { ...DEMO_RESULT.businessValue,
+    totalValue: { low: 25_000_000, mid: 45_000_000, high: 78_000_000 },
+    summary: 'Global IP empire \u2014 estimated total business value $45M',
+  },
+  brandDealPerVideo: { low: 375_000, mid: 500_000, high: 700_000, monthlyBrandPosts: 3 },
+  accountProfile: { ...DEMO_RESULT.accountProfile, personaType: 'Mega Creator',
+    contentStyle: 'Stunts & Challenges' },
+} as Evaluation
+
+// A-tier: @khaby.lame
+const KHABY_DEMO: Evaluation = {
+  ...DEMO_RESULT,
+  username: 'khaby.lame',
+  nickname: 'Khabane Lame \ud83c\udf1f',
+  score: 85,
+  tier: 'A',
+  followerCount: 162_000_000,
+  followingCount: 91,
+  totalLikes: 8_400_000_000,
+  videoCount: 920,
+  verified: true,
+  region: 'IT',
+  bio: 'Silent comedy \u2022 Reaction meme creator',
+  metrics: { ...DEMO_RESULT.metrics, engagementRate: 4.2, avgPlays: 1_400_000,
+    matureVideoCount: 87, matureMedianPlays: 1_500_000, matureAvgPlays: 1_500_000,
+    likesPerVideo: 9_130_434, avgLikes: 9_130_434, effectiveAvgPlays: 1_500_000 },
+  dimensions: { reach: 95, engagement: 72, content: 88, authenticity: 80,
+    momentum: 75, stability: 85, commerce: 78, monetization: 80, health: 82, influence: 90 },
+  incomeEstimate: { ...DEMO_RESULT.incomeEstimate,
+    monthlyTotal: { low: 65_000, mid: 92_000, high: 125_000 },
+    breakdown: DEMO_RESULT.incomeEstimate.breakdown.map(b => b.source === 'brand_deals'
+      ? { ...b, monthlyAmount: { low: 42_000, mid: 60_000, high: 80_000 }, percentage: 65, detail: '3 deals/month at $14K-27K' }
+      : b),
+  },
+  businessValue: { ...DEMO_RESULT.businessValue,
+    totalValue: { low: 1_800_000, mid: 2_800_000, high: 4_200_000 },
+    summary: 'Global meme IP \u2014 estimated total business value $2.8M',
+  },
+  brandDealPerVideo: { low: 14_000, mid: 22_000, high: 32_000, monthlyBrandPosts: 3 },
+  accountProfile: { ...DEMO_RESULT.accountProfile, personaType: 'Mega Creator',
+    contentStyle: 'Silent Comedy' },
+} as Evaluation
+
+// B-tier: @zachking
+const ZACHKING_DEMO: Evaluation = {
+  ...DEMO_RESULT,
+  username: 'zachking',
+  nickname: 'Zach King \ud83c\udf1f',
+  score: 64,
+  tier: 'B',
+  followerCount: 32_800_000,
+  followingCount: 245,
+  totalLikes: 1_400_000_000,
+  videoCount: 510,
+  verified: true,
+  region: 'US',
+  bio: 'Filmmaker \u2022 Magic visual effects creator',
+  metrics: { ...DEMO_RESULT.metrics, engagementRate: 3.2, avgPlays: 380_000,
+    matureVideoCount: 38, matureMedianPlays: 420_000, matureAvgPlays: 420_000,
+    likesPerVideo: 2_745_098, avgLikes: 2_745_098, effectiveAvgPlays: 420_000 },
+  dimensions: { reach: 75, engagement: 60, content: 72, authenticity: 68,
+    momentum: 58, stability: 72, commerce: 55, monetization: 58, health: 78, influence: 70 },
+  incomeEstimate: { ...DEMO_RESULT.incomeEstimate,
+    monthlyTotal: { low: 9_500, mid: 14_200, high: 19_800 },
+    breakdown: DEMO_RESULT.incomeEstimate.breakdown.map(b => b.source === 'brand_deals'
+      ? { ...b, monthlyAmount: { low: 5_800, mid: 9_000, high: 12_500 }, percentage: 60, detail: '1-2 deals/month at $5K-9K' }
+      : b),
+  },
+  businessValue: { ...DEMO_RESULT.businessValue,
+    totalValue: { low: 380_000, mid: 580_000, high: 820_000 },
+    summary: 'Established creator IP \u2014 estimated total business value $580K',
+  },
+  brandDealPerVideo: { low: 4_500, mid: 7_500, high: 12_000, monthlyBrandPosts: 2 },
+  accountProfile: { ...DEMO_RESULT.accountProfile, personaType: 'Macro Creator',
+    contentStyle: 'VFX & Magic' },
+} as Evaluation
+
+// Map username to demo (4 tiers: 2 S, 1 A, 1 B + 1 fallback C)
+const DEMO_BY_USERNAME: Record<string, Evaluation> = {
+  charlidamelio: S_TIER_DEMO,
+  mrbeast: MRBEAST_DEMO,
+  'khaby.lame': KHABY_DEMO,
+  zachking: ZACHKING_DEMO,
+}
+
+const TIER_STYLES: Record<string, { bg: string; text: string; border: string; label: string }> = {
+  S: { bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-500/40', label: 'S' },
+  A: { bg: 'bg-yellow-500/15', text: 'text-yellow-300', border: 'border-yellow-500/40', label: 'A' },
+  B: { bg: 'bg-cyan-500/15', text: 'text-cyan-300', border: 'border-cyan-500/40', label: 'B' },
+  C: { bg: 'bg-orange-500/15', text: 'text-orange-300', border: 'border-orange-500/40', label: 'C' },
+}
+
 // Client-side analytics tracking helper
 // 注意：page_view 由 components/PageViewTracker.tsx 统一发送，本函数只负责行为事件
 function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
@@ -262,7 +415,12 @@ function trackEvent(event_type: string, metadata?: Record<string, unknown>) {
   })
 }
 
-const examples = ['charlidamelio', 'mrbeast', 'khaby.lame', 'zachking']
+const exampleDemos: { name: string; tier: 'S' | 'A' | 'B' | 'C' }[] = [
+  { name: 'mrbeast', tier: 'S' },
+  { name: 'charlidamelio', tier: 'S' },
+  { name: 'khaby.lame', tier: 'A' },
+  { name: 'zachking', tier: 'B' },
+]
 
 function HomePageContent() {
   const { dict } = useI18n()
@@ -807,17 +965,27 @@ function HomePageContent() {
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm text-neutral-500">
-            {examples.map(name => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => { setUsername(name); handleEvaluate(name) }}
-                className="rounded-full border border-neutral-700 px-3 py-1 hover:border-[#FF0050] hover:text-[#FF0050] transition-colors"
-              >
-                @{name}
-              </button>
-            ))}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
+            {exampleDemos.map(d => {
+              const style = TIER_STYLES[d.tier]
+              return (
+                <button
+                  key={d.name}
+                  type="button"
+                  onClick={() => {
+                    const demo = DEMO_BY_USERNAME[d.name] ?? DEMO_RESULT
+                    setResult(demo)
+                    setError('')
+                    setLoading(false)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-full border ${style.border} ${style.bg} ${style.text} px-3 py-1.5 hover:scale-105 transition-transform`}
+                >
+                  <span className={`font-black ${style.text}`}>{style.label}</span>
+                  <span className="text-neutral-300">@{d.name}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </section>
