@@ -128,30 +128,37 @@ export async function storeCode(
   const pg = await ensurePg()
   if (pg) {
     // Postgres path
-    const existing = await pg`SELECT send_count_24h, created_at FROM verification_codes WHERE email = ${key}`
+    const existing = await pg`SELECT code, attempts, send_count_24h, created_at, expires_at FROM verification_codes WHERE email = ${key}`
     const windowStart = now - RATE_LIMIT_WINDOW_MS
     const prev = existing[0]
     const previousSends = prev && Number(prev.created_at) > windowStart ? Number(prev.send_count_24h) : 0
 
     if (previousSends >= MAX_SENDS_PER_24H) {
-      return { code, sendCount24h: previousSends, rateLimited: true }
+      // 仍返回已存在的 code（若有），便于前端 devCode/邮件复用，不生成新码
+      return { code: prev ? String(prev.code) : code, sendCount24h: previousSends, rateLimited: true }
     }
+
+    // 关键修复：如果未过期的验证码已存在，复用它而非重新生成，
+    // 避免重发导致用户邮件里收到的旧码失效而误报“验证码错误”
+    const reuseExisting = prev && Number(prev.expires_at) > now
+    const finalCode = reuseExisting ? String(prev.code) : code
+    const carriedAttempts = reuseExisting ? Number(prev.attempts) : 0
 
     await pg`
       INSERT INTO verification_codes (email, code, package_id, credits, amount, expires_at, attempts, created_at, send_count_24h)
-      VALUES (${key}, ${code}, ${packageId}, ${credits}, ${amount}, ${now + CODE_TTL_MS}, 0, ${now}, ${previousSends + 1})
+      VALUES (${key}, ${finalCode}, ${packageId}, ${credits}, ${amount}, ${now + CODE_TTL_MS}, ${carriedAttempts}, ${now}, ${previousSends + 1})
       ON CONFLICT (email) DO UPDATE SET
         code = EXCLUDED.code,
         package_id = EXCLUDED.package_id,
         credits = EXCLUDED.credits,
         amount = EXCLUDED.amount,
         expires_at = EXCLUDED.expires_at,
-        attempts = 0,
+        attempts = EXCLUDED.attempts,
         created_at = EXCLUDED.created_at,
         send_count_24h = EXCLUDED.send_count_24h
     `
-    console.log('[auth] storeCode: stored code for', key, 'code:', code, 'packageId:', packageId, 'credits:', credits)
-    return { code, sendCount24h: previousSends + 1, rateLimited: false }
+    console.log('[auth] storeCode: stored code for', key, 'code:', finalCode, 'reused:', reuseExisting, 'packageId:', packageId, 'credits:', credits)
+    return { code: finalCode, sendCount24h: previousSends + 1, rateLimited: false }
   }
 
   // File fallback (local dev)
@@ -162,22 +169,27 @@ export async function storeCode(
     const previousSends = existing && existing.createdAt > windowStart ? existing.sendCount24h : 0
 
     if (previousSends >= MAX_SENDS_PER_24H) {
-      return { code, sendCount24h: previousSends, rateLimited: true }
+      return { code: existing?.code ?? code, sendCount24h: previousSends, rateLimited: true }
     }
 
+    // 关键修复：未过期的验证码存在时复用，不重新生成（见 Postgres 路径说明）
+    const reuseExisting = existing && existing.expiresAt > now
+    const finalCode = reuseExisting ? existing!.code : code
+    const carriedAttempts = reuseExisting ? existing!.attempts : 0
+
     all[key] = {
-      code,
+      code: finalCode,
       email: key,
       packageId,
       credits,
       amount,
       expiresAt: now + CODE_TTL_MS,
-      attempts: 0,
+      attempts: carriedAttempts,
       createdAt: now,
       sendCount24h: previousSends + 1,
     }
     writeCodes(all)
-    return { code, sendCount24h: previousSends + 1, rateLimited: false }
+    return { code: finalCode, sendCount24h: previousSends + 1, rateLimited: false }
   })
 }
 

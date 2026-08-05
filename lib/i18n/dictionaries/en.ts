@@ -491,6 +491,7 @@ const en = {
     invalidEmail: 'Please enter a valid email address',
     invalidCode: 'Please enter the complete 6-digit code',
     sendFailed: 'Failed to send verification code',
+    emailNotReceived: 'Check your spam/junk folder — emails may take a few minutes to arrive.',
     verifyFailed: 'Verification failed',
     digitAria: 'Digit {n}',
   },
@@ -534,6 +535,7 @@ const en = {
     dialogAria: 'Verify your email to unlock',
     invalidEmail: 'Please enter a valid email address',
     sendFailed: 'Failed to send verification code',
+    emailNotReceived: 'Check your spam/junk folder — emails may take a few minutes to arrive.',
     verifyFailed: 'Verification failed',
     digitAria: 'Digit {n}',
     // Unlock mode (unlock previously saved evaluation)

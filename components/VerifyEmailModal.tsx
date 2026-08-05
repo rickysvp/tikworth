@@ -39,6 +39,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
   const [devCode, setDevCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [successBalance, setSuccessBalance] = useState<number | null>(null)
@@ -117,6 +118,10 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
       const data = await res.json().catch(() => ({ error: dict.verifyEmail.sendFailed }))
       if (!res.ok) throw new Error(data.error || dict.verifyEmail.sendFailed)
       setDevCode(data.devCode || null)
+      // 邮件投递失败时显示提示（即使返回 ok，用户仍可能没收到邮件）
+      if (data.delivered === false) {
+        setError(dict.verifyEmail.emailNotReceived ?? 'Check your inbox or spam folder.')
+      }
       setPendingEmail(email.trim(), selectedPkg.id)
       setStep('code')
       startCooldown()
@@ -133,12 +138,11 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
   }
 
   async function handleVerify(codeOverride?: string) {
+    // 防重触发：粘贴+第6位各触发一次，忽略第二次
+    if (verifying) return
     const fullCode = codeOverride || code.join('')
-    console.log('[VerifyEmailModal] handleVerify email=', email.trim(), 'code=', fullCode)
-    if (fullCode.length !== 6) {
-      setError(dict.api.auth.INVALID_CODE)
-      return
-    }
+    if (fullCode.length !== 6) return
+    setVerifying(true)
     setLoading(true)
     setError('')
     try {
@@ -148,7 +152,14 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
         body: JSON.stringify({ email: email.trim(), code: fullCode }),
       })
       const data = await res.json().catch(() => ({ error: dict.verifyEmail.verifyFailed }))
-      if (!res.ok) throw new Error(data.error || dict.verifyEmail.verifyFailed)
+      if (!res.ok) {
+        // not_found = 双重触发（粘贴+第6位各发一次），第一次已删码，静默忽略
+        if (data.reason === 'not_found') {
+          setVerifying(false)
+          return
+        }
+        throw new Error(data.error || dict.verifyEmail.verifyFailed)
+      }
 
       clearPendingEmail()
       setActiveEmail(email.trim())
@@ -197,6 +208,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
       setTimeout(() => codeRefs.current[0]?.focus(), 50)
     } finally {
       setLoading(false)
+      setVerifying(false)
     }
   }
 
@@ -540,7 +552,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
 
               <button
                 onClick={() => handleVerify()}
-                disabled={loading || code.some(c => !c)}
+                disabled={loading || verifying || code.some(c => !c)}
                 className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF0050] py-3 text-sm font-bold text-white hover:bg-[#e60049] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4" />{dict.verifyEmail.verifyAndUnlock}</>}
