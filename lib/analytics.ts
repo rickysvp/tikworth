@@ -89,6 +89,8 @@ async function initDb(): Promise<boolean> {
       // 这里仅在列存在时清理 NOT NULL 约束，避免历史 INSERT 失败；列不存在时静默跳过。
       // 注意：不再做 UPDATE event_name（列不存在时会抛错导致 initDb 整体失败）。
       try { await sql`ALTER TABLE analytics_events ALTER COLUMN event_name DROP NOT NULL` } catch { /* 列不存在，无需迁移 */ }
+      // 确保 session_id 可为 null（服务端事件无客户端 session）
+      try { await sql`ALTER TABLE analytics_events ALTER COLUMN session_id DROP NOT NULL` } catch { /* 已可空 */ }
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`
       await sql`CREATE INDEX IF NOT EXISTS idx_analytics_hostname ON analytics_events(hostname)`
