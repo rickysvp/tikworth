@@ -497,7 +497,7 @@ const en = {
 
   // ── Verify Email Modal ──
   verifyEmail: {
-    brandSubtitle: 'Professional TikTok account valuation trusted by 12,000+ creators and brands.',
+    brandSubtitle: 'Professional TikTok account valuation — analyze any TikTok account\'s true market value.',
     // Evaluate mode (new account evaluation)
     returnLabel: 'Already have an account?',
     returnDesc: 'Verify your email to access your existing evaluations.',

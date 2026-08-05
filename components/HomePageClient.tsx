@@ -610,23 +610,25 @@ function HomePageContent() {
       {/* Landing Page Sections (shown when no result) */}
       {!result && !loading && !needPurchase && (
         <>
-          {/* Social Proof */}
-          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
-            <div className="mx-auto max-w-5xl px-4">
-              <div className="grid grid-cols-3 gap-8 text-center">
-                {[
-                  { value: stats.accountsEvaluated > 0 ? `${stats.accountsEvaluated.toLocaleString()}+` : '--', label: dict.home.socialProof.accountsEvaluated },
-                  { value: stats.totalValueAssessed > 0 ? `$${stats.totalValueAssessed >= 1_000_000_000 ? (stats.totalValueAssessed / 1_000_000_000).toFixed(1) + 'B+' : stats.totalValueAssessed >= 1_000_000 ? (stats.totalValueAssessed / 1_000_000).toFixed(1) + 'M+' : stats.totalValueAssessed.toLocaleString() + '+'}` : '--', label: dict.home.socialProof.totalValueAssessed },
-                  { value: stats.uniqueVisitors > 0 ? `${stats.uniqueVisitors.toLocaleString()}+` : '--', label: dict.home.socialProof.uniqueVisitors },
-                ].map((stat, i) => (
-                  <div key={i}>
-                    <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
-                    <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
-                  </div>
-                ))}
+          {/* Social Proof — only show when we have meaningful data (100+ evaluations) */}
+          {stats.accountsEvaluated >= 100 && (
+            <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
+              <div className="mx-auto max-w-5xl px-4">
+                <div className="grid grid-cols-3 gap-8 text-center">
+                  {[
+                    { value: stats.accountsEvaluated > 0 ? `${stats.accountsEvaluated.toLocaleString()}+` : '--', label: dict.home.socialProof.accountsEvaluated },
+                    { value: stats.totalValueAssessed > 0 ? `$${stats.totalValueAssessed >= 1_000_000_000 ? (stats.totalValueAssessed / 1_000_000_000).toFixed(1) + 'B+' : stats.totalValueAssessed >= 1_000_000 ? (stats.totalValueAssessed / 1_000_000).toFixed(1) + 'M+' : stats.totalValueAssessed.toLocaleString() + '+'}` : '--', label: dict.home.socialProof.totalValueAssessed },
+                    { value: stats.uniqueVisitors > 0 ? `${stats.uniqueVisitors.toLocaleString()}+` : '--', label: dict.home.socialProof.uniqueVisitors },
+                  ].map((stat, i) => (
+                    <div key={i}>
+                      <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{stat.value}</div>
+                      <div className="mt-1 text-xs sm:text-sm text-neutral-500">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Recently Evaluated Accounts */}
           <RecentEvaluations onSelect={(name) => {
