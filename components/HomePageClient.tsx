@@ -804,9 +804,8 @@ function HomePageContent() {
       {/* Landing Page Sections (shown when no result) */}
       {!result && !loading && !needPurchase && (
         <>
-          {/* Social Proof — only show when we have meaningful data (100+ evaluations) */}
-          {stats.accountsEvaluated >= 100 && (
-            <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
+          {/* Social Proof */}
+          <section className="border-b border-neutral-800 bg-[#0a0a0a] py-12">
               <div className="mx-auto max-w-5xl px-4">
                 <div className="grid grid-cols-3 gap-8 text-center">
                   {[
@@ -822,7 +821,6 @@ function HomePageContent() {
                 </div>
               </div>
             </section>
-          )}
 
           {/* Recently Evaluated Accounts */}
           <RecentEvaluations onSelect={(name) => {
