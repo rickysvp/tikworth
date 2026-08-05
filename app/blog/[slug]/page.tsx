@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, Clock, ArrowLeft } from 'lucide-react'
 import { getPostBySlug, getAllPosts, getRelatedPosts, getAuthorBySlug } from '@/lib/blog'
 import { extractTOC } from '@/lib/blog'
@@ -150,9 +151,20 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               {/* Author */}
               <div className="flex items-center gap-3 py-4 border-y border-neutral-800 my-8">
                 <Link href={`/authors/${post.author}`} className="flex items-center gap-3 group">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-sm font-bold text-white">
-                    {author?.avatarInitial || post.author.charAt(0).toUpperCase()}
-                  </div>
+                  {author?.avatar ? (
+                    <Image
+                      src={author.avatar}
+                      alt={author.name || post.author}
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-sm font-bold text-white">
+                      {author?.avatarInitial || post.author.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-white group-hover:text-[#00F2EA] transition-colors">{author?.name || post.author}</p>
                     <p className="text-xs text-neutral-500">{author?.role || 'TokValue Team'}</p>

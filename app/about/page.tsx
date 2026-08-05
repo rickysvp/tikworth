@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Script from 'next/script'
 import { ShieldCheck, Target, Eye, Scale, Mail, ArrowRight } from 'lucide-react'
 import { SiteHeader } from '@/components/SiteHeader'
@@ -177,9 +178,20 @@ export default function AboutPage() {
                   href={`/authors/${a.slug}`}
                   className="group flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 transition-colors hover:border-[#00F2EA]/40"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-xs font-bold text-white">
-                    {a.avatarInitial}
-                  </div>
+                  {a.avatar ? (
+                    <Image
+                      src={a.avatar}
+                      alt={a.name}
+                      width={36}
+                      height={36}
+                      className="shrink-0 rounded-full"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D78] to-[#00F2EA] text-xs font-bold text-white">
+                      {a.avatarInitial}
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className="text-sm font-medium group-hover:text-[#00F2EA] transition-colors truncate">{a.name}</p>
                     <p className="text-xs text-neutral-500 truncate">{a.role}</p>
