@@ -534,13 +534,13 @@ export interface DailyPvUv {
 }
 
 /**
- * 每日 PV/UV 时序：用 session_id 做 UV 去重，缺失日期填 0。
+ * 每日 PV/UV 时序：用 ip_hash 做 UV 去重（ip_hash 为空时回退 session_id），缺失日期填 0。
  */
 export async function getPvuvByDay(days: number): Promise<DailyPvUv[]> {
   const useDb = await initDb()
   if (!useDb || !sql) return []
   const since = new Date(Date.now() - days * 86400000).toISOString()
-  const UV_COL = sql.unsafe('session_id')
+  const UV_COL = sql.unsafe("COALESCE(NULLIF(ip_hash, ''), session_id)")
 
   try {
     const rows = await sql`
@@ -709,8 +709,8 @@ export async function getPVUV(): Promise<PVUVData> {
 
   const { todayStart, weekStart, monthStart } = shanghaiBoundaries()
 
-  // UV 用 session_id 去重（客户端 sessionStorage 生成，稳定且不依赖 ip_hash 列是否存在）
-  const UV_COL = sql.unsafe('session_id')
+  // UV 用 ip_hash 去重，ip_hash 为空时回退 session_id
+  const UV_COL = sql.unsafe("COALESCE(NULLIF(ip_hash, ''), session_id)")
 
   try {
     const [total, today, week, month] = await Promise.all([
@@ -904,7 +904,7 @@ export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
   try {
-    const UV_COL = sql.unsafe('session_id')
+    const UV_COL = sql.unsafe("COALESCE(NULLIF(ip_hash, ''), session_id)")
     const rows = await sql`
       SELECT
         COALESCE(NULLIF(referrer, ''), '直接访问') as source,
