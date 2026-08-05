@@ -764,8 +764,8 @@ function HomePageContent() {
             </p>
           </div>
 
-          <form onSubmit={onSubmit} className="relative">
-            <div className="flex items-center rounded-2xl border border-neutral-700 bg-neutral-900/80 backdrop-blur px-4 py-3 glow-pink focus-within:border-[#FF0050] transition-colors">
+          <form onSubmit={onSubmit} className="flex flex-col sm:flex-row items-stretch gap-3">
+            <div className="flex items-center rounded-2xl border border-neutral-700 bg-neutral-900/80 backdrop-blur px-4 py-3 glow-pink focus-within:border-[#FF0050] transition-colors flex-1">
               <span className="text-neutral-500 text-lg mr-3">@</span>
               <input
                 type="text"
@@ -784,19 +784,19 @@ function HomePageContent() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 {loading ? dict.common.analyzing : dict.common.evaluate}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setResult(DEMO_RESULT)
-                  setError('')
-                  setLoading(false)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className="ml-3 text-sm font-medium text-neutral-400 hover:text-[#00F2EA] transition-colors cursor-pointer"
-              >
-                or view demo
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setResult(DEMO_RESULT)
+                setError('')
+                setLoading(false)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="inline-flex items-center px-3 text-sm font-medium text-neutral-400 hover:text-[#00F2EA] transition-colors cursor-pointer whitespace-nowrap"
+            >
+              or view demo
+            </button>
           </form>
 
           {error && (
