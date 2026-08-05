@@ -72,7 +72,7 @@ const en = {
     unknown: 'Unknown',
     supported: 'Supported',
     noViolations: 'No Violations',
-    mockData: 'Mock Data',
+    mockData: 'Sample Data',
     evaluatedAt: 'Evaluated at',
     dataDisclaimer: 'Data sourced from third-party APIs. For reference only.',
     copyright: 'All rights reserved.',
