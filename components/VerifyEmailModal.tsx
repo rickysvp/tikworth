@@ -214,6 +214,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
     setCode(newCode)
     setError('')
     if (v && idx < 5) codeRefs.current[idx + 1]?.focus()
+    if (newCode.every(c => c !== '')) setTimeout(() => handleVerify(newCode.join('')), 100)
   }
 
   function handleCodeKeyDown(idx: number, e: React.KeyboardEvent<HTMLInputElement>) {
