@@ -438,7 +438,7 @@ export function StaticLanding() {
           </div>
           <h2 className="text-2xl font-bold mb-3">Creator Economy Data & Guides</h2>
           <p className="text-neutral-400 max-w-xl mx-auto mb-6">
-            In-depth articles on TikTok valuation, brand deal pricing, engagement benchmarks, and monetization strategies — backed by data from 50,000+ analyzed accounts.
+            In-depth articles on TikTok valuation, brand deal pricing, engagement benchmarks, and monetization strategies — methodology references industry data and our valuation engine.
           </p>
           <Link
             href="/blog"

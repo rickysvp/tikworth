@@ -291,7 +291,7 @@ export function PaidWall({ onUnlock, result, existingBalance, isUnlocking, balan
         <div className="mt-6 flex flex-wrap justify-center items-center gap-x-5 gap-y-2 text-[11px] text-neutral-500">
           <div className="flex items-center gap-1.5">
             <Users className="h-3 w-3 text-[#00F2EA]" />
-            <span>{t(dict.paidWall.trustCreators, { count: 1247 })}</span>
+            <span>{dict.paidWall.trustCreators}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-3 w-3 text-[#FF0050]" />

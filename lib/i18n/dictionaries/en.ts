@@ -432,7 +432,7 @@ const en = {
     evaluateHeaderHint: 'Unlock @{username}\'s full evaluation',
     loadingCredits: 'Loading evaluations...',
     creditsRemaining: '{count} evaluations remaining ({email})',
-    trustCreators: '{count} creators have unlocked',
+    trustCreators: 'Join the creators using TokValue to value their accounts',
     trustInstant: 'Instant · No waiting',
     trustCredits: 'Evaluations never expire · Accessible across devices via email',
     stepEmail: 'Link your evaluations via email',
