@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Email service not configured.' }, { status: 500 })
     }
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@tokvalue.app'
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@tokvalue.com'
     const html = buildContactEmailHtml(name, email, topic, message).replace(
       '{{ip_hash}}',
       ipHash

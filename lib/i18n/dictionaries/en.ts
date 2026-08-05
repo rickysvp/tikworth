@@ -463,10 +463,10 @@ const en = {
     successMessage: 'Your email {email} is linked with {balance} evaluations remaining.',
     successLoading: 'Loading your full evaluation...',
     footerGuarantees: [
-      'Email-linked evaluations',
-      'No registration · Code-only login',
+      'Non-refundable once credits consumed',
       'No auto-renewal',
-      'Cross-device recovery',
+      'Email-linked access',
+      '7-day refund for unused credits',
     ],
     // Package features
     packageFeatures: {

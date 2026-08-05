@@ -28,7 +28,7 @@ const jsonLd = {
       isPartOf: { '@id': 'https://tokvalue.com/#website' },
       about: { '@id': 'https://tokvalue.com/#organization' },
       description:
-        'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis — covering brand deals, live gifts, and short-video commerce.',
+        'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis - covering brand deals, live gifts, and short-video commerce.',
     },
     {
       '@type': 'WebSite',
@@ -43,7 +43,7 @@ const jsonLd = {
 export const metadata: Metadata = {
   title: 'About TokValue | Transparent TikTok Account Valuation',
   description:
-    'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis — covering brand deals, live gifts, and short-video commerce.',
+    'TokValue brings transparency to TikTok account valuation using market transaction data and multi-dimensional commercial revenue analysis - covering brand deals, live gifts, and short-video commerce.',
   alternates: {
     canonical: '/about',
   },
@@ -64,7 +64,7 @@ export default function AboutPage() {
       <Script id="about-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="flex-1">
-        {/* Hero — Product Mission */}
+        {/* Hero - Product Mission */}
         <section className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900/60 via-transparent to-transparent">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 py-20 sm:py-24">
             <p className="text-xs font-semibold text-[#00F2EA] uppercase tracking-widest mb-4">About TokValue</p>
@@ -72,15 +72,20 @@ export default function AboutPage() {
               Bringing Transparency to TikTok Account Valuation
             </h1>
             <p className="text-lg text-neutral-300 leading-relaxed mb-6">
-              TokValue exists because the TikTok account market was broken. Buyers, sellers, and creators 
-              were negotiating in the dark — with no objective reference point for what an account was 
-              actually worth. We built a tool that analyzes public data to estimate market value, 
+              TokValue exists because the TikTok account market was broken. Buyers, sellers, and creators
+              were negotiating in the dark - with no objective reference point for what an account was
+              actually worth. We built a tool that analyzes public data to estimate market value,
               giving everyone a neutral starting point for fair deals.
             </p>
             <p className="text-base text-neutral-400 leading-relaxed">
-              We don&apos;t broker accounts. We don&apos;t take sides. We measure what the market is paying 
+              We don&apos;t broker accounts. We don&apos;t take sides. We measure what the market is paying
               and make that data accessible to anyone.
             </p>
+
+            {/* Disclaimer Banner */}
+            <div className="mt-6 rounded-xl border border-[#FF0050]/30 bg-[#FF0050]/5 px-4 py-3 text-sm text-neutral-400">
+              <strong className="text-[#FF0050]">Important:</strong> TokValue provides commercial valuation only — we do not facilitate account transactions, transfers, or brokerage. Valuations are estimates and do not constitute financial or investment advice.
+            </div>
           </div>
         </section>
 
@@ -124,7 +129,7 @@ export default function AboutPage() {
                 <p className="text-sm text-neutral-400 leading-relaxed">
                   A TikTok account earns money across multiple streams: brand deals and sponsorships,
                   live gifts and donations, short-video e-commerce, and live-stream shopping. We
-                  analyze all of these dimensions to build a complete picture of earning potential —
+                  analyze all of these dimensions to build a complete picture of earning potential -
                   not just follower count.
                 </p>
               </div>
@@ -138,7 +143,7 @@ export default function AboutPage() {
                 <h3 className="font-semibold mb-1">Market Transaction Data</h3>
                 <p className="text-sm text-neutral-400 leading-relaxed">
                   Beyond public metrics, we track actual market transaction pricing. When an account
-                  changes hands, the real deal price reflects what the market is willing to pay —
+                  changes hands, the real deal price reflects what the market is willing to pay -
                   not a formula. We use that data to calibrate our valuation models continuously.
                 </p>
               </div>
@@ -152,7 +157,7 @@ export default function AboutPage() {
                 <h3 className="font-semibold mb-1">Neutral Third Party. Transparent Methodology.</h3>
                 <p className="text-sm text-neutral-400 leading-relaxed">
                   We don&apos;t buy, sell, or broker accounts. Every valuation breaks down into
-                  interpretable dimensions — you can see exactly what drove the number and judge
+                  interpretable dimensions - you can see exactly what drove the number and judge
                   whether the factors apply to your situation.
                 </p>
               </div>
@@ -160,17 +165,17 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Who We Are — Minimal Team */}
+        {/* Who We Are - Minimal Team */}
         <section className="border-y border-neutral-800 bg-neutral-900/20">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
             <h2 className="text-2xl font-bold tracking-tight mb-4">Who We Are</h2>
             <p className="text-neutral-400 leading-relaxed mb-8 max-w-2xl">
-              We&apos;re a small team of TikTok creators, data analysts, and developers who saw a broken market 
-              and decided to fix it. Our backgrounds span the creator economy, digital advertising, 
-              and data science — giving us perspective from every side of the table.
+              We&apos;re a small team of TikTok creators, data analysts, and developers who saw a broken market
+              and decided to fix it. Our backgrounds span the creator economy, digital advertising,
+              and data science - giving us perspective from every side of the table.
             </p>
-            
-            {/* Team cards — minimal */}
+
+            {/* Team cards - minimal */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {authors.map((a) => (
                 <a
@@ -209,7 +214,7 @@ export default function AboutPage() {
             {[
               {
                 title: 'Neutrality',
-                desc: 'We don\'t take sides between buyers and sellers. We don\'t set prices — we analyze data and reflect what the market is actually paying.',
+                desc: 'We don\'t take sides between buyers and sellers. We don\'t set prices - we analyze data and reflect what the market is actually paying.',
               },
               {
                 title: 'Data Over Guesswork',
@@ -264,8 +269,8 @@ export default function AboutPage() {
           <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16 text-center">
             <h2 className="text-2xl font-bold tracking-tight mb-4">Questions or Feedback?</h2>
             <p className="text-neutral-300 leading-relaxed mb-6 max-w-lg mx-auto">
-              We read every message. Whether you have a question about our methodology, 
-              a partnership idea, or just want to say hello — get in touch.
+              We read every message. Whether you have a question about our methodology,
+              a partnership idea, or just want to say hello - get in touch.
             </p>
             <a
               href="/contact"

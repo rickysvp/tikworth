@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
 
     if (process.env.RESEND_API_KEY) {
       try {
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@tokvalue.app'
+        const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@tokvalue.com'
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {

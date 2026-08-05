@@ -85,7 +85,7 @@ const sections = [
   {
     id: 'refund-policy',
     title: 'Refund Policy',
-    content: `All sales are final. Credits are non-refundable once they have been consumed (i.e., once an evaluation has been performed using those credits). Unused credits may be eligible for refund within 14 days of purchase if the Service is not functioning as described. To request a refund, contact us at connect@tokvalue.com with your order details and reason for the request. Refund requests are reviewed on a case-by-case basis.`,
+    content: `All sales are final. Credits purchased are non-refundable once consumed (i.e., once an evaluation report has been generated using those credits). Unused credits may be requested for a full refund within 7 days of purchase by contacting us at connect@tokvalue.com. Refund requests submitted after 7 days or after credits have been used will not be accepted.`,
   },
   {
     id: 'disclaimers',
