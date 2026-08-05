@@ -138,10 +138,12 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
   }
 
   async function handleVerify(codeOverride?: string) {
-    // 防重触发：粘贴+第6位各触发一次，忽略第二次
     if (verifying) return
     const fullCode = codeOverride || code.join('')
-    if (fullCode.length !== 6) return
+    if (fullCode.length !== 6) {
+      setError('Please enter the complete 6-digit code')
+      return
+    }
     setVerifying(true)
     setLoading(true)
     setError('')
@@ -152,14 +154,7 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
         body: JSON.stringify({ email: email.trim(), code: fullCode }),
       })
       const data = await res.json().catch(() => ({ error: dict.verifyEmail.verifyFailed }))
-      if (!res.ok) {
-        // not_found = 双重触发（粘贴+第6位各发一次），第一次已删码，静默忽略
-        if (data.reason === 'not_found') {
-          setVerifying(false)
-          return
-        }
-        throw new Error(data.error || dict.verifyEmail.verifyFailed)
-      }
+      if (!res.ok) throw new Error(data.error || dict.verifyEmail.verifyFailed)
 
       clearPendingEmail()
       setActiveEmail(email.trim())
@@ -219,7 +214,6 @@ export function VerifyEmailModal({ isOpen, onClose, onUnlock, existingBalance, m
     setCode(newCode)
     setError('')
     if (v && idx < 5) codeRefs.current[idx + 1]?.focus()
-    if (newCode.every(c => c !== '')) setTimeout(() => handleVerify(newCode.join('')), 100)
   }
 
   function handleCodeKeyDown(idx: number, e: React.KeyboardEvent<HTMLInputElement>) {
