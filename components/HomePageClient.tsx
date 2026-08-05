@@ -784,20 +784,18 @@ function HomePageContent() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 {loading ? dict.common.analyzing : dict.common.evaluate}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setResult(DEMO_RESULT)
-                  setError('')
-                  setLoading(false)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className="ml-2 inline-flex items-center gap-2 rounded-xl border border-[#00F2EA]/40 bg-[#00F2EA]/10 px-4 py-2.5 text-sm font-semibold text-[#00F2EA] hover:bg-[#00F2EA]/20 transition-colors"
-              >
-                <Play className="h-4 w-4" />
-                View Demo
-              </button>
             </div>
+            <span
+              onClick={() => {
+                setResult(DEMO_RESULT)
+                setError('')
+                setLoading(false)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="ml-2.5 text-xs text-neutral-500 hover:text-[#00F2EA] cursor-pointer transition-colors select-none"
+            >
+              or view demo
+            </span>
           </form>
 
           {error && (
